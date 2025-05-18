@@ -1,0 +1,140 @@
+use crate::addr::VpcResourceAddress;
+
+use super::VpcConnector;
+
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
+
+use crate::{
+    op::VpcConnectorOp,
+    op_impl,
+    resource::{
+        InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc,
+        VpcResource,
+    },
+    tags::Tags,
+};
+use anyhow::bail;
+use async_trait::async_trait;
+use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_core::{
+    connector::{
+        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
+        Resource, ResourceAddress, SkeletonOutput, VirtToPhyOutput,
+    },
+    connector_op,
+    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
+    diag::DiagnosticOutput,
+    get_resource_output,
+    read_outputs::ReadOutput,
+    skeleton,
+    util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON},
+};
+
+use aws_config::{meta::region::RegionProviderChain, timeout::TimeoutConfig, BehaviorVersion};
+use aws_sdk_ec2::{config::Region, types::Filter};
+use tokio::sync::Mutex;
+
+impl VpcConnector {
+    pub async fn do_list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        let mut results = Vec::<PathBuf>::new();
+
+        for region_name in &self.config.enabled_regions {
+            let client = self.get_or_init_client(&region_name).await.unwrap();
+
+            let vpcs_resp = client.describe_vpcs().send().await?;
+            if let Some(vpcs) = vpcs_resp.vpcs {
+                for vpc in vpcs {
+                    let Some(vpc_id) = vpc.vpc_id else {
+                        continue;
+                    };
+                    results.push(
+                        VpcResourceAddress::Vpc(region_name.to_string(), vpc_id.clone())
+                            .to_path_buf(),
+                    );
+
+                    let vpc_filter = Filter::builder().name("vpc-id").values(&vpc_id).build();
+
+                    // List Subnets
+                    let subnets_resp = client
+                        .describe_subnets()
+                        .filters(vpc_filter.clone())
+                        .send()
+                        .await?;
+                    if let Some(subnets) = subnets_resp.subnets {
+                        for subnet in subnets {
+                            if let Some(subnet_id) = subnet.subnet_id {
+                                results.push(
+                                    VpcResourceAddress::Subnet(
+                                        region_name.to_string(),
+                                        vpc_id.clone(),
+                                        subnet_id,
+                                    )
+                                    .to_path_buf(),
+                                );
+                            }
+                        }
+                    }
+
+                    // List Route Tables
+                    let route_tables_resp = client
+                        .describe_route_tables()
+                        .filters(vpc_filter.clone())
+                        .send()
+                        .await?;
+                    if let Some(route_tables) = route_tables_resp.route_tables {
+                        for rt in route_tables {
+                            if let Some(rt_id) = rt.route_table_id {
+                                results.push(
+                                    VpcResourceAddress::RouteTable(
+                                        region_name.clone(),
+                                        vpc_id.clone(),
+                                        rt_id,
+                                    )
+                                    .to_path_buf(),
+                                );
+                            }
+                        }
+                    }
+                    let security_groups_resp = client
+                        .describe_security_groups()
+                        .filters(vpc_filter)
+                        .send()
+                        .await?;
+                    if let Some(security_groups) = security_groups_resp.security_groups {
+                        for sg in security_groups {
+                            if let Some(sg_id) = sg.group_id {
+                                results.push(
+                                    VpcResourceAddress::SecurityGroup(
+                                        region_name.clone(),
+                                        vpc_id.clone(),
+                                        sg_id,
+                                    )
+                                    .to_path_buf(),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+
+            let igws_resp = client.describe_internet_gateways().send().await?;
+            if let Some(igws) = igws_resp.internet_gateways {
+                for igw in igws {
+                    if let Some(igw_id) = igw.internet_gateway_id {
+                        results.push(
+                            VpcResourceAddress::InternetGateway(region_name.clone(), igw_id)
+                                .to_path_buf(),
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(results)
+    }
+}
