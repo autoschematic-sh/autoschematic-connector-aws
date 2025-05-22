@@ -21,12 +21,10 @@ use autoschematic_core::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
         SkeletonOutput,
     },
-    connector_util::read_mounted_secret,
     diag::DiagnosticOutput,
-    error_util::invalid_op,
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+    util::{RON, ron_check_eq, ron_check_syntax},
 };
-use autoschematic_core::{connector_op, get_resource_output, skeleton};
+use autoschematic_core::{get_resource_output, skeleton};
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use serde_json;
 use tokio::sync::Mutex;

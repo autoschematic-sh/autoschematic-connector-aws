@@ -1,6 +1,4 @@
-use std::{collections::HashMap, path::Path};
 
-use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
 
 use super::SecretsManagerConnector;
 

@@ -9,7 +9,7 @@ impl SecretsManagerConnector {
         let mut results = Vec::<PathBuf>::new();
 
         for region_name in &self.config.enabled_regions {
-            let client = self.get_or_init_client(&region_name).await?;
+            let client = self.get_or_init_client(region_name).await?;
 
             // List all secrets in the region
             let mut next_token: Option<String> = None;

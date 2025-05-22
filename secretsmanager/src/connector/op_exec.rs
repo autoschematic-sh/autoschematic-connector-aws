@@ -1,8 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
-use anyhow::bail;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress}, connector_util::read_mounted_secret, error::{AutoschematicError, AutoschematicErrorType}, error_util::invalid_op, op_exec_output
+    connector::{ConnectorOp, OpExecOutput, ResourceAddress}, connector_util::read_mounted_secret, error_util::invalid_op
 };
 
 use crate::tags;
@@ -16,7 +15,7 @@ impl SecretsManagerConnector {
 
         match &addr {
             SecretsManagerResourceAddress::Secret { region, name } => {
-                let client = self.get_or_init_client(&region).await?;
+                let client = self.get_or_init_client(region).await?;
 
                 match op {
                     SecretsManagerConnectorOp::CreateSecret(secret) => {

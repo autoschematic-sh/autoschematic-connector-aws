@@ -5,7 +5,7 @@ use super::{
     tags::Tags, 
     op::RotationRules,
 };
-use autoschematic_core::{connector::{OpExecOutput, Resource}, util::RON};
+use autoschematic_core::{connector::OpExecOutput, util::RON};
 
 /// Creates a Secret using the provided configuration
 pub async fn create_secret(
