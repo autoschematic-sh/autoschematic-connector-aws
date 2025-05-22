@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::connector::ResourceAddress;
+use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_path};
 
 #[derive(Debug, Clone)]
 pub enum IamResourceAddress {
@@ -20,7 +20,7 @@ impl ResourceAddress for IamResourceAddress {
         }
     }
 
-    fn from_path(path: &Path) -> Result<Option<Self>, anyhow::Error> {
+    fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
         // TODO Use try_collect to avoid the unwrap here! It's made for this!
         let path_components: Vec<&str> = path
             .components()
@@ -31,19 +31,19 @@ impl ResourceAddress for IamResourceAddress {
             ["aws", "iam", "users", name @ ..] if name.join("/").ends_with(".ron") => {
                 let full_name = name.join("/");
                 let full_name = full_name.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(IamResourceAddress::User(full_name)))
+                Ok(IamResourceAddress::User(full_name))
             }
             ["aws", "iam", "roles", name @ ..] if name.join("/").ends_with(".ron") => {
                 let full_name = name.join("/");
                 let full_name = full_name.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(IamResourceAddress::Role(full_name)))
+                Ok(IamResourceAddress::Role(full_name))
             }
             ["aws", "iam", "policies", name @ ..] if name.join("/").ends_with(".ron") => {
                 let full_name = name.join("/");
                 let full_name = full_name.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(IamResourceAddress::Policy(full_name)))
+                Ok(IamResourceAddress::Policy(full_name))
             }
-            _ => Ok(None),
+            _ => Err(invalid_addr_path(path))
         }
     }
 }

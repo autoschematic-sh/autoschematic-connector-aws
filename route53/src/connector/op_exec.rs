@@ -14,12 +14,7 @@ use super::Route53Connector;
 
 impl Route53Connector {
     pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
-        let Some(addr) = Route53ResourceAddress::from_path(addr)? else {
-            return Err(AutoschematicError {
-                kind: AutoschematicErrorType::InvalidAddr(addr.into()),
-            }
-            .into());
-        };
+        let addr = Route53ResourceAddress::from_path(addr)?;
 
         let op = Route53ConnectorOp::from_str(op)?;
 

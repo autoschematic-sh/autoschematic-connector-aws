@@ -33,7 +33,7 @@ impl IamConnector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
         match addr {
-            Some(IamResourceAddress::User(user_name)) => {
+            IamResourceAddress::User(user_name) => {
                 let user_result = self.client.get_user().user_name(&user_name).send().await;
 
                 match user_result {
@@ -64,7 +64,7 @@ impl IamConnector {
                     Err(_) => Ok(None),
                 }
             }
-            Some(IamResourceAddress::Role(role_name)) => {
+            IamResourceAddress::Role(role_name) => {
                 let role_result = self.client.get_role().role_name(&role_name).send().await;
 
                 match role_result {
@@ -110,7 +110,7 @@ impl IamConnector {
                     Err(_) => Ok(None),
                 }
             }
-            Some(IamResourceAddress::Policy(policy_name)) => {
+            IamResourceAddress::Policy(policy_name) => {
                 let arn = format!("arn:aws:iam::{}:policy/{}", self.account_id, policy_name);
                 let policy_result = self.client.get_policy().policy_arn(&arn).send().await;
 

@@ -39,7 +39,7 @@ impl IamConnector {
         let op = IamConnectorOp::from_str(op)?;
 
         match &addr {
-            Some(IamResourceAddress::User(user_name)) => match op {
+            IamResourceAddress::User(user_name) => match op {
                 IamConnectorOp::CreateUser(user) => {
                     self.client
                         .create_user()
@@ -132,7 +132,7 @@ impl IamConnector {
                     addr
                 ),
             },
-            Some(IamResourceAddress::Role(role_name)) => match op {
+            IamResourceAddress::Role(role_name) => match op {
                 IamConnectorOp::CreateRole(role) => {
                     if let Some(assume_role_policy) = role.assume_role_policy_document {
                         self.client
@@ -230,7 +230,7 @@ impl IamConnector {
                     addr
                 ),
             },
-            Some(IamResourceAddress::Policy(policy_name)) => match op {
+            IamResourceAddress::Policy(policy_name) => match op {
                 IamConnectorOp::CreatePolicy(policy) => {
                     let policy_document = policy.policy_document;
 

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::connector::ResourceAddress;
+use autoschematic_core::{connector::ResourceAddress, error_util::{invalid_addr, invalid_addr_path}};
 
 #[derive(Debug, Clone)]
 pub enum VpcResourceAddress {
@@ -36,7 +36,7 @@ impl ResourceAddress for VpcResourceAddress {
         }
     }
 
-    fn from_path(path: &Path) -> Result<Option<Self>, anyhow::Error> {
+    fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
         let path_components: Vec<&str> = path
             .components()
             .into_iter()
@@ -46,46 +46,46 @@ impl ResourceAddress for VpcResourceAddress {
         match &path_components[..] {
             ["aws", "vpc", region, "vpcs", vpc_id] if vpc_id.ends_with(".ron") => {
                 let vpc_id = vpc_id.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(VpcResourceAddress::Vpc(region.to_string(), vpc_id)))
+                Ok(VpcResourceAddress::Vpc(region.to_string(), vpc_id))
             }
             ["aws", "vpc", region, "vpcs", vpc_id, "subnets", subnet_id]
                 if subnet_id.ends_with(".ron") =>
             {
                 let subnet_id = subnet_id.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(VpcResourceAddress::Subnet(
+                Ok(VpcResourceAddress::Subnet(
                     region.to_string(),
                     vpc_id.to_string(),
                     subnet_id,
-                )))
+                ))
             }
             ["aws", "vpc", region, "internet_gateways", igw_id] if igw_id.ends_with(".ron") => {
                 let igw_id = igw_id.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(VpcResourceAddress::InternetGateway(
+                Ok(VpcResourceAddress::InternetGateway(
                     region.to_string(),
                     igw_id,
-                )))
+                ))
             }
             ["aws", "vpc", region, "vpcs", vpc_id, "route_tables", rt_id]
                 if rt_id.ends_with(".ron") =>
             {
                 let rt_id = rt_id.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(VpcResourceAddress::RouteTable(
+                Ok(VpcResourceAddress::RouteTable(
                     region.to_string(),
                     vpc_id.to_string(),
                     rt_id,
-                )))
+                ))
             }
             ["aws", "vpc", region, "vpcs", vpc_id, "security_groups", sg_id]
                 if sg_id.ends_with(".ron") =>
             {
                 let sg_id = sg_id.strip_suffix(".ron").unwrap().to_string();
-                Ok(Some(VpcResourceAddress::SecurityGroup(
+                Ok(VpcResourceAddress::SecurityGroup(
                     region.to_string(),
                     vpc_id.to_string(),
                     sg_id,
-                )))
+                ))
             }
-            _ => Ok(None),
+            _ => Err(invalid_addr_path(path))
         }
     }
 }

@@ -10,28 +10,23 @@ use crate::{
     addr::VpcResourceAddress,
     op::VpcConnectorOp,
     op_impl,
-    resource::{
-        InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc,
-        VpcResource,
-    },
+    resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc, VpcResource},
     tags::Tags,
 };
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::{
-    config::AwsConnectorConfig, util::optional_string_from_utf8,
-};
+use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
-        Resource, ResourceAddress, SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
+        SkeletonOutput, VirtToPhyOutput,
     },
     connector_op,
     connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
     read_outputs::ReadOutput,
     skeleton,
-    util::{RON, diff_ron_values, ron_check_eq, ron_check_syntax},
+    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
@@ -41,8 +36,8 @@ use tokio::sync::Mutex;
 use crate::{config::VpcConnectorConfig, util};
 
 use util::{
-    get_igw, get_phy_internet_gateway_id, get_phy_route_table_id, get_phy_security_group_id,
-    get_phy_subnet_id, get_phy_vpc_id, get_route_table, get_security_group, get_subnet, get_vpc,
+    get_igw, get_phy_internet_gateway_id, get_phy_route_table_id, get_phy_security_group_id, get_phy_subnet_id, get_phy_vpc_id,
+    get_route_table, get_security_group, get_subnet, get_vpc,
 };
 
 pub mod get;
@@ -60,18 +55,14 @@ pub struct VpcConnector {
 #[async_trait]
 impl Connector for VpcConnector {
     async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Some(_addr) = VpcResourceAddress::from_path(addr)? {
+        if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    async fn new(
-        _name: &str,
-        prefix: &Path,
-        _outbox: ConnectorOutbox,
-    ) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
@@ -97,9 +88,7 @@ impl Connector for VpcConnector {
 
         // Get account ID from STS
         let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(RegionProviderChain::first_try(Region::new(
-                "us-east-1".to_owned(),
-            )))
+            .region(RegionProviderChain::first_try(Region::new("us-east-1".to_owned())))
             .load()
             .await;
 
@@ -122,8 +111,7 @@ impl Connector for VpcConnector {
                     }
                 }
 
-                let vpc_config: VpcConnectorConfig =
-                    VpcConnectorConfig::try_load(prefix)?.unwrap_or_default();
+                let vpc_config: VpcConnectorConfig = VpcConnectorConfig::try_load(prefix)?.unwrap_or_default();
 
                 Ok(Box::new(VpcConnector {
                     client_cache: Mutex::new(HashMap::new()),
@@ -153,12 +141,8 @@ impl Connector for VpcConnector {
         current: Option<OsString>,
         desired: Option<OsString>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
-        self.do_plan(
-            addr,
-            optional_string_from_utf8(current)?,
-            optional_string_from_utf8(desired)?,
-        )
-        .await
+        self.do_plan(addr, optional_string_from_utf8(current)?, optional_string_from_utf8(desired)?)
+            .await
     }
 
     async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
@@ -166,9 +150,7 @@ impl Connector for VpcConnector {
     }
 
     async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
-        let Some(addr) = VpcResourceAddress::from_path(addr)? else {
-            return Ok(VirtToPhyOutput::NotPresent);
-        };
+        let addr = VpcResourceAddress::from_path(addr)?;
 
         match &addr {
             VpcResourceAddress::Vpc(region, vpc_id) => {
@@ -183,8 +165,7 @@ impl Connector for VpcConnector {
             VpcResourceAddress::Subnet(region, vpc_id, subnet_id) => {
                 let parent_vpc_addr = VpcResourceAddress::Vpc(region.into(), vpc_id.into());
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)?
-                else {
+                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
                         path: parent_vpc_addr.to_path_buf(),
                         key: "vpc_id".to_string(),
@@ -200,8 +181,7 @@ impl Connector for VpcConnector {
                 let subnet_id = get_output_or_bail(&outputs, "subnet_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::Subnet(region.into(), vpc_id.into(), subnet_id)
-                        .to_path_buf(),
+                    VpcResourceAddress::Subnet(region.into(), vpc_id.into(), subnet_id).to_path_buf(),
                 ))
             }
             VpcResourceAddress::InternetGateway(region, igw_id) => {
@@ -216,8 +196,7 @@ impl Connector for VpcConnector {
             VpcResourceAddress::RouteTable(region, vpc_id, rt_id) => {
                 let parent_vpc_addr = VpcResourceAddress::Vpc(region.into(), vpc_id.into());
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)?
-                else {
+                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
                         path: parent_vpc_addr.to_path_buf(),
                         key: "vpc_id".to_string(),
@@ -233,15 +212,13 @@ impl Connector for VpcConnector {
                 let rt_id = get_output_or_bail(&outputs, "route_table_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::RouteTable(region.into(), vpc_id.into(), rt_id.to_string())
-                        .to_path_buf(),
+                    VpcResourceAddress::RouteTable(region.into(), vpc_id.into(), rt_id.to_string()).to_path_buf(),
                 ))
             }
             VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id) => {
                 let parent_vpc_addr = VpcResourceAddress::Vpc(region.into(), vpc_id.into());
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)?
-                else {
+                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
                         path: parent_vpc_addr.to_path_buf(),
                         key: "vpc_id".to_string(),
@@ -257,17 +234,14 @@ impl Connector for VpcConnector {
                 let sg_id = get_output_or_bail(&outputs, "security_group_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::SecurityGroup(region.into(), vpc_id.into(), sg_id.into())
-                        .to_path_buf(),
+                    VpcResourceAddress::SecurityGroup(region.into(), vpc_id.into(), sg_id.into()).to_path_buf(),
                 ))
             }
         }
     }
 
     async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
-        let Some(addr) = VpcResourceAddress::from_path(addr)? else {
-            return Ok(None);
-        };
+        let addr = VpcResourceAddress::from_path(addr)?;
 
         match &addr {
             VpcResourceAddress::Vpc(_, _) => {
@@ -276,20 +250,12 @@ impl Connector for VpcConnector {
                 }
             }
             VpcResourceAddress::Subnet(region, vpc_id, _) => {
-                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()),
-                )? {
-                    if let Some(VpcResourceAddress::Subnet(_, _, virt_subnet_id)) =
-                        output_phy_to_virt(&self.prefix, &addr)?
-                    {
+                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) =
+                    output_phy_to_virt(&self.prefix, &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()))?
+                {
+                    if let Some(VpcResourceAddress::Subnet(_, _, virt_subnet_id)) = output_phy_to_virt(&self.prefix, &addr)? {
                         return Ok(Some(
-                            VpcResourceAddress::Subnet(
-                                region.to_string(),
-                                virt_vpc_id,
-                                virt_subnet_id,
-                            )
-                            .to_path_buf(),
+                            VpcResourceAddress::Subnet(region.to_string(), virt_vpc_id, virt_subnet_id).to_path_buf(),
                         ));
                     }
                 }
@@ -300,47 +266,33 @@ impl Connector for VpcConnector {
                 }
             }
             VpcResourceAddress::RouteTable(region, vpc_id, _) => {
-                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()),
-                )? {
-                    if let Some(VpcResourceAddress::RouteTable(_, _, virt_rt_id)) =
-                        output_phy_to_virt(&self.prefix, &addr)?
-                    {
+                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) =
+                    output_phy_to_virt(&self.prefix, &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()))?
+                {
+                    if let Some(VpcResourceAddress::RouteTable(_, _, virt_rt_id)) = output_phy_to_virt(&self.prefix, &addr)? {
                         return Ok(Some(
-                            VpcResourceAddress::RouteTable(
-                                region.to_string(),
-                                virt_vpc_id,
-                                virt_rt_id,
-                            )
-                            .to_path_buf(),
+                            VpcResourceAddress::RouteTable(region.to_string(), virt_vpc_id, virt_rt_id).to_path_buf(),
                         ));
                     }
                 }
             }
 
             VpcResourceAddress::SecurityGroup(region, vpc_id, _) => {
-                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()),
-                )? {
-                    if let Some(VpcResourceAddress::SecurityGroup(_, _, virt_sg_id)) =
-                        output_phy_to_virt(&self.prefix, &addr)?
+                if let Some(VpcResourceAddress::Vpc(_, virt_vpc_id)) =
+                    output_phy_to_virt(&self.prefix, &VpcResourceAddress::Vpc(region.to_string(), vpc_id.to_string()))?
+                {
+                    if let Some(VpcResourceAddress::SecurityGroup(_, _, virt_sg_id)) = output_phy_to_virt(&self.prefix, &addr)?
                     {
                         return Ok(Some(
-                            VpcResourceAddress::SecurityGroup(
-                                region.to_string(),
-                                virt_vpc_id,
-                                virt_sg_id,
-                            )
-                            .to_path_buf(),
+                            VpcResourceAddress::SecurityGroup(region.to_string(), virt_vpc_id, virt_sg_id).to_path_buf(),
                         ));
                     }
                 }
             }
         }
 
-        Ok(Some(addr.to_path_buf()))
+        // Ok(Some(addr.to_path_buf()))
+        Ok(None)
     }
 
     async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
@@ -411,10 +363,7 @@ impl Connector for VpcConnector {
         ));
 
         res.push(skeleton!(
-            VpcResourceAddress::InternetGateway(
-                String::from("[region]"),
-                String::from("[internet_gateway_id]")
-            ),
+            VpcResourceAddress::InternetGateway(String::from("[region]"), String::from("[internet_gateway_id]")),
             VpcResource::InternetGateway(InternetGateway {
                 vpc_id: None,
                 tags: Tags::default()
@@ -425,9 +374,7 @@ impl Connector for VpcConnector {
     }
 
     async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> Result<bool, anyhow::Error> {
-        let Ok(Some(addr)) = VpcResourceAddress::from_path(addr) else {
-            return Ok(false);
-        };
+        let addr = VpcResourceAddress::from_path(addr)?;
 
         match addr {
             VpcResourceAddress::Vpc(_, _) => ron_check_eq::<Vpc>(a, b),
@@ -439,9 +386,7 @@ impl Connector for VpcConnector {
     }
 
     async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
-        let Ok(Some(addr)) = VpcResourceAddress::from_path(addr) else {
-            return Ok(DiagnosticOutput::default());
-        };
+        let addr = VpcResourceAddress::from_path(addr)?;
 
         match addr {
             VpcResourceAddress::Vpc(_, _) => ron_check_syntax::<Vpc>(a),

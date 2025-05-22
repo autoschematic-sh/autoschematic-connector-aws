@@ -41,9 +41,8 @@ use crate::util::{
 
 impl VpcConnector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
-        let Some(addr) = VpcResourceAddress::from_path(addr)? else {
-            return Ok(None);
-        };
+        let addr = VpcResourceAddress::from_path(addr)?;
+
         match addr {
             VpcResourceAddress::Vpc(region, vpc_id) => {
                 let client = self.get_or_init_client(&region).await?;

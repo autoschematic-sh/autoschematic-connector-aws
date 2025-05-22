@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use autoschematic_core::connector_util::load_resource_output_key;
 use aws_sdk_ec2::types::{AttributeBooleanValue, Filter};
 
@@ -23,60 +23,56 @@ pub async fn get_vpc(client: &aws_sdk_ec2::Client, vpc_id: &str) -> anyhow::Resu
         return Ok(None);
     };
 
-    if let Some(vpcs) = vpc_output.vpcs {
-        if let Some(vpc) = vpcs.first() {
-            let cidr_block = vpc.cidr_block.clone().unwrap_or_default();
+    let Some(vpcs) = vpc_output.vpcs else {
+        return Ok(None);
+    };
 
-            let instance_tenancy = if let Some(tenancy) = &vpc.instance_tenancy {
-                tenancy.as_str().to_string()
-            } else {
-                "default".to_string()
-            };
+    if let Some(vpc) = vpcs.first() {
+        let cidr_block = vpc.cidr_block.clone().unwrap_or_default();
 
-            // Get VPC attributes (DNS support and hostnames)
-            let dns_support_resp = client
-                .describe_vpc_attribute()
-                .vpc_id(vpc_id)
-                .attribute(aws_sdk_ec2::types::VpcAttributeName::EnableDnsSupport)
-                .send()
-                .await?;
-
-            let dns_hostnames_resp = client
-                .describe_vpc_attribute()
-                .vpc_id(vpc_id)
-                .attribute(aws_sdk_ec2::types::VpcAttributeName::EnableDnsHostnames)
-                .send()
-                .await?;
-
-            let enable_dns_support = bool_unpack(dns_support_resp.enable_dns_support);
-
-            let enable_dns_hostnames = bool_unpack(dns_hostnames_resp.enable_dns_hostnames);
-
-            // Get tags
-            let tags: Tags = vpc.tags.clone().into();
-
-            let vpc_resource = Vpc {
-                cidr_block,
-                instance_tenancy,
-                enable_dns_support,
-                enable_dns_hostnames,
-                tags,
-            };
-
-            Ok(Some(vpc_resource))
+        let instance_tenancy = if let Some(tenancy) = &vpc.instance_tenancy {
+            tenancy.as_str().to_string()
         } else {
-            Ok(None)
-        }
+            "default".to_string()
+        };
+
+        // Get VPC attributes (DNS support and hostnames)
+        let dns_support_resp = client
+            .describe_vpc_attribute()
+            .vpc_id(vpc_id)
+            .attribute(aws_sdk_ec2::types::VpcAttributeName::EnableDnsSupport)
+            .send()
+            .await?;
+
+        let dns_hostnames_resp = client
+            .describe_vpc_attribute()
+            .vpc_id(vpc_id)
+            .attribute(aws_sdk_ec2::types::VpcAttributeName::EnableDnsHostnames)
+            .send()
+            .await?;
+
+        let enable_dns_support = bool_unpack(dns_support_resp.enable_dns_support);
+
+        let enable_dns_hostnames = bool_unpack(dns_hostnames_resp.enable_dns_hostnames);
+
+        // Get tags
+        let tags: Tags = vpc.tags.clone().into();
+
+        let vpc_resource = Vpc {
+            cidr_block,
+            instance_tenancy,
+            enable_dns_support,
+            enable_dns_hostnames,
+            tags,
+        };
+
+        Ok(Some(vpc_resource))
     } else {
         Ok(None)
     }
 }
 
-pub async fn get_subnet(
-    client: &aws_sdk_ec2::Client,
-    vpc_id: &str,
-    subnet_id: &str,
-) -> anyhow::Result<Option<Subnet>> {
+pub async fn get_subnet(client: &aws_sdk_ec2::Client, vpc_id: &str, subnet_id: &str) -> anyhow::Result<Option<Subnet>> {
     let vpc_filter = Filter::builder().name("vpc-id").values(vpc_id).build();
 
     let Ok(subnet_resp) = client
@@ -115,10 +111,7 @@ pub async fn get_subnet(
     }
 }
 
-pub async fn get_igw(
-    client: &aws_sdk_ec2::Client,
-    igw_id: &str,
-) -> anyhow::Result<Option<InternetGateway>> {
+pub async fn get_igw(client: &aws_sdk_ec2::Client, igw_id: &str) -> anyhow::Result<Option<InternetGateway>> {
     let igw_resp = client
         .describe_internet_gateways()
         .internet_gateway_ids(igw_id)
@@ -131,11 +124,7 @@ pub async fn get_igw(
             let mut vpc_id = None;
             if let Some(attachments) = &igw.attachments {
                 for attachment in attachments {
-                    if attachment
-                        .state
-                        .as_ref()
-                        .map_or(false, |state| state.as_str() == "attached")
-                    {
+                    if attachment.state.as_ref().map_or(false, |state| state.as_str() == "attached") {
                         vpc_id = attachment.vpc_id.clone();
                         break;
                     }
@@ -156,11 +145,7 @@ pub async fn get_igw(
     }
 }
 
-pub async fn get_route_table(
-    client: &aws_sdk_ec2::Client,
-    vpc_id: &str,
-    rt_id: &str,
-) -> anyhow::Result<Option<RouteTable>> {
+pub async fn get_route_table(client: &aws_sdk_ec2::Client, vpc_id: &str, rt_id: &str) -> anyhow::Result<Option<RouteTable>> {
     let vpc_filter = Filter::builder().name("vpc-id").values(vpc_id).build();
     let Ok(rt_resp) = client
         .describe_route_tables()
@@ -336,11 +321,7 @@ pub async fn get_security_group(
     }
 }
 
-pub fn get_phy_vpc_id(
-    prefix: &Path,
-    region: &str,
-    virt_vpc_id: &str,
-) -> anyhow::Result<Option<String>> {
+pub fn get_phy_vpc_id(prefix: &Path, region: &str, virt_vpc_id: &str) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::Vpc(region.to_string(), virt_vpc_id.to_string());
 
     Ok(load_resource_output_key(prefix, &addr, "vpc_id")?)
@@ -352,11 +333,7 @@ pub fn get_phy_security_group_id(
     virt_vpc_id: &str,
     virt_sg_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::SecurityGroup(
-        region.to_string(),
-        virt_vpc_id.to_string(),
-        virt_sg_id.to_string(),
-    );
+    let addr = VpcResourceAddress::SecurityGroup(region.to_string(), virt_vpc_id.to_string(), virt_sg_id.to_string());
 
     Ok(load_resource_output_key(prefix, &addr, "security_group_id")?)
 }
@@ -367,11 +344,7 @@ pub fn get_phy_subnet_id(
     virt_vpc_id: &str,
     virt_subnet_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::Subnet(
-        region.to_string(),
-        virt_vpc_id.to_string(),
-        virt_subnet_id.to_string(),
-    );
+    let addr = VpcResourceAddress::Subnet(region.to_string(), virt_vpc_id.to_string(), virt_subnet_id.to_string());
 
     Ok(load_resource_output_key(prefix, &addr, "subnet_id")?)
 }
@@ -382,20 +355,12 @@ pub fn get_phy_route_table_id(
     virt_vpc_id: &str,
     virt_route_table_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::RouteTable(
-        region.to_string(),
-        virt_vpc_id.to_string(),
-        virt_route_table_id.to_string(),
-    );
+    let addr = VpcResourceAddress::RouteTable(region.to_string(), virt_vpc_id.to_string(), virt_route_table_id.to_string());
 
     Ok(load_resource_output_key(prefix, &addr, "route_table_id")?)
 }
 
-pub fn get_phy_internet_gateway_id(
-    prefix: &Path,
-    region: &str,
-    virt_igw_id: &str,
-) -> anyhow::Result<Option<String>> {
+pub fn get_phy_internet_gateway_id(prefix: &Path, region: &str, virt_igw_id: &str) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::InternetGateway(region.to_string(), virt_igw_id.to_string());
 
     Ok(load_resource_output_key(prefix, &addr, "internet_gateway_id")?)

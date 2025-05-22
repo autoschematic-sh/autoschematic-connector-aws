@@ -8,7 +8,6 @@ use std::{
 use addr::Route53ResourceAddress;
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::util::optional_string_from_utf8;
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
@@ -16,7 +15,7 @@ use autoschematic_core::{
     },
     diag::DiagnosticOutput,
     skeleton,
-    util::{ron_check_eq, ron_check_syntax},
+    util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 use op::Route53ConnectorOp;
 use resource::{HealthCheck, HostedZone, RecordSet, Route53Resource};
@@ -28,10 +27,10 @@ use aws_sdk_route53::{
 };
 use util::{list_hosted_zones, list_resource_record_sets};
 
-pub mod plan;
+pub mod get;
 pub mod list;
 pub mod op_exec;
-pub mod get;
+pub mod plan;
 
 use crate::{addr, op, resource, util};
 
@@ -42,7 +41,7 @@ pub struct Route53Connector {
 #[async_trait]
 impl Connector for Route53Connector {
     async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Some(_addr) = Route53ResourceAddress::from_path(addr)? {
+        if let Ok(_addr) = Route53ResourceAddress::from_path(addr) {
             Ok(true)
         } else {
             Ok(false)
@@ -131,9 +130,8 @@ impl Connector for Route53Connector {
     }
 
     async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
-        let Some(addr) = Route53ResourceAddress::from_path(addr)? else {
-            return Ok(false);
-        };
+        let addr = Route53ResourceAddress::from_path(addr)?;
+
         match addr {
             Route53ResourceAddress::HostedZone(_) => ron_check_eq::<HostedZone>(a, b),
             Route53ResourceAddress::ResourceRecordSet(_, _, _) => ron_check_eq::<RecordSet>(a, b),
@@ -142,9 +140,7 @@ impl Connector for Route53Connector {
     }
 
     async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
-        let Ok(Some(addr)) = Route53ResourceAddress::from_path(addr) else {
-            return Ok(DiagnosticOutput::default());
-        };
+        let addr = Route53ResourceAddress::from_path(addr)?;
 
         match addr {
             Route53ResourceAddress::HostedZone(_) => ron_check_syntax::<HostedZone>(a),

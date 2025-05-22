@@ -100,29 +100,28 @@ impl Resource for VpcResource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Option<Self>, anyhow::Error>
+    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
-        let Some(addr) = VpcResourceAddress::from_path(&addr.to_path_buf())? else {
-            return Ok(None);
-        };
+        let addr = VpcResourceAddress::from_path(&addr.to_path_buf())?;
+
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             VpcResourceAddress::Vpc(_region, _vpc_id) => {
-                return Ok(Some(VpcResource::Vpc(RON.from_str(s)?)));
+                return Ok(VpcResource::Vpc(RON.from_str(s)?));
             }
             VpcResourceAddress::Subnet(_region, _vpc_id, _subnet_id) => {
-                return Ok(Some(VpcResource::Subnet(RON.from_str(s)?)));
+                return Ok(VpcResource::Subnet(RON.from_str(s)?));
             }
             VpcResourceAddress::InternetGateway(_region, _igw_id) => {
-                return Ok(Some(VpcResource::InternetGateway(RON.from_str(s)?)));
+                return Ok(VpcResource::InternetGateway(RON.from_str(s)?));
             }
             VpcResourceAddress::RouteTable(_region, _vpc_id, _rt_id) => {
-                return Ok(Some(VpcResource::RouteTable(RON.from_str(s)?)));
+                return Ok(VpcResource::RouteTable(RON.from_str(s)?));
             }
             VpcResourceAddress::SecurityGroup(_region, _vpc_id, _sg_id) => {
-                return Ok(Some(VpcResource::SecurityGroup(RON.from_str(s)?)));
+                return Ok(VpcResource::SecurityGroup(RON.from_str(s)?));
             }
         }
     }

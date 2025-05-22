@@ -5,4 +5,8 @@ members = [
     "vpc",
     "route53",
     "iam",
+    "ecr",
+    "s3",
+    # "elb",
+    "ecs",
 ]

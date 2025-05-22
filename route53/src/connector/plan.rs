@@ -17,9 +17,7 @@ impl Route53Connector {
         desired: Option<String>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
 
-        let Some(addr) = Route53ResourceAddress::from_path(addr)? else {
-            return Ok(Vec::new());
-        };
+        let addr = Route53ResourceAddress::from_path(addr)?;
 
         match addr {
             Route53ResourceAddress::HostedZone(name) => match (current, desired) {

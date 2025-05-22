@@ -1,21 +1,21 @@
 use std::{collections::HashMap, path::Path};
 
-use autoschematic_core::connector::{r#type, GetResourceOutput, Resource, ResourceAddress};
+use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
 use aws_sdk_route53::types::RrType;
 
-use crate::{addr::Route53ResourceAddress, resource::{HostedZone, RecordSet, Route53Resource}};
+use crate::{
+    addr::Route53ResourceAddress,
+    resource::{HostedZone, RecordSet, Route53Resource},
+};
 
 use super::Route53Connector;
 
-
 impl Route53Connector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
-        let Some(addr) = Route53ResourceAddress::from_path(addr)? else {
-            return Ok(None);
-        };
+        let addr = Route53ResourceAddress::from_path(addr)?;
+
         match addr {
             Route53ResourceAddress::HostedZone(name) => {
-                tracing::info!("GET hosted zone {}", name);
                 let hz = self
                     .client
                     .list_hosted_zones_by_name()

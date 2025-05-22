@@ -56,23 +56,22 @@ impl Resource for IamResource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Option<Self>, anyhow::Error>
+    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
-        let Some(addr) = IamResourceAddress::from_path(&addr.to_path_buf())? else {
-            return Ok(None);
-        };
+        let addr = IamResourceAddress::from_path(&addr.to_path_buf())?;
+
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             IamResourceAddress::User(_name) => {
-                return Ok(Some(IamResource::User(RON.from_str(s)?)));
+                return Ok(IamResource::User(RON.from_str(s)?));
             }
             IamResourceAddress::Role(_name) => {
-                return Ok(Some(IamResource::Role(RON.from_str(s)?)));
+                return Ok(IamResource::Role(RON.from_str(s)?));
             }
             IamResourceAddress::Policy(_name) => {
-                return Ok(Some(IamResource::Policy(RON.from_str(s)?)));
+                return Ok(IamResource::Policy(RON.from_str(s)?));
             }
         }
     }

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::connector::ResourceAddress;
+use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_path};
 
 
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ impl ResourceAddress for Route53ResourceAddress {
         }
     }
 
-    fn from_path(path: &Path) -> Result<Option<Self>, anyhow::Error> {
+    fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
         let path_components: Vec<&str> = path
             .components()
             .into_iter()
@@ -43,13 +43,13 @@ impl ResourceAddress for Route53ResourceAddress {
             ["aws", "route53", "hosted_zones", name, "config.ron"] => {
                 let mut name = name.to_string();
                 name.push('.');
-                Ok(Some(Route53ResourceAddress::HostedZone(name)))
+                Ok(Route53ResourceAddress::HostedZone(name))
             }
             ["aws", "route53", "health_checks", name] if name.ends_with(".ron") => {
                 let mut name = name.strip_suffix(".ron").unwrap().to_string();
 
                 name.push('.');
-                Ok(Some(Route53ResourceAddress::HealthCheck(name)))
+                Ok(Route53ResourceAddress::HealthCheck(name))
             }
             ["aws", "route53", "hosted_zones", hosted_zone, "records", r#type, name]
                 if name.ends_with(".ron") =>
@@ -59,13 +59,13 @@ impl ResourceAddress for Route53ResourceAddress {
                 let mut name = name.strip_suffix(".ron").unwrap().to_string();
                 name.push('.');
 
-                Ok(Some(Route53ResourceAddress::ResourceRecordSet(
+                Ok(Route53ResourceAddress::ResourceRecordSet(
                     hosted_zone,
                     name,
                     r#type.to_string(),
-                )))
+                ))
             }
-            _ => Ok(None),
+            _ => Err(invalid_addr_path(path))
         }
     }
 }

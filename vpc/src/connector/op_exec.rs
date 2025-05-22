@@ -25,13 +25,7 @@ use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
         Resource, ResourceAddress, SkeletonOutput, VirtToPhyOutput,
-    },
-    connector_op,
-    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
-    diag::DiagnosticOutput,
-    read_outputs::ReadOutput,
-    skeleton,
-    util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON},
+    }, connector_op, connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt}, diag::DiagnosticOutput, error_util::invalid_op, read_outputs::ReadOutput, skeleton, util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON}
 };
 
 use aws_config::{meta::region::RegionProviderChain, timeout::TimeoutConfig, BehaviorVersion};
@@ -48,9 +42,9 @@ impl VpcConnector {
         let addr = VpcResourceAddress::from_path(addr)?;
         let op = VpcConnectorOp::from_str(op)?;
 
-        match addr {
-            Some(VpcResourceAddress::Vpc(region, vpc_id)) => {
-                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id);
+        match &addr {
+            VpcResourceAddress::Vpc(region, vpc_id) => {
+                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id.into());
 
                 let client = self.get_or_init_client(&region).await?;
 
@@ -72,13 +66,13 @@ impl VpcConnector {
                         .await
                     }
                     VpcConnectorOp::DeleteVpc => op_impl::delete_vpc(&client, &vpc_id).await,
-                    _ => bail!("Invalid operation for VPC resource"),
+                    _ => Err(invalid_op(&addr, &op))
                 }
             }
-            Some(VpcResourceAddress::Subnet(region, vpc_id, subnet_id)) => {
-                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id);
+            VpcResourceAddress::Subnet(region, vpc_id, subnet_id) => {
+                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id.into());
                 let subnet_id = get_phy_subnet_id(&self.prefix, &region, &vpc_id, &subnet_id)?
-                    .unwrap_or(subnet_id);
+                    .unwrap_or(subnet_id.into());
 
                 let client = self.get_or_init_client(&region).await?;
 
@@ -102,13 +96,13 @@ impl VpcConnector {
                     VpcConnectorOp::DeleteSubnet => {
                         op_impl::delete_subnet(&client, &subnet_id).await
                     }
-                    _ => bail!("Invalid operation for Subnet resource"),
+                    _ => Err(invalid_op(&addr, &op))
                 }
             }
-            Some(VpcResourceAddress::InternetGateway(region, igw_id)) => {
+            VpcResourceAddress::InternetGateway(region, igw_id) => {
                 let client = self.get_or_init_client(&region).await?;
                 let igw_id =
-                    get_phy_internet_gateway_id(&self.prefix, &region, &igw_id)?.unwrap_or(igw_id);
+                    get_phy_internet_gateway_id(&self.prefix, &region, &igw_id)?.unwrap_or(igw_id.clone());
 
                 match op {
                     VpcConnectorOp::CreateInternetGateway(igw) => {
@@ -133,15 +127,15 @@ impl VpcConnector {
                     VpcConnectorOp::DeleteInternetGateway => {
                         op_impl::delete_internet_gateway(&client, &igw_id).await
                     }
-                    _ => bail!("Invalid operation for Internet Gateway resource"),
+                    _ => Err(invalid_op(&addr, &op))
                 }
             }
-            Some(VpcResourceAddress::RouteTable(region, vpc_id, rt_id)) => {
+            VpcResourceAddress::RouteTable(region, vpc_id, rt_id) => {
                 let client = self.get_or_init_client(&region).await?;
 
-                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id);
+                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id.clone());
                 let rt_id = get_phy_route_table_id(&self.prefix, &region, &vpc_id, &rt_id)?
-                    .unwrap_or(rt_id);
+                    .unwrap_or(rt_id.clone());
 
                 match op {
                     VpcConnectorOp::CreateRouteTable(rt) => {
@@ -166,14 +160,14 @@ impl VpcConnector {
                     VpcConnectorOp::DeleteRouteTable => {
                         op_impl::delete_route_table(&client, &rt_id).await
                     }
-                    _ => bail!("Invalid operation for Route Table resource"),
+                    _ => Err(invalid_op(&addr, &op))
                 }
             }
-            Some(VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id)) => {
+            VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id) => {
                 let client = self.get_or_init_client(&region).await?;
-                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id);
+                let vpc_id = get_phy_vpc_id(&self.prefix, &region, &vpc_id)?.unwrap_or(vpc_id.clone());
                 let sg_id = get_phy_security_group_id(&self.prefix, &region, &vpc_id, &sg_id)?
-                    .unwrap_or(sg_id);
+                    .unwrap_or(sg_id.clone());
 
                 match op {
                     VpcConnectorOp::CreateSecurityGroup(sg) => {
@@ -198,10 +192,9 @@ impl VpcConnector {
                     VpcConnectorOp::DeleteSecurityGroup => {
                         op_impl::delete_security_group(&client, &sg_id).await
                     }
-                    _ => bail!("Invalid operation for Security Group resource"),
+                    _ => Err(invalid_op(&addr, &op))
                 }
             }
-            None => bail!("Invalid resource address"),
         }
     }
 }

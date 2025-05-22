@@ -58,24 +58,22 @@ impl Resource for Route53Resource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Option<Self>, anyhow::Error>
+    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
-        let Some(addr) = Route53ResourceAddress::from_path(&addr.to_path_buf())? else {
-            return Ok(None);
-        };
+        let addr = Route53ResourceAddress::from_path(&addr.to_path_buf())?;
 
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             Route53ResourceAddress::HostedZone(_name) => {
-                return Ok(Some(Route53Resource::HostedZone(RON.from_str(s)?)));
+                return Ok(Route53Resource::HostedZone(RON.from_str(s)?));
             }
             Route53ResourceAddress::ResourceRecordSet(_, _, _) => {
-                return Ok(Some(Route53Resource::RecordSet(RON.from_str(s)?)));
+                return Ok(Route53Resource::RecordSet(RON.from_str(s)?));
             }
             Route53ResourceAddress::HealthCheck(_) => {
-                return Ok(Some(Route53Resource::HealthCheck(RON.from_str(s)?)));
+                return Ok(Route53Resource::HealthCheck(RON.from_str(s)?));
             }
         }
     }

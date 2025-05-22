@@ -6,27 +6,25 @@ use std::{
 };
 
 use crate::addr::IamResourceAddress;
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::{
-    config::AwsConnectorConfig, util::optional_string_from_utf8,
-};
+use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
-        Resource, ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
+        SkeletonOutput,
     },
     connector_op,
     diag::DiagnosticOutput,
     op_exec_output, skeleton,
-    util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON},
+    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 use op::IamConnectorOp;
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
 
-use aws_config::{meta::region::RegionProviderChain, timeout::TimeoutConfig, BehaviorVersion};
+use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use aws_sdk_iam::{config::Region, types::PolicyScopeType};
-use tags::{tag_diff, Tags};
+use tags::{Tags, tag_diff};
 use util::{list_attached_role_policies, list_attached_user_policies};
 
 use crate::{
@@ -47,18 +45,14 @@ pub struct IamConnector {
 #[async_trait]
 impl Connector for IamConnector {
     async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Some(_addr) = IamResourceAddress::from_path(addr)? {
+        if let Ok(_addr) = IamResourceAddress::from_path(addr) {
             Ok(true)
         } else {
             Ok(false)
         }
     }
 
-    async fn new(
-        _name: &str,
-        prefix: &Path,
-        _outbox: ConnectorOutbox,
-    ) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
@@ -98,7 +92,11 @@ impl Connector for IamConnector {
 
                 if let Some(config_file) = config_file {
                     if config_file.account_id != account_id {
-                        bail!("Credentials do not match configured account id: creds = {}, aws/config.ron = {}", account_id, config_file.account_id);
+                        bail!(
+                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
+                            account_id,
+                            config_file.account_id
+                        );
                     }
                 }
 
@@ -125,12 +123,8 @@ impl Connector for IamConnector {
         current: Option<OsString>,
         desired: Option<OsString>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
-        self.do_plan(
-            addr,
-            optional_string_from_utf8(current)?,
-            optional_string_from_utf8(desired)?,
-        )
-        .await
+        self.do_plan(addr, optional_string_from_utf8(current)?, optional_string_from_utf8(desired)?)
+            .await
     }
 
     async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
@@ -166,10 +160,8 @@ impl Connector for IamConnector {
             ]
         }"#;
 
-        let assume_role_policy_value: serde_json::Value =
-            serde_json::from_str(assume_role_policy_json)?;
-        let assume_role_policy_ron_value: ron::Value =
-            RON.from_str(&RON.to_string(&assume_role_policy_value)?)?;
+        let assume_role_policy_value: serde_json::Value = serde_json::from_str(assume_role_policy_json)?;
+        let assume_role_policy_ron_value: ron::Value = RON.from_str(&RON.to_string(&assume_role_policy_value)?)?;
 
         res.push(skeleton!(
             IamResourceAddress::Role(String::from("[role_name]")),
@@ -207,8 +199,7 @@ impl Connector for IamConnector {
         }"#;
 
         let policy_document_value: serde_json::Value = serde_json::from_str(policy_document_json)?;
-        let policy_document_ron_value: ron::Value =
-            RON.from_str(&RON.to_string(&policy_document_value)?)?;
+        let policy_document_ron_value: ron::Value = RON.from_str(&RON.to_string(&policy_document_value)?)?;
 
         res.push(skeleton!(
             IamResourceAddress::Policy(String::from("[policy_name]")),
@@ -222,9 +213,8 @@ impl Connector for IamConnector {
     }
 
     async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
-        let Some(addr) = IamResourceAddress::from_path(addr)? else {
-            return Ok(false);
-        };
+        let addr = IamResourceAddress::from_path(addr)?;
+
         match addr {
             IamResourceAddress::User(_) => ron_check_eq::<IamUser>(a, b),
             IamResourceAddress::Role(_) => ron_check_eq::<IamRole>(a, b),
@@ -233,9 +223,7 @@ impl Connector for IamConnector {
     }
 
     async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
-        let Ok(Some(addr)) = IamResourceAddress::from_path(addr) else {
-            return Ok(DiagnosticOutput::default());
-        };
+        let addr = IamResourceAddress::from_path(addr)?;
 
         match addr {
             IamResourceAddress::User(_) => ron_check_syntax::<IamUser>(a),

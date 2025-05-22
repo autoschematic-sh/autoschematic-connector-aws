@@ -40,7 +40,7 @@ impl IamConnector {
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
         match addr {
-            Some(IamResourceAddress::User(user_name)) => match (current, desired) {
+            IamResourceAddress::User(user_name) => match (current, desired) {
                 (None, None) => Ok(vec![]),
                 (None, Some(new_user)) => {
                     let new_user: IamUser = RON.from_str(&new_user)?;
@@ -101,7 +101,7 @@ impl IamConnector {
                     }
                 }
             },
-            Some(IamResourceAddress::Role(role_name)) => match (current, desired) {
+            IamResourceAddress::Role(role_name) => match (current, desired) {
                 (None, None) => Ok(vec![]),
                 (None, Some(new_role)) => {
                     let new_role: IamRole = RON.from_str(&new_role)?;
@@ -153,7 +153,7 @@ impl IamConnector {
                     Ok(ops)
                 }
             },
-            Some(IamResourceAddress::Policy(policy_name)) => match (current, desired) {
+            IamResourceAddress::Policy(policy_name) => match (current, desired) {
                 (None, None) => Ok(vec![]),
                 (None, Some(new_policy)) => {
                     let new_policy: IamPolicy = RON.from_str(&new_policy)?;
