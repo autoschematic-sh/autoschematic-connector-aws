@@ -7,7 +7,6 @@ use autoschematic_core::{
     connector::{ConnectorOp, Resource, ResourceAddress},
     util::RON,
 };
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
 use super::{addr::S3ResourceAddress, tags::Tags};
@@ -63,7 +62,7 @@ impl Resource for S3Resource {
         let s = str::from_utf8(s.as_bytes())?;
 
         match addr {
-            S3ResourceAddress::Bucket { region, name } => return Ok(S3Resource::Bucket(RON.from_str(s)?)),
+            S3ResourceAddress::Bucket { region, name } => Ok(S3Resource::Bucket(RON.from_str(s)?)),
         }
     }
 }

@@ -64,7 +64,7 @@ impl Tags {
 // From a pair of hashmap determine the set of aws_ecs::Tag structs to pass to untag and set_tags respectively
 pub fn tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>, Vec<Tag>)> {
     let mut untag_keys = Vec::new();
-    for (k, _) in &old_tags.0 {
+    for k in old_tags.0.keys() {
         if !new_tags.0.contains_key(k) {
             untag_keys.push(k.to_string());
         }

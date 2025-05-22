@@ -24,13 +24,13 @@ impl AwsConnectorConfig {
             tracing::info!("Loading AwsConnector config file at {:?}", config_path);
             let config: AwsConnectorConfig =
                 RON.from_str(&std::fs::read_to_string(config_path)?)?;
-            return Ok(Some(config));
+            Ok(Some(config))
         } else {
             tracing::info!(
                 "AwsConnector config file at {:?} not present, skipping.",
                 config_path
             );
-            return Ok(None);
+            Ok(None)
         }
     }
 

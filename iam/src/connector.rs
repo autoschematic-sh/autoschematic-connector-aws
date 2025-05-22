@@ -1,12 +1,11 @@
 use std::{
-    collections::HashMap,
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     time::Duration,
 };
 
 use crate::addr::IamResourceAddress;
-use anyhow::{Context, bail};
+use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
@@ -14,22 +13,17 @@ use autoschematic_core::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
         SkeletonOutput,
     },
-    connector_op,
-    diag::DiagnosticOutput,
-    op_exec_output, skeleton,
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+    diag::DiagnosticOutput, skeleton,
+    util::{RON, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
-use op::IamConnectorOp;
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
 
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_iam::{config::Region, types::PolicyScopeType};
-use tags::{Tags, tag_diff};
-use util::{list_attached_role_policies, list_attached_user_policies};
+use aws_sdk_iam::config::Region;
+use tags::Tags;
 
 use crate::{
-    op, resource, tags,
-    util::{self},
+    resource, tags,
 };
 
 mod get;

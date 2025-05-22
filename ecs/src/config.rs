@@ -61,10 +61,10 @@ impl EcsConnectorConfig {
         if config_path.is_file() {
             tracing::info!("Loading EcsConnector config file at {:?}", config_path);
             let config: EcsConnectorConfig = RON.from_str(&std::fs::read_to_string(config_path)?)?;
-            return Ok(Some(config));
+            Ok(Some(config))
         } else {
             tracing::info!("EcsConnector config file at {:?} not present, skipping.", config_path);
-            return Ok(None);
+            Ok(None)
         }
     }
     pub fn from_aws_config(cfg: &AwsConnectorConfig) -> Self {

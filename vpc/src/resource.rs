@@ -1,7 +1,6 @@
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 
-use anyhow::bail;
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use autoschematic_core::util::{PrettyConfig, RON};
 use serde::{Deserialize, Serialize};
@@ -109,19 +108,19 @@ impl Resource for VpcResource {
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             VpcResourceAddress::Vpc(_region, _vpc_id) => {
-                return Ok(VpcResource::Vpc(RON.from_str(s)?));
+                Ok(VpcResource::Vpc(RON.from_str(s)?))
             }
             VpcResourceAddress::Subnet(_region, _vpc_id, _subnet_id) => {
-                return Ok(VpcResource::Subnet(RON.from_str(s)?));
+                Ok(VpcResource::Subnet(RON.from_str(s)?))
             }
             VpcResourceAddress::InternetGateway(_region, _igw_id) => {
-                return Ok(VpcResource::InternetGateway(RON.from_str(s)?));
+                Ok(VpcResource::InternetGateway(RON.from_str(s)?))
             }
             VpcResourceAddress::RouteTable(_region, _vpc_id, _rt_id) => {
-                return Ok(VpcResource::RouteTable(RON.from_str(s)?));
+                Ok(VpcResource::RouteTable(RON.from_str(s)?))
             }
             VpcResourceAddress::SecurityGroup(_region, _vpc_id, _sg_id) => {
-                return Ok(VpcResource::SecurityGroup(RON.from_str(s)?));
+                Ok(VpcResource::SecurityGroup(RON.from_str(s)?))
             }
         }
     }

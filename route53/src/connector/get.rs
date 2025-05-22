@@ -64,18 +64,8 @@ impl Route53Connector {
                                 // let i = rec.region
                                 let record_set = RecordSet {
                                     ttl: rec.ttl,
-                                    alias_target: match &rec.alias_target {
-                                        Some(alias_target) => {
-                                            Some(alias_target.dns_name.to_string())
-                                        }
-                                        None => None,
-                                    },
-                                    resource_records: match &rec.resource_records {
-                                        Some(records) => Some(
-                                            records.into_iter().map(|r| r.value.clone()).collect(),
-                                        ),
-                                        None => None,
-                                    },
+                                    alias_target: rec.alias_target.as_ref().map(|alias_target| alias_target.dns_name.to_string()),
+                                    resource_records: rec.resource_records.as_ref().map(|records| records.iter().map(|r| r.value.clone()).collect()),
                                 };
 
                                 Ok(Some(GetResourceOutput {

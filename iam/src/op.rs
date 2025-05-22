@@ -1,9 +1,6 @@
 
 
-use autoschematic_core::connector::{
-    ConnectorOp,
-    Resource,
-};
+use autoschematic_core::connector::ConnectorOp;
 use serde::{Deserialize, Serialize};
 
 

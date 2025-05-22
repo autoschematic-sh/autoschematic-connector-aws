@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::{connector::ResourceAddress, error_util::{invalid_addr, invalid_addr_path}};
+use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_path};
 
 #[derive(Debug, Clone)]
 pub enum VpcResourceAddress {
@@ -39,7 +39,6 @@ impl ResourceAddress for VpcResourceAddress {
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
         let path_components: Vec<&str> = path
             .components()
-            .into_iter()
             .map(|s| s.as_os_str().to_str().unwrap())
             .collect();
 

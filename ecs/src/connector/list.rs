@@ -13,7 +13,7 @@ impl EcsConnector {
         let mut results = Vec::<PathBuf>::new();
 
         for region_name in &self.config.enabled_regions {
-            let client = self.get_or_init_client(&region_name).await?;
+            let client = self.get_or_init_client(region_name).await?;
 
             // List clusters
             let clusters_resp = client.list_clusters().send().await?;
@@ -76,7 +76,7 @@ impl EcsConnector {
                                         if let Some(tasks) = describe_tasks_resp.tasks {
                                             for task in tasks {
                                                 if let Some(task_id) =
-                                                    task.task_arn.and_then(|arn| arn.split('/').last().map(String::from))
+                                                    task.task_arn.and_then(|arn| arn.split('/').next_back().map(String::from))
                                                 {
                                                     results.push(
                                                         EcsResourceAddress::Task(
@@ -111,7 +111,7 @@ impl EcsConnector {
                                             for container_instance in container_instances {
                                                 if let Some(instance_id) = container_instance
                                                     .container_instance_arn
-                                                    .and_then(|arn| arn.split('/').last().map(String::from))
+                                                    .and_then(|arn| arn.split('/').next_back().map(String::from))
                                                 {
                                                     results.push(
                                                         EcsResourceAddress::ContainerInstance(
@@ -149,7 +149,7 @@ impl EcsConnector {
                     if let Some(task_def_arns) = task_defs_resp.task_definition_arns {
                         for task_def_arn in task_def_arns {
                             // Extract family:revision format from ARN
-                            if let Some(task_def_id) = task_def_arn.split('/').last().map(String::from) {
+                            if let Some(task_def_id) = task_def_arn.split('/').next_back().map(String::from) {
                                 results.push(
                                     EcsResourceAddress::TaskDefinition(region_name.to_string(), task_def_id).to_path_buf(),
                                 );

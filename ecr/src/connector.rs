@@ -23,14 +23,12 @@ use autoschematic_core::{
         SkeletonOutput,
     },
     diag::DiagnosticOutput,
-    error::{AutoschematicError, AutoschematicErrorType},
-    get_resource_output,
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq},
+    util::RON,
 };
-use autoschematic_core::{connector_op, skeleton};
+use autoschematic_core::skeleton;
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 
-use crate::{config::EcrConnectorConfig, op_impl};
+use crate::config::EcrConnectorConfig;
 use tokio::sync::Mutex;
 
 use crate::resource::{
@@ -38,7 +36,6 @@ use crate::resource::{
     RepositoryPolicy,
 };
 use crate::tags::Tags;
-use anyhow::Context;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 
 pub struct EcrConnector {

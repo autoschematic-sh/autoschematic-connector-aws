@@ -2,38 +2,20 @@ use crate::addr::VpcResourceAddress;
 
 use super::VpcConnector;
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::path::Path;
 
 use crate::{
     op::VpcConnectorOp,
-    op_impl,
-    resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc, VpcResource},
-    tags::Tags,
+    resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc},
 };
-use anyhow::bail;
-use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOp, OpPlanOutput, ResourceAddress,
     },
     connector_op,
-    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
-    diag::DiagnosticOutput,
-    read_outputs::ReadOutput,
-    skeleton,
-    util::{RON, diff_ron_values, ron_check_eq, ron_check_syntax},
+    util::{RON, diff_ron_values},
 };
 
-use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_ec2::{config::Region, types::Filter};
-use tokio::sync::Mutex;
 
 impl VpcConnector {
     pub async fn do_plan(
@@ -358,8 +340,8 @@ impl VpcConnector {
                                 ops.push(connector_op!(
                                     VpcConnectorOp::AuthorizeSecurityGroupIngress(SecurityGroupRule {
                                         protocol: new_rule.protocol.clone(),
-                                        from_port: new_rule.from_port.clone(),
-                                        to_port: new_rule.to_port.clone(),
+                                        from_port: new_rule.from_port,
+                                        to_port: new_rule.to_port,
                                         cidr_blocks: new_rule.cidr_blocks.clone(),
                                         security_group_ids: new_rule.security_group_ids.clone(),
                                     },),
@@ -376,8 +358,8 @@ impl VpcConnector {
                                 ops.push(connector_op!(
                                     VpcConnectorOp::RevokeSecurityGroupIngress(SecurityGroupRule {
                                         protocol: old_rule.protocol.clone(),
-                                        from_port: old_rule.from_port.clone(),
-                                        to_port: old_rule.to_port.clone(),
+                                        from_port: old_rule.from_port,
+                                        to_port: old_rule.to_port,
                                         cidr_blocks: old_rule.cidr_blocks.clone(),
                                         security_group_ids: old_rule.security_group_ids.clone(),
                                     },),
@@ -394,8 +376,8 @@ impl VpcConnector {
                                 ops.push(connector_op!(
                                     VpcConnectorOp::AuthorizeSecurityGroupEgress(SecurityGroupRule {
                                         protocol: new_rule.protocol.clone(),
-                                        from_port: new_rule.from_port.clone(),
-                                        to_port: new_rule.to_port.clone(),
+                                        from_port: new_rule.from_port,
+                                        to_port: new_rule.to_port,
                                         cidr_blocks: new_rule.cidr_blocks.clone(),
                                         security_group_ids: new_rule.security_group_ids.clone(),
                                     },),
@@ -412,8 +394,8 @@ impl VpcConnector {
                                 ops.push(connector_op!(
                                     VpcConnectorOp::RevokeSecurityGroupEgress(SecurityGroupRule {
                                         protocol: old_rule.protocol.clone(),
-                                        from_port: old_rule.from_port.clone(),
-                                        to_port: old_rule.to_port.clone(),
+                                        from_port: old_rule.from_port,
+                                        to_port: old_rule.to_port,
                                         cidr_blocks: old_rule.cidr_blocks.clone(),
                                         security_group_ids: old_rule.security_group_ids.clone(),
                                     },),

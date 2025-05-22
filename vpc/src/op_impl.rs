@@ -7,7 +7,7 @@ use super::{
     tags::Tags,
 };
 use autoschematic_core::{
-    connector::{OpExecOutput, Resource},
+    connector::OpExecOutput,
     op_exec_output,
 };
 
@@ -115,7 +115,7 @@ pub async fn update_vpc_tags(
             .await?;
     }
 
-    return op_exec_output!(format!("Updated tags for VPC {}", vpc_id));
+    op_exec_output!(format!("Updated tags for VPC {}", vpc_id))
 }
 
 /// Updates VPC attributes
@@ -151,7 +151,7 @@ pub async fn update_vpc_attributes(
             .await?;
     }
 
-    return op_exec_output!(format!("Updated attributes for VPC {}", vpc_id));
+    op_exec_output!(format!("Updated attributes for VPC {}", vpc_id))
 }
 
 /// Deletes a VPC
@@ -161,10 +161,10 @@ pub async fn delete_vpc(
 ) -> Result<OpExecOutput, anyhow::Error> {
     client.delete_vpc().vpc_id(vpc_id).send().await?;
 
-    return op_exec_output!(
+    op_exec_output!(
         Some([(String::from("vpc"), Option::<String>::None)]),
         format!("Deleted VPC {}", vpc_id)
-    );
+    )
 }
 
 /// Creates a subnet

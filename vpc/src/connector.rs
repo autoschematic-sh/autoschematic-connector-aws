@@ -8,8 +8,6 @@ use std::{
 
 use crate::{
     addr::VpcResourceAddress,
-    op::VpcConnectorOp,
-    op_impl,
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc, VpcResource},
     tags::Tags,
 };
@@ -21,24 +19,19 @@ use autoschematic_core::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
         SkeletonOutput, VirtToPhyOutput,
     },
-    connector_op,
     connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
     read_outputs::ReadOutput,
     skeleton,
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+    util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_ec2::{config::Region, types::Filter};
+use aws_sdk_ec2::config::Region;
 use tokio::sync::Mutex;
 
-use crate::{config::VpcConnectorConfig, util};
+use crate::config::VpcConnectorConfig;
 
-use util::{
-    get_igw, get_phy_internet_gateway_id, get_phy_route_table_id, get_phy_security_group_id, get_phy_subnet_id, get_phy_vpc_id,
-    get_route_table, get_security_group, get_subnet, get_vpc,
-};
 
 pub mod get;
 pub mod list;
@@ -181,7 +174,7 @@ impl Connector for VpcConnector {
                 let subnet_id = get_output_or_bail(&outputs, "subnet_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::Subnet(region.into(), vpc_id.into(), subnet_id).to_path_buf(),
+                    VpcResourceAddress::Subnet(region.into(), vpc_id, subnet_id).to_path_buf(),
                 ))
             }
             VpcResourceAddress::InternetGateway(region, igw_id) => {
@@ -212,7 +205,7 @@ impl Connector for VpcConnector {
                 let rt_id = get_output_or_bail(&outputs, "route_table_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::RouteTable(region.into(), vpc_id.into(), rt_id.to_string()).to_path_buf(),
+                    VpcResourceAddress::RouteTable(region.into(), vpc_id, rt_id.to_string()).to_path_buf(),
                 ))
             }
             VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id) => {
@@ -234,7 +227,7 @@ impl Connector for VpcConnector {
                 let sg_id = get_output_or_bail(&outputs, "security_group_id")?;
 
                 Ok(VirtToPhyOutput::Present(
-                    VpcResourceAddress::SecurityGroup(region.into(), vpc_id.into(), sg_id.into()).to_path_buf(),
+                    VpcResourceAddress::SecurityGroup(region.into(), vpc_id, sg_id).to_path_buf(),
                 ))
             }
         }

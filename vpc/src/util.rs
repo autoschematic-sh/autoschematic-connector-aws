@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use anyhow::{Context, bail};
 use autoschematic_core::connector_util::load_resource_output_key;
 use aws_sdk_ec2::types::{AttributeBooleanValue, Filter};
 
@@ -124,7 +123,7 @@ pub async fn get_igw(client: &aws_sdk_ec2::Client, igw_id: &str) -> anyhow::Resu
             let mut vpc_id = None;
             if let Some(attachments) = &igw.attachments {
                 for attachment in attachments {
-                    if attachment.state.as_ref().map_or(false, |state| state.as_str() == "attached") {
+                    if attachment.state.as_ref().is_some_and(|state| state.as_str() == "attached") {
                         vpc_id = attachment.vpc_id.clone();
                         break;
                     }
@@ -324,7 +323,7 @@ pub async fn get_security_group(
 pub fn get_phy_vpc_id(prefix: &Path, region: &str, virt_vpc_id: &str) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::Vpc(region.to_string(), virt_vpc_id.to_string());
 
-    Ok(load_resource_output_key(prefix, &addr, "vpc_id")?)
+    load_resource_output_key(prefix, &addr, "vpc_id")
 }
 
 pub fn get_phy_security_group_id(
@@ -335,7 +334,7 @@ pub fn get_phy_security_group_id(
 ) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::SecurityGroup(region.to_string(), virt_vpc_id.to_string(), virt_sg_id.to_string());
 
-    Ok(load_resource_output_key(prefix, &addr, "security_group_id")?)
+    load_resource_output_key(prefix, &addr, "security_group_id")
 }
 
 pub fn get_phy_subnet_id(
@@ -346,7 +345,7 @@ pub fn get_phy_subnet_id(
 ) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::Subnet(region.to_string(), virt_vpc_id.to_string(), virt_subnet_id.to_string());
 
-    Ok(load_resource_output_key(prefix, &addr, "subnet_id")?)
+    load_resource_output_key(prefix, &addr, "subnet_id")
 }
 
 pub fn get_phy_route_table_id(
@@ -357,11 +356,11 @@ pub fn get_phy_route_table_id(
 ) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::RouteTable(region.to_string(), virt_vpc_id.to_string(), virt_route_table_id.to_string());
 
-    Ok(load_resource_output_key(prefix, &addr, "route_table_id")?)
+    load_resource_output_key(prefix, &addr, "route_table_id")
 }
 
 pub fn get_phy_internet_gateway_id(prefix: &Path, region: &str, virt_igw_id: &str) -> anyhow::Result<Option<String>> {
     let addr = VpcResourceAddress::InternetGateway(region.to_string(), virt_igw_id.to_string());
 
-    Ok(load_resource_output_key(prefix, &addr, "internet_gateway_id")?)
+    load_resource_output_key(prefix, &addr, "internet_gateway_id")
 }

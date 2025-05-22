@@ -6,12 +6,10 @@ use std::{
     time::Duration,
 };
 
-use anyhow::Context;
 
-use crate::op::EcsConnectorOp;
 use crate::resource::{Cluster, ContainerInstance, EcsResource, Service, Task, TaskDefinition};
 use crate::{addr::EcsResourceAddress, resource, tags};
-use crate::{config::EcsConnectorConfig, op_impl};
+use crate::config::EcsConnectorConfig;
 use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
@@ -20,14 +18,12 @@ use autoschematic_core::{
         SkeletonOutput,
     },
     diag::DiagnosticOutput,
-    error::{AutoschematicError, AutoschematicErrorType},
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+    util::{ron_check_eq, ron_check_syntax},
 };
-use autoschematic_core::{connector_op, get_resource_output, skeleton};
+use autoschematic_core::skeleton;
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
-use crate::util::{get_cluster, get_container_instance, get_service, get_task, get_task_definition};
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 
 pub mod get;

@@ -29,7 +29,7 @@ impl EcsConnector {
                     // Convert AWS SDK cluster to our internal representation
                     let our_cluster = resource::Cluster {
                         status: cluster.status().map(|s| s.to_string()).unwrap_or_default(),
-                        capacity_providers: cluster.capacity_providers().iter().map(|s| s.clone()).collect(),
+                        capacity_providers: cluster.capacity_providers().to_vec(),
                         default_capacity_provider_strategy: cluster
                             .default_capacity_provider_strategy()
                             .iter()
@@ -122,8 +122,8 @@ impl EcsConnector {
                             resource::NetworkConfiguration {
                                 awsvpc_configuration: nc.awsvpc_configuration().map(|vpc| {
                                     resource::AwsVpcConfiguration {
-                                        subnets: vpc.subnets().iter().map(|s| s.clone()).collect(),
-                                        security_groups: vpc.security_groups().iter().map(|s| s.clone()).collect(),
+                                        subnets: vpc.subnets().to_vec(),
+                                        security_groups: vpc.security_groups().to_vec(),
                                         assign_public_ip: vpc.assign_public_ip().map(|p| p.as_str().to_string()),
                                     }
                                 }),
@@ -643,7 +643,7 @@ impl EcsConnector {
                                     double_value: rr.double_value,
                                     long_value: rr.long_value,
                                     integer_value: rr.integer_value,
-                                    string_value: rr.string_set_value().into_iter().map(|sv| sv.to_string()).collect(),
+                                    string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
                                 }
                             })
                             .collect(),
@@ -657,7 +657,7 @@ impl EcsConnector {
                                     double_value: rr.double_value,
                                     long_value: rr.long_value,
                                     integer_value: rr.integer_value,
-                                    string_value: rr.string_set_value().into_iter().map(|sv| sv.to_string()).collect(),
+                                    string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
                                 }
                             })
                             .collect(),

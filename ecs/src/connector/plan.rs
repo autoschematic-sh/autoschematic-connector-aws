@@ -195,10 +195,9 @@ impl EcsConnector {
 
                             ops.push(connector_op!(
                                 EcsConnectorOp::UpdateServiceDeploymentConfiguration {
-                                    maximum_percent: new_deployment_config.map(|config| config.maximum_percent).flatten(),
+                                    maximum_percent: new_deployment_config.and_then(|config| config.maximum_percent),
                                     minimum_healthy_percent: new_deployment_config
-                                        .map(|config| config.minimum_healthy_percent)
-                                        .flatten(),
+                                        .and_then(|config| config.minimum_healthy_percent),
                                     enable_circuit_breaker: circuit_breaker_enable,
                                     enable_rollback: circuit_breaker_rollback,
                                 },

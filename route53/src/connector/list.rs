@@ -30,6 +30,6 @@ impl Route53Connector {
             }
         }
 
-        return Ok(results);
+        Ok(results)
     }
 }

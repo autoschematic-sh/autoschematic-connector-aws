@@ -1,34 +1,22 @@
 use std::{
     collections::HashMap,
-    path::{Path, PathBuf},
-    time::Duration,
+    path::Path,
 };
 
 use crate::addr::IamResourceAddress;
 use anyhow::{bail, Context};
-use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
-        Resource, ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOp, OpExecOutput, ResourceAddress,
     },
-    connector_op,
-    diag::DiagnosticOutput,
-     op_exec_output, skeleton,
-    util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON},
+     op_exec_output,
 };
 use op::IamConnectorOp;
-use resource::{IamPolicy, IamResource, IamRole, IamUser};
 
-use aws_config::{meta::region::RegionProviderChain, timeout::TimeoutConfig, BehaviorVersion};
-use aws_sdk_iam::{config::Region, types::PolicyScopeType};
-use tags::{tag_diff, Tags};
-use util::{list_attached_role_policies, list_attached_user_policies};
+use tags::tag_diff;
 
 use crate::{
-    op, resource, tags,
-    util::{self},
+    op, tags,
 };
 
 use super::IamConnector;
@@ -101,7 +89,7 @@ impl IamConnector {
                     let (untag_keys, new_tagset) =
                         tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
 
-                    if untag_keys.len() > 0 {
+                    if !untag_keys.is_empty() {
                         self.client
                             .untag_user()
                             .user_name(user_name)
@@ -111,7 +99,7 @@ impl IamConnector {
                             .context("Failed to remove tags")?;
                     }
 
-                    if new_tagset.len() > 0 {
+                    if !new_tagset.is_empty() {
                         self.client
                             .tag_user()
                             .user_name(user_name)
@@ -196,7 +184,7 @@ impl IamConnector {
                     let (untag_keys, new_tagset) =
                         tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
 
-                    if untag_keys.len() > 0 {
+                    if !untag_keys.is_empty() {
                         self.client
                             .untag_role()
                             .role_name(role_name)
@@ -206,7 +194,7 @@ impl IamConnector {
                             .context("Failed to remove tags")?;
                     }
 
-                    if new_tagset.len() > 0 {
+                    if !new_tagset.is_empty() {
                         self.client
                             .tag_role()
                             .role_name(role_name)
@@ -306,7 +294,7 @@ impl IamConnector {
                     let (untag_keys, new_tagset) =
                         tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
 
-                    if untag_keys.len() > 0 {
+                    if !untag_keys.is_empty() {
                         self.client
                             .untag_policy()
                             .policy_arn(&policy_arn)
@@ -316,7 +304,7 @@ impl IamConnector {
                             .context("Failed to remove tags")?;
                     }
 
-                    if new_tagset.len() > 0 {
+                    if !new_tagset.is_empty() {
                         self.client
                             .tag_policy()
                             .policy_arn(&policy_arn)

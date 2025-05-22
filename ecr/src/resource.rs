@@ -3,9 +3,7 @@ use std::{
     os::unix::ffi::OsStrExt,
 };
 
-use anyhow::bail;
 use autoschematic_core::connector::{Resource, ResourceAddress};
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::RON;
@@ -87,19 +85,19 @@ impl Resource for EcrResource {
 
         match addr {
             EcrResourceAddress::Repository { region, name } => {
-                return Ok(EcrResource::Repository(RON.from_str(s)?));
+                Ok(EcrResource::Repository(RON.from_str(s)?))
             }
             EcrResourceAddress::RepositoryPolicy { region, name } => {
-                return Ok(EcrResource::RepositoryPolicy(RON.from_str(s)?));
+                Ok(EcrResource::RepositoryPolicy(RON.from_str(s)?))
             }
             EcrResourceAddress::LifecyclePolicy { region, name } => {
-                return Ok(EcrResource::LifecyclePolicy(RON.from_str(s)?));
+                Ok(EcrResource::LifecyclePolicy(RON.from_str(s)?))
             }
             EcrResourceAddress::RegistryPolicy { region } => {
-                return Ok(EcrResource::RegistryPolicy(RON.from_str(s)?));
+                Ok(EcrResource::RegistryPolicy(RON.from_str(s)?))
             }
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => {
-                return Ok(EcrResource::PullThroughCacheRule(RON.from_str(s)?));
+                Ok(EcrResource::PullThroughCacheRule(RON.from_str(s)?))
             }
         }
     }

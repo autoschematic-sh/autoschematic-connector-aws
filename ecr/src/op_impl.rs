@@ -5,7 +5,7 @@ use super::{
     resource::{EncryptionConfiguration, Repository},
     tags::Tags,
 };
-use autoschematic_core::connector::{OpExecOutput, Resource};
+use autoschematic_core::connector::OpExecOutput;
 
 /// Creates a repository using the provided configuration
 pub async fn create_repository(
@@ -365,7 +365,7 @@ pub async fn set_registry_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Set ECR registry policy")),
+        friendly_message: Some("Set ECR registry policy".to_string()),
     })
 }
 
@@ -377,7 +377,7 @@ pub async fn delete_registry_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted ECR registry policy")),
+        friendly_message: Some("Deleted ECR registry policy".to_string()),
     })
 }
 
@@ -567,7 +567,7 @@ pub async fn set_replication_configuration(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Set ECR replication configuration")),
+        friendly_message: Some("Set ECR replication configuration".to_string()),
     })
 }
 
@@ -588,6 +588,6 @@ pub async fn delete_replication_configuration(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted ECR replication configuration")),
+        friendly_message: Some("Deleted ECR replication configuration".to_string()),
     })
 }

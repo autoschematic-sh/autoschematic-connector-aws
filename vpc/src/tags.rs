@@ -25,11 +25,11 @@ impl From<Option<Vec<Tag>>> for Tags {
     }
 }
 
-impl Into<Option<Vec<Tag>>> for Tags {
-    fn into(self) -> Option<Vec<Tag>> {
+impl From<Tags> for Option<Vec<Tag>> {
+    fn from(val: Tags) -> Self {
         let mut out_vec = Vec::new();
 
-        for (k, v) in self.0 {
+        for (k, v) in val.0 {
             out_vec.push(Tag::builder().key(k).value(v).build());
         }
 

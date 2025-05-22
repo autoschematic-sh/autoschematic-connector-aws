@@ -67,13 +67,13 @@ impl Resource for Route53Resource {
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             Route53ResourceAddress::HostedZone(_name) => {
-                return Ok(Route53Resource::HostedZone(RON.from_str(s)?));
+                Ok(Route53Resource::HostedZone(RON.from_str(s)?))
             }
             Route53ResourceAddress::ResourceRecordSet(_, _, _) => {
-                return Ok(Route53Resource::RecordSet(RON.from_str(s)?));
+                Ok(Route53Resource::RecordSet(RON.from_str(s)?))
             }
             Route53ResourceAddress::HealthCheck(_) => {
-                return Ok(Route53Resource::HealthCheck(RON.from_str(s)?));
+                Ok(Route53Resource::HealthCheck(RON.from_str(s)?))
             }
         }
     }

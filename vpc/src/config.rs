@@ -62,13 +62,13 @@ impl VpcConnectorConfig {
         if config_path.is_file() {
             tracing::info!("Loading VpcConnector config file at {:?}", config_path);
             let config: VpcConnectorConfig = RON.from_str(&std::fs::read_to_string(config_path)?)?;
-            return Ok(Some(config));
+            Ok(Some(config))
         } else {
             tracing::info!(
                 "VpcConnector config file at {:?} not present, skipping.",
                 config_path
             );
-            return Ok(None);
+            Ok(None)
         }
     }
     pub fn from_aws_config(cfg: &AwsConnectorConfig) -> Self {

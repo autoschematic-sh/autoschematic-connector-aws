@@ -65,13 +65,13 @@ impl Resource for IamResource {
         let s = str::from_utf8(s.as_bytes())?;
         match addr {
             IamResourceAddress::User(_name) => {
-                return Ok(IamResource::User(RON.from_str(s)?));
+                Ok(IamResource::User(RON.from_str(s)?))
             }
             IamResourceAddress::Role(_name) => {
-                return Ok(IamResource::Role(RON.from_str(s)?));
+                Ok(IamResource::Role(RON.from_str(s)?))
             }
             IamResourceAddress::Policy(_name) => {
-                return Ok(IamResource::Policy(RON.from_str(s)?));
+                Ok(IamResource::Policy(RON.from_str(s)?))
             }
         }
     }

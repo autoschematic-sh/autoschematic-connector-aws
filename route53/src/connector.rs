@@ -1,38 +1,31 @@
 use std::{
-    collections::HashMap,
     ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     time::Duration,
 };
 
 use addr::Route53ResourceAddress;
-use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
+        Connector, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
         Resource, ResourceAddress, SkeletonOutput,
     },
     diag::DiagnosticOutput,
     skeleton,
     util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
-use op::Route53ConnectorOp;
 use resource::{HealthCheck, HostedZone, RecordSet, Route53Resource};
 
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_route53::{
-    config::Region,
-    types::{AliasTarget, Change, ChangeBatch, RrType},
-};
-use util::{list_hosted_zones, list_resource_record_sets};
+use aws_sdk_route53::config::Region;
 
 pub mod get;
 pub mod list;
 pub mod op_exec;
 pub mod plan;
 
-use crate::{addr, op, resource, util};
+use crate::{addr, resource};
 
 pub struct Route53Connector {
     client: aws_sdk_route53::Client,

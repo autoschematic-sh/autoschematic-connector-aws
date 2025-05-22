@@ -2,49 +2,20 @@ use crate::addr::VpcResourceAddress;
 
 use super::VpcConnector;
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
-use crate::{
-    op::VpcConnectorOp,
-    op_impl,
-    resource::{
-        InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc,
-        VpcResource,
-    },
-    tags::Tags,
-};
-use anyhow::bail;
-use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
-use autoschematic_core::{
-    connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
-        Resource, ResourceAddress, SkeletonOutput, VirtToPhyOutput,
-    },
-    connector_op,
-    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
-    diag::DiagnosticOutput,
-    get_resource_output,
-    read_outputs::ReadOutput,
-    skeleton,
-    util::{diff_ron_values, ron_check_eq, ron_check_syntax, RON},
-};
+use autoschematic_core::connector::{
+        Connector, ConnectorOp, ResourceAddress,
+    };
 
-use aws_config::{meta::region::RegionProviderChain, timeout::TimeoutConfig, BehaviorVersion};
-use aws_sdk_ec2::{config::Region, types::Filter};
-use tokio::sync::Mutex;
+use aws_sdk_ec2::types::Filter;
 
 impl VpcConnector {
     pub async fn do_list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
 
         for region_name in &self.config.enabled_regions {
-            let client = self.get_or_init_client(&region_name).await.unwrap();
+            let client = self.get_or_init_client(region_name).await.unwrap();
 
             let vpcs_resp = client.describe_vpcs().send().await?;
             if let Some(vpcs) = vpcs_resp.vpcs {

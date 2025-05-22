@@ -51,23 +51,14 @@ impl EcrConnector {
 
                                 // Build repository resource
                                 let repository = Repository {
-                                    encryption_configuration: if let Some(encrypt_config) = &repo.encryption_configuration {
-                                        Some(EncryptionConfiguration {
+                                    encryption_configuration: repo.encryption_configuration.as_ref().map(|encrypt_config| EncryptionConfiguration {
                                             encryption_type: encrypt_config.encryption_type.as_str().to_string(),
                                             kms_key: encrypt_config.kms_key.clone(),
-                                        })
-                                    } else {
-                                        None
-                                    },
+                                        }),
                                     image_tag_mutability: repo.image_tag_mutability.as_ref().map(|m| m.to_string()),
-                                    image_scanning_configuration: if let Some(scan_config) = &repo.image_scanning_configuration
-                                    {
-                                        Some(ImageScanningConfiguration {
+                                    image_scanning_configuration: repo.image_scanning_configuration.as_ref().map(|scan_config| ImageScanningConfiguration {
                                             scan_on_push: scan_config.scan_on_push,
-                                        })
-                                    } else {
-                                        None
-                                    },
+                                        }),
                                     tags,
                                 };
 

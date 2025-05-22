@@ -92,7 +92,6 @@ impl Connector for S3Connector {
 
         let path_components: Vec<&str> = subpath
             .components()
-            .into_iter()
             .map(|s| s.as_os_str().to_str().unwrap())
             .collect();
 
@@ -100,7 +99,7 @@ impl Connector for S3Connector {
             ["aws", "s3", region_name, prefix @ ..] => {
                 let region_name = region_name.to_string();
                 if self.config.enabled_regions.contains(&region_name) {
-                    let prefix = if prefix.len() > 0 { Some(prefix.join("/")) } else { None };
+                    let prefix = if !prefix.is_empty() { Some(prefix.join("/")) } else { None };
                     let client = self.get_or_init_client(&region_name).await.unwrap();
                     let bucket_names = util::list_buckets(client, &region_name, prefix).await?;
                     for bucket_name in bucket_names {
@@ -119,8 +118,8 @@ impl Connector for S3Connector {
 
             _ => {
                 for region_name in &self.config.enabled_regions {
-                    let client = self.get_or_init_client(&region_name).await.unwrap();
-                    let bucket_names = util::list_buckets(client, &region_name, None).await?;
+                    let client = self.get_or_init_client(region_name).await.unwrap();
+                    let bucket_names = util::list_buckets(client, region_name, None).await?;
                     for bucket_name in bucket_names {
                         results.push(
                             S3ResourceAddress::Bucket {
@@ -168,17 +167,12 @@ impl Connector for S3Connector {
                 };
 
                 let public_access_block = if let Ok(public_access_block_output) = public_access_block_output {
-                    match public_access_block_output.public_access_block_configuration {
-                        Some(conf) => {
-                            Some(resource::PublicAccessBlock {
+                    public_access_block_output.public_access_block_configuration.map(|conf| resource::PublicAccessBlock {
                                 block_public_acls: conf.block_public_acls.unwrap_or(false),
                                 ignore_public_acls: conf.ignore_public_acls.unwrap_or(false),
                                 block_public_policy: conf.block_public_policy.unwrap_or(false),
                                 restrict_public_buckets: conf.restrict_public_buckets.unwrap_or(false),
                             })
-                        }
-                        None => None,
-                    }
                 } else {
                     None
                 };
@@ -210,10 +204,10 @@ impl Connector for S3Connector {
                 };
 
                 let bucket = resource::S3Bucket {
-                    policy: policy,
-                    public_access_block: public_access_block,
-                    acl: acl,
-                    tags: tags,
+                    policy,
+                    public_access_block,
+                    acl,
+                    tags,
                 };
 
                 return Ok(Some(GetResourceOutput {
