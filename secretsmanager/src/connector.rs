@@ -18,8 +18,8 @@ use anyhow::{Context, bail};
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        ResourceAddress, SkeletonOutput,
     },
     diag::DiagnosticOutput,
     util::{RON, ron_check_eq, ron_check_syntax},
@@ -74,10 +74,11 @@ async fn get_secret(client: &aws_sdk_secretsmanager::Client, secret_name: &str) 
     Ok((secret, describe_resp.arn.unwrap_or_default()))
 }
 
+#[derive(Default)]
 pub struct SecretsManagerConnector {
-    client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_secretsmanager::Client>>>,
-    account_id: String,
-    config: SecretsManagerConnectorConfig,
+    client_cache: Mutex<HashMap<String, Arc<aws_sdk_secretsmanager::Client>>>,
+    account_id: Mutex<String>,
+    config: Mutex<SecretsManagerConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -114,19 +115,18 @@ impl SecretsManagerConnector {
 
 #[async_trait]
 impl Connector for SecretsManagerConnector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Ok(_addr) = SecretsManagerResourceAddress::from_path(addr) {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
     async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(SecretsManagerConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> anyhow::Result<()> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region_str = "us-east-1";
         let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
@@ -172,19 +172,25 @@ impl Connector for SecretsManagerConnector {
                 }
 
                 let secrets_config: SecretsManagerConnectorConfig =
-                    SecretsManagerConnectorConfig::try_load(prefix)?.unwrap_or_default();
+                    SecretsManagerConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
 
-                Ok(Box::new(SecretsManagerConnector {
-                    client_cache: Mutex::new(HashMap::new()),
-                    config: secrets_config,
-                    account_id,
-                    prefix: prefix.into(),
-                }))
+                *self.client_cache.lock().await = HashMap::new();
+                *self.config.lock().await = secrets_config;
+                *self.account_id.lock().await = account_id;
+                Ok(())
             }
             Err(e) => {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
                 Err(e.into())
             }
+        }
+    }
+
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+        if let Ok(_addr) = SecretsManagerResourceAddress::from_path(addr) {
+            Ok(FilterOutput::Resource)
+        } else {
+            Ok(FilterOutput::None)
         }
     }
 

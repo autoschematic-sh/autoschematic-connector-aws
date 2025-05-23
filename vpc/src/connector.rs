@@ -11,13 +11,13 @@ use crate::{
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc, VpcResource},
     tags::Tags,
 };
-use anyhow::bail;
+use anyhow::{Context, bail};
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
     connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
@@ -32,34 +32,33 @@ use tokio::sync::Mutex;
 
 use crate::config::VpcConnectorConfig;
 
-
 pub mod get;
 pub mod list;
 pub mod op_exec;
 pub mod plan;
 
+#[derive(Default)]
 pub struct VpcConnector {
-    pub client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_ec2::Client>>>,
-    pub account_id: String,
-    pub config: VpcConnectorConfig,
+    pub client_cache: Mutex<HashMap<String, Arc<aws_sdk_ec2::Client>>>,
+    pub account_id: Mutex<String>,
+    pub config: Mutex<VpcConnectorConfig>,
     pub prefix: PathBuf,
 }
 
 #[async_trait]
 impl Connector for VpcConnector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
     async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(VpcConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> Result<(), anyhow::Error> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region_str = "us-east-1";
         let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
@@ -86,37 +85,40 @@ impl Connector for VpcConnector {
             .await;
 
         let sts_client = aws_sdk_sts::Client::new(&sts_config);
-        let caller_identity = sts_client.get_caller_identity().send().await;
+        let caller_identity = sts_client
+            .get_caller_identity()
+            .send()
+            .await
+            .context("Getting caller identity")?;
 
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
+        let Some(account_id) = caller_identity.account else {
+            bail!("Failed to get current account ID!");
+        };
 
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let vpc_config: VpcConnectorConfig = VpcConnectorConfig::try_load(prefix)?.unwrap_or_default();
-
-                Ok(Box::new(VpcConnector {
-                    client_cache: Mutex::new(HashMap::new()),
-                    config: vpc_config,
+        if let Some(config_file) = config_file {
+            if config_file.account_id != account_id {
+                bail!(
+                    "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
                     account_id,
-                    prefix: prefix.into(),
-                }))
+                    config_file.account_id
+                );
             }
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
+        }
+
+        let vpc_config: VpcConnectorConfig = VpcConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
+
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = vpc_config;
+        *self.account_id.lock().await = account_id;
+
+        Ok(())
+    }
+
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+        if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
+            Ok(FilterOutput::Resource)
+        } else {
+            Ok(FilterOutput::None)
         }
     }
 

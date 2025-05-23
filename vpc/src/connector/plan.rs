@@ -9,13 +9,10 @@ use crate::{
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc},
 };
 use autoschematic_core::{
-    connector::{
-        Connector, ConnectorOp, OpPlanOutput, ResourceAddress,
-    },
+    connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values},
 };
-
 
 impl VpcConnector {
     pub async fn do_plan(
@@ -73,7 +70,7 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::Subnet(_region, vpc_id, subnet_id) => {
+            VpcResourceAddress::Subnet(_region, _vpc_id, subnet_id) => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_subnet)) => {
@@ -207,7 +204,7 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::RouteTable(_region, vpc_id, rt_id) => {
+            VpcResourceAddress::RouteTable(_region, _vpc_id, rt_id) => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_rt)) => {
@@ -302,7 +299,7 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::SecurityGroup(_region, vpc_id, sg_id) => {
+            VpcResourceAddress::SecurityGroup(_region, _vpc_id, sg_id) => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_sg)) => {

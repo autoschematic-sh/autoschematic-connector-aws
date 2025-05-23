@@ -88,7 +88,13 @@ impl SecretsManagerConnector {
                         //         ));
                         // } else {
                         if let Some(secret_ref) = new_secret.secret_ref {
-                            let secret_value = self.get_or_init_client(&region).await?.get_secret_value();
+                            let secret_value = self
+                                .get_or_init_client(&region)
+                                .await?
+                                .get_secret_value()
+                                .secret_id(&name)
+                                .send()
+                                .await;
                             // TODO something something compare the secret value, you know...
                         }
                         // }

@@ -20,12 +20,10 @@ pub struct Secret {
     pub tags: Tags,
 }
 
-// Define the SecretsManagerResource enum
 pub enum SecretsManagerResource {
     Secret(Secret),
 }
 
-// Implement the Resource trait
 impl Resource for SecretsManagerResource {
     fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
         let pretty_config = autoschematic_core::util::PrettyConfig::default();

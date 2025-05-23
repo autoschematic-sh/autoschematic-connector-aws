@@ -9,8 +9,9 @@ use super::EcrConnector;
 impl EcrConnector {
     pub async fn do_list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
+        let config = self.config.lock().await;
 
-        for region_name in &self.config.enabled_regions {
+        for region_name in &config.enabled_regions {
             let client = self.get_or_init_client(region_name).await?;
 
             // List repositories in the region

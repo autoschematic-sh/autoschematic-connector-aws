@@ -165,6 +165,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "autoschematic-connector-aws-elb"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "autoschematic-connector-aws-core",
+ "autoschematic-core",
+ "aws-config",
+ "aws-sdk-elasticloadbalancingv2",
+ "aws-sdk-sts",
+ "aws-smithy-types",
+ "lazy_static",
+ "ron 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "similar",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
 name = "autoschematic-connector-aws-iam"
 version = "0.4.0"
 dependencies = [
@@ -256,6 +283,33 @@ dependencies = [
  "autoschematic-core",
  "aws-config",
  "aws-sdk-secretsmanager",
+ "aws-sdk-sts",
+ "aws-smithy-types",
+ "lazy_static",
+ "ron 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "similar",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
+name = "autoschematic-connector-aws-template"
+version = "0.4.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "autoschematic-connector-aws-core",
+ "autoschematic-core",
+ "aws-config",
+ "aws-sdk-rds",
  "aws-sdk-sts",
  "aws-smithy-types",
  "lazy_static",
@@ -505,6 +559,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-sdk-elasticloadbalancingv2"
+version = "1.79.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "80a53b5716665b219bad2b47536589525388092f6c67986ce601619dcbe68a7d"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http 0.62.1",
+ "aws-smithy-json",
+ "aws-smithy-query",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
 name = "aws-sdk-iam"
 version = "1.62.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -525,6 +602,31 @@ dependencies = [
  "once_cell",
  "regex-lite",
  "tracing",
+]
+
+[[package]]
+name = "aws-sdk-rds"
+version = "1.89.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ccb38f5c4f64f731537815c2f438f6750a79cd4dd53547f31f8282a4c066e66"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-sigv4",
+ "aws-smithy-async",
+ "aws-smithy-http 0.62.1",
+ "aws-smithy-json",
+ "aws-smithy-query",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-smithy-xml",
+ "aws-types",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
+ "url",
 ]
 
 [[package]]

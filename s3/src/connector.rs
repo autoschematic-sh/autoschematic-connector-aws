@@ -14,8 +14,8 @@ use anyhow::{Context, bail};
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        ResourceAddress, SkeletonOutput,
     },
     connector_op,
     diag::DiagnosticOutput,
@@ -33,9 +33,11 @@ pub mod list;
 pub mod op_exec;
 pub mod plan;
 
+#[derive(Default)]
 pub struct S3Connector {
-    client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_s3::Client>>>,
-    config: S3ConnectorConfig,
+    prefix: PathBuf,
+    client_cache: Mutex<HashMap<String, Arc<aws_sdk_s3::Client>>>,
+    config: Mutex<S3ConnectorConfig>,
 }
 
 impl S3Connector {
@@ -75,19 +77,24 @@ impl Connector for S3Connector {
     where
         Self: Sized,
     {
-        let config: S3ConnectorConfig = S3ConnectorConfig::try_load(prefix)?.unwrap_or_default();
-        tracing::warn!("Successfully created S3Connector");
         Ok(Box::new(S3Connector {
-            client_cache: Mutex::new(HashMap::new()),
-            config,
+            prefix: prefix.into(),
+            ..Default::default()
         }))
     }
 
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
+    async fn init(&self) -> anyhow::Result<()> {
+        let config: S3ConnectorConfig = S3ConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
+
+        *self.config.lock().await = config;
+        Ok(())
+    }
+
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = S3ResourceAddress::from_path(addr) {
-            Ok(true)
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 

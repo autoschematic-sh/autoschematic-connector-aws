@@ -6,12 +6,12 @@ use std::{
     time::Duration,
 };
 
-
+use crate::config::EcsConnectorConfig;
 use crate::resource::{Cluster, ContainerInstance, EcsResource, Service, Task, TaskDefinition};
 use crate::{addr::EcsResourceAddress, resource, tags};
-use crate::config::EcsConnectorConfig;
 use anyhow::bail;
 use async_trait::async_trait;
+use autoschematic_core::{connector::FilterOutput, skeleton};
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
@@ -20,7 +20,6 @@ use autoschematic_core::{
     diag::DiagnosticOutput,
     util::{ron_check_eq, ron_check_syntax},
 };
-use autoschematic_core::skeleton;
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
@@ -31,10 +30,11 @@ pub mod list;
 pub mod op_exec;
 pub mod plan;
 
+#[derive(Default)]
 pub struct EcsConnector {
-    client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_ecs::Client>>>,
-    account_id: String,
-    config: EcsConnectorConfig,
+    client_cache: Mutex<HashMap<String, Arc<aws_sdk_ecs::Client>>>,
+    account_id: Mutex<Option<String>>,
+    config: Mutex<EcsConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -75,7 +75,14 @@ impl Connector for EcsConnector {
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(EcsConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> anyhow::Result<()> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region_str = "us-east-1";
         let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
@@ -120,14 +127,12 @@ impl Connector for EcsConnector {
                     }
                 }
 
-                let vpc_config: EcsConnectorConfig = EcsConnectorConfig::try_load(prefix)?.unwrap_or_default();
+                let vpc_config: EcsConnectorConfig = EcsConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
 
-                Ok(Box::new(EcsConnector {
-                    client_cache: Mutex::new(HashMap::new()),
-                    config: vpc_config,
-                    account_id,
-                    prefix: prefix.into(),
-                }))
+                *self.client_cache.lock().await = HashMap::new();
+                *self.config.lock().await = vpc_config;
+                *self.account_id.lock().await = Some(account_id);
+                Ok(())
             }
             Err(e) => {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
@@ -136,11 +141,11 @@ impl Connector for EcsConnector {
         }
     }
 
-    async fn filter(&self, addr: &Path) -> anyhow::Result<bool> {
+    async fn filter(&self, addr: &Path) -> anyhow::Result<FilterOutput> {
         if let Ok(_addr) = EcsResourceAddress::from_path(addr) {
-            Ok(true)
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 

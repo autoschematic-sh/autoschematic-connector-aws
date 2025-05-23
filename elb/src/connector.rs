@@ -1,29 +1,35 @@
 pub use crate::addr::ElbResourceAddress;
 pub use crate::resource::ElbResource;
-use crate::resource::{FixedResponseConfig, RedirectConfig};
+use crate::resource::{self, FixedResponseConfig, RedirectConfig};
 
 use std::{
     collections::HashMap,
+    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
 
+use crate::config::ElbConnectorConfig;
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_core::connector::{
-    Connector, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
+use autoschematic_core::{
+    connector::{
+        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
+    },
+    diag::DiagnosticOutput,
+    util::{ron_check_eq, ron_check_syntax},
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use config::ElbConnectorConfig;
 use tokio::sync::Mutex;
 
-use crate::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 
+#[derive(Default)]
 pub struct ElbConnector {
-    client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_elasticloadbalancingv2::Client>>>,
-    account_id: String,
-    config: ElbConnectorConfig,
+    client_cache: Mutex<HashMap<String, Arc<aws_sdk_elasticloadbalancingv2::Client>>>,
+    account_id: Mutex<String>,
+    config: Mutex<ElbConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -60,11 +66,11 @@ impl ElbConnector {
 
 #[async_trait]
 impl Connector for ElbConnector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
-        if let Some(_addr) = ElbResourceAddress::from_path(addr)? {
-            Ok(true)
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+        if let Ok(_addr) = ElbResourceAddress::from_path(addr) {
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 
@@ -72,7 +78,14 @@ impl Connector for ElbConnector {
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(ElbConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> anyhow::Result<()> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region_str = "us-east-1";
         let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
@@ -117,25 +130,27 @@ impl Connector for ElbConnector {
                     }
                 }
 
-                let vpc_config: ElbConnectorConfig = ElbConnectorConfig::try_load(prefix)?.unwrap_or_default();
+                let vpc_config: ElbConnectorConfig = ElbConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
 
-                Ok(Box::new(ElbConnector {
-                    client_cache: Mutex::new(HashMap::new()),
-                    config: vpc_config,
-                    account_id,
-                    prefix: prefix.into(),
-                }))
+                *self.client_cache.lock().await = HashMap::new();
+                *self.config.lock().await = vpc_config;
+                *self.account_id.lock().await = account_id;
+                Ok(())
             }
+
             Err(e) => {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
                 Err(e.into())
             }
         }
     }
+
     async fn list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
 
-        for region_name in &self.config.enabled_regions {
+        let config = self.config.lock().await;
+
+        for region_name in &config.enabled_regions {
             let client = self.get_or_init_client(&region_name).await?;
 
             // List Load Balancers
@@ -188,8 +203,9 @@ impl Connector for ElbConnector {
 
     async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
+
         match addr {
-            Some(ElbResourceAddress::LoadBalancer(region, load_balancer_name)) => {
+            ElbResourceAddress::LoadBalancer(region, load_balancer_name) => {
                 let client = self.get_or_init_client(&region).await?;
 
                 // Find the specific load balancer
@@ -247,11 +263,11 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::LoadBalancer(lb_resource).to_string()?,
+                    resource_definition: ElbResource::LoadBalancer(lb_resource).to_os_string()?,
                     outputs: None,
                 }))
             }
-            Some(ElbResourceAddress::TargetGroup(region, target_group_name)) => {
+            ElbResourceAddress::TargetGroup(region, target_group_name) => {
                 let client = self.get_or_init_client(&region).await?;
 
                 // Find the specific target group
@@ -340,11 +356,11 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::TargetGroup(tg_resource).to_string()?,
+                    resource_definition: ElbResource::TargetGroup(tg_resource).to_os_string()?,
                     outputs: None,
                 }))
             }
-            Some(ElbResourceAddress::Listener(region, load_balancer_name, listener_id)) => {
+            ElbResourceAddress::Listener(region, load_balancer_name, listener_id) => {
                 let client = self.get_or_init_client(&region).await?;
 
                 // First, get the load balancer ARN
@@ -476,19 +492,18 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::Listener(listener_resource).to_string()?,
+                    resource_definition: ElbResource::Listener(listener_resource).to_os_string()?,
                     outputs: None,
                 }))
             }
-            None => Ok(None),
         }
     }
 
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<String>,
-        desired: Option<String>,
+        current: Option<OsString>,
+        desired: Option<OsString>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         todo!()
     }
@@ -498,18 +513,22 @@ impl Connector for ElbConnector {
     }
 
     async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
-        let addr = S3ResourceAddress::from_path(addr)?;
+        let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {
-            S3ResourceAddress::Bucket { region, name } => ron_check_eq::<resource::S3Bucket>(a, b),
+            ElbResourceAddress::LoadBalancer(_, _) => ron_check_eq::<resource::LoadBalancer>(a, b),
+            ElbResourceAddress::TargetGroup(_, _) => ron_check_eq::<resource::TargetGroup>(a, b),
+            ElbResourceAddress::Listener(_, _, _) => ron_check_eq::<resource::Listener>(a, b),
         }
     }
 
     async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
-        let addr = S3ResourceAddress::from_path(addr)?;
+        let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {
-            S3ResourceAddress::Bucket { region, name } => ron_check_syntax::<resource::S3Bucket>(a),
+            ElbResourceAddress::LoadBalancer(_, _) => ron_check_syntax::<resource::LoadBalancer>(a),
+            ElbResourceAddress::TargetGroup(_, _) => ron_check_syntax::<resource::TargetGroup>(a),
+            ElbResourceAddress::Listener(_, _, _) => ron_check_syntax::<resource::Listener>(a),
         }
     }
 }

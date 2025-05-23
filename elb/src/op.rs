@@ -1,7 +1,5 @@
-use autoschematic_core::connector::ConnectorOp;
+use autoschematic_core::{connector::ConnectorOp, util::RON};
 use serde::{Deserialize, Serialize};
-
-use crate::util::RON;
 
 use super::{
     resource::{Action, Certificate, HealthCheck, Listener, LoadBalancer, TargetGroup},

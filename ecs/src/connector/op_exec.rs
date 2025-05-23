@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use anyhow::bail;
 use autoschematic_core::{
     connector::{ConnectorOp, OpExecOutput, ResourceAddress},
     error_util::invalid_op,
@@ -13,6 +14,9 @@ impl EcsConnector {
     pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
         let op = EcsConnectorOp::from_str(op)?;
+        let Some(account_id) = self.account_id.lock().await.clone() else {
+            bail!("account_id not set")
+        };
 
         match &addr {
             EcsResourceAddress::Cluster(region, cluster_name) => {
@@ -148,7 +152,7 @@ impl EcsConnector {
                     EcsConnectorOp::UpdateTaskTags(old_tags, new_tags) => {
                         let client = self.get_or_init_client(region).await?;
                         // We need the full ARN for task tags
-                        let task_arn = format!("arn:aws:ecs:{}:{}:task/{}/{}", region, self.account_id, cluster_name, task_id);
+                        let task_arn = format!("arn:aws:ecs:{}:{}:task/{}/{}", region, account_id, cluster_name, task_id);
                         op_impl::update_task_tags(&client, &task_arn, &old_tags, &new_tags).await
                     }
                     _ => Err(invalid_op(&addr, &op)),
@@ -191,7 +195,7 @@ impl EcsConnector {
                         // We need the full ARN for container instance tags
                         let container_instance_arn = format!(
                             "arn:aws:ecs:{}:{}:container-instance/{}/{}",
-                            region, self.account_id, cluster_name, container_instance_id
+                            region, account_id, cluster_name, container_instance_id
                         );
                         op_impl::update_container_instance_tags(&client, &container_instance_arn, &old_tags, &new_tags).await
                     }

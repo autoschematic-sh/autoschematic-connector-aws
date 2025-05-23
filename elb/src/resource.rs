@@ -1,9 +1,15 @@
+use std::{
+    ffi::{OsStr, OsString},
+    os::unix::ffi::OsStrExt,
+};
+
 use anyhow::bail;
-use autoschematic_core::connector::{Resource, ResourceAddress};
+use autoschematic_core::{
+    connector::{Resource, ResourceAddress},
+    util::RON,
+};
 use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
-
-use crate::util::RON;
 
 use super::{addr::ElbResourceAddress, tags::Tags};
 
@@ -91,42 +97,43 @@ pub enum ElbResource {
 }
 
 impl Resource for ElbResource {
-    fn to_string(&self) -> Result<String, anyhow::Error> {
-        let pretty_config = PrettyConfig::default().struct_names(true);
+    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+        let pretty_config = autoschematic_core::util::PrettyConfig::default().struct_names(true);
 
         match self {
-            ElbResource::LoadBalancer(lb) => match RON.to_string_pretty(&lb, pretty_config) {
-                Ok(s) => Ok(s),
-                Err(e) => Err(e.into()),
-            },
-            ElbResource::TargetGroup(tg) => match RON.to_string_pretty(&tg, pretty_config) {
-                Ok(s) => Ok(s),
-                Err(e) => Err(e.into()),
-            },
-            ElbResource::Listener(listener) => match RON.to_string_pretty(&listener, pretty_config)
-            {
-                Ok(s) => Ok(s),
-                Err(e) => Err(e.into()),
-            },
+            ElbResource::LoadBalancer(lb) => {
+                match RON.to_string_pretty(&lb, pretty_config) {
+                    Ok(s) => Ok(s.into()),
+                    Err(e) => Err(e.into()),
+                }
+            }
+            ElbResource::TargetGroup(tg) => {
+                match RON.to_string_pretty(&tg, pretty_config) {
+                    Ok(s) => Ok(s.into()),
+                    Err(e) => Err(e.into()),
+                }
+            }
+            ElbResource::Listener(listener) => {
+                match RON.to_string_pretty(&listener, pretty_config) {
+                    Ok(s) => Ok(s.into()),
+                    Err(e) => Err(e.into()),
+                }
+            }
         }
     }
 
-    fn from_str(addr: &impl ResourceAddress, s: &str) -> Result<Self, anyhow::Error>
+    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = ElbResourceAddress::from_path(&addr.to_path_buf())?;
+
+        let s = str::from_utf8(s.as_bytes())?;
+
         match addr {
-            Some(ElbResourceAddress::LoadBalancer(_region, _name)) => {
-                Ok(ElbResource::LoadBalancer(RON.from_str(s)?))
-            }
-            Some(ElbResourceAddress::TargetGroup(_region, _name)) => {
-                Ok(ElbResource::TargetGroup(RON.from_str(s)?))
-            }
-            Some(ElbResourceAddress::Listener(_region, _lb_name, _listener_id)) => {
-                Ok(ElbResource::Listener(RON.from_str(s)?))
-            }
-            None => bail!("Invalid ELB resource address"),
+            ElbResourceAddress::LoadBalancer(_region, _name) => Ok(ElbResource::LoadBalancer(RON.from_str(s)?)),
+            ElbResourceAddress::TargetGroup(_region, _name) => Ok(ElbResource::TargetGroup(RON.from_str(s)?)),
+            ElbResourceAddress::Listener(_region, _lb_name, _listener_id) => Ok(ElbResource::Listener(RON.from_str(s)?)),
         }
     }
 }

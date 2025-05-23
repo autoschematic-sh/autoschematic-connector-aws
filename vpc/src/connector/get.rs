@@ -2,25 +2,17 @@ use crate::addr::VpcResourceAddress;
 
 use super::VpcConnector;
 
-use std::{
-    collections::HashMap,
-    path::Path,
-};
+use std::{collections::HashMap, path::Path};
 
 use anyhow::Context;
 
 use crate::resource::VpcResource;
 use autoschematic_core::{
-    connector::{
-        ConnectorOp, GetResourceOutput,
-        Resource, ResourceAddress,
-    }, get_resource_output
+    connector::{GetResourceOutput, Resource, ResourceAddress},
+    get_resource_output,
 };
 
-
-use crate::util::{
-    get_igw, get_route_table, get_security_group, get_subnet, get_vpc,
-};
+use crate::util::{get_igw, get_route_table, get_security_group, get_subnet, get_vpc};
 
 impl VpcConnector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
@@ -32,20 +24,14 @@ impl VpcConnector {
                 let Some(vpc) = get_vpc(&client, &vpc_id).await? else {
                     return Ok(None);
                 };
-                get_resource_output!(
-                    VpcResource::Vpc(vpc),
-                    [(String::from("vpc_id"), Some(vpc_id))]
-                )
+                get_resource_output!(VpcResource::Vpc(vpc), [(String::from("vpc_id"), Some(vpc_id))])
             }
             VpcResourceAddress::Subnet(region, vpc_id, subnet_id) => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(subnet) = get_subnet(&client, &vpc_id, &subnet_id).await? else {
                     return Ok(None);
                 };
-                get_resource_output!(
-                    VpcResource::Subnet(subnet),
-                    [(String::from("subnet_id"), Some(subnet_id))]
-                )
+                get_resource_output!(VpcResource::Subnet(subnet), [(String::from("subnet_id"), Some(subnet_id))])
             }
             VpcResourceAddress::InternetGateway(region, igw_id) => {
                 let client = self.get_or_init_client(&region).await?;
@@ -69,8 +55,7 @@ impl VpcConnector {
             }
             VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id) => {
                 let client = self.get_or_init_client(&region).await?;
-                let Some(security_group) = get_security_group(&client, &vpc_id, &sg_id).await?
-                else {
+                let Some(security_group) = get_security_group(&client, &vpc_id, &sg_id).await? else {
                     return Ok(None);
                 };
                 get_resource_output!(

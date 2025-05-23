@@ -17,6 +17,7 @@ use std::{
 
 use anyhow::bail;
 use async_trait::async_trait;
+use autoschematic_core::{connector::FilterOutput, skeleton};
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
@@ -25,7 +26,6 @@ use autoschematic_core::{
     diag::DiagnosticOutput,
     util::RON,
 };
-use autoschematic_core::skeleton;
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 
 use crate::config::EcrConnectorConfig;
@@ -38,10 +38,11 @@ use crate::resource::{
 use crate::tags::Tags;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 
+#[derive(Default)]
 pub struct EcrConnector {
-    client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_ecr::Client>>>,
-    account_id: String,
-    config: EcrConnectorConfig,
+    client_cache: Mutex<HashMap<String, Arc<aws_sdk_ecr::Client>>>,
+    account_id: Mutex<Option<String>>,
+    config: Mutex<EcrConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -78,11 +79,11 @@ impl EcrConnector {
 
 #[async_trait]
 impl Connector for EcrConnector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = EcrResourceAddress::from_path(addr) {
-            Ok(true)
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 
@@ -90,7 +91,14 @@ impl Connector for EcrConnector {
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(EcrConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> Result<(), anyhow::Error> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region_str = "us-east-1";
         let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
@@ -133,14 +141,12 @@ impl Connector for EcrConnector {
                     }
                 }
 
-                let vpc_config: EcrConnectorConfig = EcrConnectorConfig::try_load(prefix)?.unwrap_or_default();
+                let vpc_config: EcrConnectorConfig = EcrConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
 
-                Ok(Box::new(EcrConnector {
-                    client_cache: Mutex::new(HashMap::new()),
-                    config: vpc_config,
-                    account_id,
-                    prefix: prefix.into(),
-                }))
+                *self.client_cache.lock().await = HashMap::new();
+                *self.config.lock().await = vpc_config;
+                *self.account_id.lock().await = Some(account_id);
+                Ok(())
             }
             Err(e) => {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
@@ -320,8 +326,8 @@ impl Connector for EcrConnector {
     async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
         let addr = EcrResourceAddress::from_path(addr)?;
         match addr {
-            EcrResourceAddress::Repository { region, name } => todo!(),
-            EcrResourceAddress::RepositoryPolicy { region, name } => todo!(),
+            EcrResourceAddress::Repository { region: _, name: _ } => todo!(),
+            EcrResourceAddress::RepositoryPolicy { region: _, name: _ } => todo!(),
             EcrResourceAddress::LifecyclePolicy { region, name } => todo!(),
             EcrResourceAddress::RegistryPolicy { region } => todo!(),
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => todo!(),

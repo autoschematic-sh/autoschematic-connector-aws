@@ -10,10 +10,10 @@ use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, ResourceAddress, SkeletonOutput, Resource
     },
-    diag::DiagnosticOutput, skeleton,
+    diag::DiagnosticOutput,
+    skeleton,
     util::{RON, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
@@ -21,28 +21,29 @@ use resource::{IamPolicy, IamResource, IamRole, IamUser};
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use aws_sdk_iam::config::Region;
 use tags::Tags;
+use tokio::sync::Mutex;
 
-use crate::{
-    resource, tags,
-};
+use crate::{resource, tags};
 
 mod get;
 mod list;
 mod op_exec;
 mod plan;
 
+#[derive(Default)]
 pub struct IamConnector {
-    client: aws_sdk_iam::Client,
-    account_id: String,
+    prefix: PathBuf,
+    client: Mutex<Option<aws_sdk_iam::Client>>,
+    account_id: Mutex<Option<String>>,
 }
 
 #[async_trait]
 impl Connector for IamConnector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = IamResourceAddress::from_path(addr) {
-            Ok(true)
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 
@@ -50,7 +51,14 @@ impl Connector for IamConnector {
     where
         Self: Sized,
     {
-        let config_file = AwsConnectorConfig::try_load(prefix)?;
+        Ok(Box::new(IamConnector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> anyhow::Result<()> {
+        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
 
         let region = RegionProviderChain::first_try(Region::new("global".to_owned()));
 
@@ -93,8 +101,11 @@ impl Connector for IamConnector {
                         );
                     }
                 }
+                
+                *self.client.lock().await = Some(client);
+                *self.account_id.lock().await = Some(account_id);
 
-                Ok(Box::new(IamConnector { client, account_id }))
+                Ok(())
             }
             Err(e) => {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);

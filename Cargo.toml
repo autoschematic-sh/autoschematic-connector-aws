@@ -3,11 +3,12 @@
 members = [
     "core",
     "vpc",
+    "ecs",
     "route53",
     "iam",
     "ecr",
+    "rds",
     "s3",
     "secretsmanager",
-    # "elb",
-    "ecs",
+    "elb",
 ]

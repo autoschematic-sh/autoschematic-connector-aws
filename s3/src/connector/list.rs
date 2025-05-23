@@ -2,10 +2,7 @@ use std::path::{Path, PathBuf};
 
 use autoschematic_core::connector::ResourceAddress;
 
-use crate::{
-    addr::S3ResourceAddress,
-    util
-};
+use crate::{addr::S3ResourceAddress, util};
 
 use super::S3Connector;
 
@@ -15,10 +12,12 @@ impl S3Connector {
 
         let path_components: Vec<&str> = subpath.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
+        let config = self.config.lock().await;
+
         match &path_components[..] {
             ["aws", "s3", region_name, prefix @ ..] => {
                 let region_name = region_name.to_string();
-                if self.config.enabled_regions.contains(&region_name) {
+                if config.enabled_regions.contains(&region_name) {
                     let prefix = if !prefix.is_empty() { Some(prefix.join("/")) } else { None };
                     let client = self.get_or_init_client(&region_name).await.unwrap();
                     let bucket_names = util::list_buckets(client, &region_name, prefix).await?;
@@ -37,7 +36,7 @@ impl S3Connector {
             }
 
             _ => {
-                for region_name in &self.config.enabled_regions {
+                for region_name in &config.enabled_regions {
                     let client = self.get_or_init_client(region_name).await.unwrap();
                     let bucket_names = util::list_buckets(client, region_name, None).await?;
                     for bucket_name in bucket_names {

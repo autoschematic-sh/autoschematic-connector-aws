@@ -1,5 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
+use anyhow::bail;
 use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
 use aws_sdk_route53::types::RrType;
 
@@ -13,15 +14,13 @@ use super::Route53Connector;
 impl Route53Connector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
         let addr = Route53ResourceAddress::from_path(addr)?;
+        let Some(ref client) = *self.client.lock().await else {
+            bail!("No client")
+        };
 
         match addr {
             Route53ResourceAddress::HostedZone(name) => {
-                let hz = self
-                    .client
-                    .list_hosted_zones_by_name()
-                    .dns_name(name)
-                    .send()
-                    .await?;
+                let hz = client.list_hosted_zones_by_name().dns_name(name).send().await?;
 
                 let Some(hz) = hz.hosted_zones.first() else {
                     return Ok(None);
@@ -38,8 +37,7 @@ impl Route53Connector {
                 }))
             }
             Route53ResourceAddress::ResourceRecordSet(hosted_zone, name, r#type) => {
-                let hz = self
-                    .client
+                let hz = client
                     .list_hosted_zones_by_name()
                     // .dns_name(name.strip_suffix('.').unwrap())
                     .dns_name(hosted_zone.clone())
@@ -50,8 +48,7 @@ impl Route53Connector {
                     Some(hz) if hz.name == hosted_zone => {
                         let rr_type = RrType::try_parse(&r#type)?;
 
-                        let rec = self
-                            .client
+                        let rec = client
                             .list_resource_record_sets()
                             .set_hosted_zone_id(Some(hz.id.clone()))
                             .set_start_record_name(Some(name.to_string()))
@@ -64,13 +61,18 @@ impl Route53Connector {
                                 // let i = rec.region
                                 let record_set = RecordSet {
                                     ttl: rec.ttl,
-                                    alias_target: rec.alias_target.as_ref().map(|alias_target| alias_target.dns_name.to_string()),
-                                    resource_records: rec.resource_records.as_ref().map(|records| records.iter().map(|r| r.value.clone()).collect()),
+                                    alias_target: rec
+                                        .alias_target
+                                        .as_ref()
+                                        .map(|alias_target| alias_target.dns_name.to_string()),
+                                    resource_records: rec
+                                        .resource_records
+                                        .as_ref()
+                                        .map(|records| records.iter().map(|r| r.value.clone()).collect()),
                                 };
 
                                 Ok(Some(GetResourceOutput {
-                                    resource_definition: Route53Resource::RecordSet(record_set)
-                                        .to_os_string()?,
+                                    resource_definition: Route53Resource::RecordSet(record_set).to_os_string()?,
                                     outputs: None,
                                 }))
                             }

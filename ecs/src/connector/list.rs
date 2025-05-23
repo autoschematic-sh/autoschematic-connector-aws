@@ -12,7 +12,7 @@ impl EcsConnector {
     pub async fn do_list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
 
-        for region_name in &self.config.enabled_regions {
+        for region_name in &self.config.lock().await.enabled_regions {
             let client = self.get_or_init_client(region_name).await?;
 
             // List clusters

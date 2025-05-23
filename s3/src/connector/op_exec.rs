@@ -1,11 +1,7 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
-use anyhow::{bail, Context};
-use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
-    error::{AutoschematicError, AutoschematicErrorType},
-    op_exec_output,
-};
+use anyhow::Context;
+use autoschematic_core::connector::{ConnectorOp, OpExecOutput, ResourceAddress};
 
 use crate::{addr::S3ResourceAddress, op::S3ConnectorOp};
 
@@ -227,7 +223,7 @@ impl S3Connector {
                             }
                         }
                     }
-                    S3ConnectorOp::UpdateBucketAcl(old_acl, new_acl) => {
+                    S3ConnectorOp::UpdateBucketAcl(_old_acl, new_acl) => {
                         let client = self.get_or_init_client(&region).await?;
 
                         // Create grants for new ACL
@@ -269,7 +265,7 @@ impl S3Connector {
                             friendly_message: Some(format!("Updated ACL for S3 bucket {} in region {}", name, region)),
                         })
                     }
-                    S3ConnectorOp::UpdateBucketTags(old_tags, new_tags) => {
+                    S3ConnectorOp::UpdateBucketTags(_old_tags, new_tags) => {
                         let client = self.get_or_init_client(&region).await?;
 
                         if new_tags.len() > 0 {

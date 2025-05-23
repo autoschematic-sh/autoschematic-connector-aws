@@ -1,17 +1,16 @@
+use std::collections::HashMap;
 
 use aws_sdk_elasticloadbalancingv2::types::Tag;
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
 // Define Tags similar to S3 implementation
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Tags(IndexMap<String, String>);
+pub struct Tags(HashMap<String, String>);
 
 impl From<Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>> for Tags {
     fn from(value: Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>) -> Self {
         if let Some(mut tags) = value {
-            tags.sort_by_key(|t| t.key.clone());
-            let mut out_map = IndexMap::new();
+            let mut out_map = HashMap::new();
             for tag in tags {
                 if let (Some(tag_key), Some(tag_value)) = (tag.key, tag.value) {
                     out_map.insert(tag_key, tag_value);
@@ -29,12 +28,7 @@ impl Into<Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>> for Tags {
         let mut out_vec = Vec::new();
 
         for (k, v) in self.0 {
-            out_vec.push(
-                aws_sdk_elasticloadbalancingv2::types::Tag::builder()
-                    .key(k)
-                    .value(v)
-                    .build(),
-            );
+            out_vec.push(aws_sdk_elasticloadbalancingv2::types::Tag::builder().key(k).value(v).build());
         }
 
         Some(out_vec)

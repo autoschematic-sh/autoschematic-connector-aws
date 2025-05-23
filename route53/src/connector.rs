@@ -8,8 +8,8 @@ use addr::Route53ResourceAddress;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput,
-        Resource, ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
+        SkeletonOutput,
     },
     diag::DiagnosticOutput,
     skeleton,
@@ -19,6 +19,7 @@ use resource::{HealthCheck, HostedZone, RecordSet, Route53Resource};
 
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use aws_sdk_route53::config::Region;
+use tokio::sync::Mutex;
 
 pub mod get;
 pub mod list;
@@ -27,28 +28,33 @@ pub mod plan;
 
 use crate::{addr, resource};
 
+#[derive(Default)]
 pub struct Route53Connector {
-    client: aws_sdk_route53::Client,
+    prefix: PathBuf,
+    client: Mutex<Option<aws_sdk_route53::Client>>,
 }
 
 #[async_trait]
 impl Connector for Route53Connector {
-    async fn filter(&self, addr: &Path) -> Result<bool, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = Route53ResourceAddress::from_path(addr) {
-            Ok(true)
+            Ok(FilterOutput::Resource)
         } else {
-            Ok(false)
+            Ok(FilterOutput::None)
         }
     }
 
-    async fn new(
-        _name: &str,
-        _prefix: &Path,
-        _outbox: ConnectorOutbox,
-    ) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
+        Ok(Box::new(Route53Connector {
+            prefix: prefix.into(),
+            ..Default::default()
+        }))
+    }
+
+    async fn init(&self) -> anyhow::Result<()> {
         let region = RegionProviderChain::first_try(Region::new("global".to_owned()));
 
         let config = aws_config::defaults(BehaviorVersion::latest())
@@ -64,9 +70,9 @@ impl Connector for Route53Connector {
             .load()
             .await;
 
-        let client = aws_sdk_route53::Client::new(&config);
+        *self.client.lock().await = Some(aws_sdk_route53::Client::new(&config));
 
-        Ok(Box::new(Route53Connector { client }))
+        Ok(())
     }
 
     async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
@@ -83,12 +89,8 @@ impl Connector for Route53Connector {
         current: Option<OsString>,
         desired: Option<OsString>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
-        self.do_plan(
-            addr,
-            optional_string_from_utf8(current)?,
-            optional_string_from_utf8(desired)?,
-        )
-        .await
+        self.do_plan(addr, optional_string_from_utf8(current)?, optional_string_from_utf8(desired)?)
+            .await
     }
 
     async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {

@@ -1,7 +1,10 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use anyhow::bail;
-use autoschematic_core::{connector::{GetResourceOutput, Resource, ResourceAddress}, util::RON};
+use autoschematic_core::{
+    connector::{GetResourceOutput, Resource, ResourceAddress},
+    util::RON,
+};
 
 use crate::{addr::S3ResourceAddress, resource, tags::Tags};
 

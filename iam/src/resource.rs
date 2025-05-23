@@ -1,7 +1,7 @@
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 
-use autoschematic_core::connector::{ConnectorOp, Resource, ResourceAddress};
+use autoschematic_core::connector::{Resource, ResourceAddress};
 use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::{PrettyConfig, RON};
