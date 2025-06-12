@@ -1,8 +1,3 @@
-use std::{
-    ffi::{OsStr, OsString},
-    os::unix::ffi::OsStrExt,
-};
-
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::RON,
@@ -31,7 +26,7 @@ pub struct CapacityProviderStrategyItem {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ClusterSetting {
-    pub name: String,
+    pub name:  String,
     pub value: String,
 }
 
@@ -87,7 +82,7 @@ pub struct DeploymentConfiguration {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct DeploymentCircuitBreaker {
-    pub enable: bool,
+    pub enable:   bool,
     pub rollback: bool,
 }
 
@@ -105,22 +100,22 @@ pub struct AwsVpcConfiguration {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct PlacementConstraint {
-    pub r#type: String,
+    pub r#type:     String,
     pub expression: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct PlacementStrategy {
     pub r#type: String,
-    pub field: Option<String>,
+    pub field:  Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LoadBalancer {
-    pub target_group_arn: Option<String>,
+    pub target_group_arn:   Option<String>,
     pub load_balancer_name: Option<String>,
-    pub container_name: Option<String>,
-    pub container_port: Option<i32>,
+    pub container_name:     Option<String>,
+    pub container_port:     Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -200,21 +195,21 @@ pub struct PortMapping {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct KeyValuePair {
-    pub name: Option<String>,
+    pub name:  Option<String>,
     pub value: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct EnvironmentFile {
-    pub value: String,
+    pub value:  String,
     pub r#type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct MountPoint {
-    pub source_volume: Option<String>,
+    pub source_volume:  Option<String>,
     pub container_path: Option<String>,
-    pub read_only: Option<bool>,
+    pub read_only:      Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -236,15 +231,15 @@ pub struct LinuxParameters {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct KernelCapabilities {
-    pub add: Vec<String>,
+    pub add:  Vec<String>,
     pub drop: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Device {
-    pub host_path: String,
+    pub host_path:      String,
     pub container_path: Option<String>,
-    pub permissions: Vec<String>,
+    pub permissions:    Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -263,12 +258,12 @@ pub struct Secret {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ContainerDependency {
     pub container_name: String,
-    pub condition: String,
+    pub condition:      String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HostEntry {
-    pub hostname: String,
+    pub hostname:   String,
     pub ip_address: String,
 }
 
@@ -288,28 +283,28 @@ pub struct LogConfiguration {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HealthCheck {
-    pub command: Vec<String>,
-    pub interval: Option<i32>,
-    pub timeout: Option<i32>,
-    pub retries: Option<i32>,
+    pub command:      Vec<String>,
+    pub interval:     Option<i32>,
+    pub timeout:      Option<i32>,
+    pub retries:      Option<i32>,
     pub start_period: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct SystemControl {
     pub namespace: Option<String>,
-    pub value: Option<String>,
+    pub value:     Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct ResourceRequirement {
-    pub value: String,
+    pub value:  String,
     pub r#type: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct FirelensConfiguration {
-    pub r#type: String,
+    pub r#type:  String,
     pub options: std::collections::HashMap<String, String>,
 }
 
@@ -436,9 +431,9 @@ pub struct NetworkInterface {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Attachment {
-    pub id: String,
-    pub r#type: String,
-    pub status: String,
+    pub id:      String,
+    pub r#type:  String,
+    pub status:  String,
     pub details: Vec<KeyValuePair>,
 }
 
@@ -464,8 +459,8 @@ pub struct ContainerInstance {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct VersionInfo {
-    pub agent_version: Option<String>,
-    pub agent_hash: Option<String>,
+    pub agent_version:  Option<String>,
+    pub agent_hash:     Option<String>,
     pub docker_version: Option<String>,
 }
 
@@ -498,7 +493,7 @@ pub enum EcsResource {
 
 // Implementation of Resource trait for EcsResource
 impl Resource for EcsResource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         let pretty_config = autoschematic_core::util::PrettyConfig::default().struct_names(true);
         match self {
             EcsResource::Cluster(cluster) => Ok(RON.to_string_pretty(&cluster, pretty_config)?.into()),
@@ -511,13 +506,13 @@ impl Resource for EcsResource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = EcsResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
 
         match addr {
             EcsResourceAddress::Cluster(region, _name) => Ok(EcsResource::Cluster(RON.from_str(s)?)),

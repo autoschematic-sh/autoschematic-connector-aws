@@ -25,7 +25,7 @@ impl S3Connector {
                         results.push(
                             S3ResourceAddress::Bucket {
                                 region: region_name.clone(),
-                                name: bucket_name,
+                                name:   bucket_name,
                             }
                             .to_path_buf(),
                         );
@@ -43,7 +43,7 @@ impl S3Connector {
                         results.push(
                             S3ResourceAddress::Bucket {
                                 region: region_name.clone(),
-                                name: bucket_name,
+                                name:   bucket_name,
                             }
                             .to_path_buf(),
                         );

@@ -32,7 +32,7 @@ impl Route53Connector {
                 outputs.insert(String::from("id"), Some(hz.id.clone()));
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: Route53Resource::HostedZone(hz_config).to_os_string()?,
+                    resource_definition: Route53Resource::HostedZone(hz_config).to_bytes()?,
                     outputs: Some(outputs),
                 }))
             }
@@ -72,7 +72,7 @@ impl Route53Connector {
                                 };
 
                                 Ok(Some(GetResourceOutput {
-                                    resource_definition: Route53Resource::RecordSet(record_set).to_os_string()?,
+                                    resource_definition: Route53Resource::RecordSet(record_set).to_bytes()?,
                                     outputs: None,
                                 }))
                             }

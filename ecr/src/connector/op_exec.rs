@@ -2,7 +2,8 @@ use std::path::Path;
 
 use anyhow::bail;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress}, error_util::invalid_op
+    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    error_util::invalid_op,
 };
 
 use crate::{addr::EcrResourceAddress, op::EcrConnectorOp, op_impl};
@@ -19,7 +20,7 @@ impl EcrConnector {
                 let client = self.get_or_init_client(region).await?;
 
                 match op {
-                    EcrConnectorOp::CreateRepository(repo) => op_impl::create_repository(&client, &repo).await,
+                    EcrConnectorOp::CreateRepository(repo) => op_impl::create_repository(&client, name, &repo).await,
                     EcrConnectorOp::UpdateRepositoryTags(old_tags, new_tags) => {
                         op_impl::update_repository_tags(&client, name, &old_tags, &new_tags).await
                     }
@@ -85,18 +86,13 @@ impl EcrConnector {
                         upstream_registry_url,
                         credential_arn,
                     } => {
-                        op_impl::create_pull_through_cache_rule(
-                            &client,
-                            prefix,
-                            &upstream_registry_url,
-                            credential_arn.clone(),
-                        )
-                        .await
+                        op_impl::create_pull_through_cache_rule(&client, prefix, &upstream_registry_url, credential_arn.clone())
+                            .await
                     }
                     EcrConnectorOp::DeletePullThroughCacheRule {} => {
                         op_impl::delete_pull_through_cache_rule(&client, prefix).await
                     }
-                    _ => Err(invalid_op(&addr, &op))
+                    _ => Err(invalid_op(&addr, &op)),
                 }
             }
         }

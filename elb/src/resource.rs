@@ -1,8 +1,3 @@
-use std::{
-    ffi::{OsStr, OsString},
-    os::unix::ffi::OsStrExt,
-};
-
 use anyhow::bail;
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
@@ -51,7 +46,7 @@ pub struct TargetGroup {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Certificate {
     pub certificate_arn: String,
-    pub is_default: bool,
+    pub is_default:      bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -74,7 +69,7 @@ pub struct RedirectConfig {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct FixedResponseConfig {
-    pub status_code: Option<String>,
+    pub status_code:  Option<String>,
     pub content_type: Option<String>,
     pub message_body: Option<String>,
 }
@@ -97,38 +92,32 @@ pub enum ElbResource {
 }
 
 impl Resource for ElbResource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         let pretty_config = autoschematic_core::util::PrettyConfig::default().struct_names(true);
 
         match self {
-            ElbResource::LoadBalancer(lb) => {
-                match RON.to_string_pretty(&lb, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            ElbResource::TargetGroup(tg) => {
-                match RON.to_string_pretty(&tg, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            ElbResource::Listener(listener) => {
-                match RON.to_string_pretty(&listener, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
+            ElbResource::LoadBalancer(lb) => match RON.to_string_pretty(&lb, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            ElbResource::TargetGroup(tg) => match RON.to_string_pretty(&tg, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            ElbResource::Listener(listener) => match RON.to_string_pretty(&listener, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = ElbResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
 
         match addr {
             ElbResourceAddress::LoadBalancer(_region, _name) => Ok(ElbResource::LoadBalancer(RON.from_str(s)?)),

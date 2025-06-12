@@ -1,9 +1,9 @@
-use std::{ffi::OsString, path::Path};
+use std::path::Path;
 
 use autoschematic_core::{
     connector::{OpPlanOutput, ResourceAddress},
     connector_op,
-    util::{diff_ron_values, optional_string_from_utf8, RON},
+    util::{RON, diff_ron_values, optional_string_from_utf8},
 };
 
 use autoschematic_core::connector::ConnectorOp;
@@ -16,8 +16,8 @@ impl EcsConnector {
     pub async fn do_plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
 
@@ -35,12 +35,10 @@ impl EcsConnector {
                             format!("Create new ECS cluster {}", cluster_name)
                         )])
                     }
-                    (Some(_old_cluster), None) => {
-                        Ok(vec![connector_op!(
-                            EcsConnectorOp::DeleteCluster,
-                            format!("DELETE ECS cluster {}", cluster_name)
-                        )])
-                    }
+                    (Some(_old_cluster), None) => Ok(vec![connector_op!(
+                        EcsConnectorOp::DeleteCluster,
+                        format!("DELETE ECS cluster {}", cluster_name)
+                    )]),
                     (Some(old_cluster), Some(new_cluster)) => {
                         let old_cluster: resource::Cluster = RON.from_str(&old_cluster)?;
                         let new_cluster: resource::Cluster = RON.from_str(&new_cluster)?;
@@ -123,12 +121,10 @@ impl EcsConnector {
                             format!("Create new ECS service {} in cluster {}", service_name, cluster_name)
                         )])
                     }
-                    (Some(_old_service), None) => {
-                        Ok(vec![connector_op!(
-                            EcsConnectorOp::DeleteService,
-                            format!("DELETE ECS service {} in cluster {}", service_name, cluster_name)
-                        )])
-                    }
+                    (Some(_old_service), None) => Ok(vec![connector_op!(
+                        EcsConnectorOp::DeleteService,
+                        format!("DELETE ECS service {} in cluster {}", service_name, cluster_name)
+                    )]),
                     (Some(old_service), Some(new_service)) => {
                         let old_service: resource::Service = RON.from_str(&old_service)?;
                         let new_service: resource::Service = RON.from_str(&new_service)?;
@@ -235,12 +231,10 @@ impl EcsConnector {
                             format!("Register new ECS task definition {}", task_def_id)
                         )])
                     }
-                    (Some(_old_task_def), None) => {
-                        Ok(vec![connector_op!(
-                            EcsConnectorOp::DeregisterTaskDefinition,
-                            format!("Deregister ECS task definition {}", task_def_id)
-                        )])
-                    }
+                    (Some(_old_task_def), None) => Ok(vec![connector_op!(
+                        EcsConnectorOp::DeregisterTaskDefinition,
+                        format!("Deregister ECS task definition {}", task_def_id)
+                    )]),
                     (Some(old_task_def), Some(new_task_def)) => {
                         // Task definitions are immutable in ECS, so we can't update them
                         // Instead, we need to deregister the old one and register a new one
@@ -271,14 +265,12 @@ impl EcsConnector {
                         // since they are ephemeral by nature
                         Ok(vec![])
                     }
-                    (Some(_old_task), None) => {
-                        Ok(vec![connector_op!(
-                            EcsConnectorOp::StopTask {
-                                reason: Some(String::from("Removed from configuration"))
-                            },
-                            format!("Stop ECS task {} in cluster {}", task_id, cluster_name)
-                        )])
-                    }
+                    (Some(_old_task), None) => Ok(vec![connector_op!(
+                        EcsConnectorOp::StopTask {
+                            reason: Some(String::from("Removed from configuration")),
+                        },
+                        format!("Stop ECS task {} in cluster {}", task_id, cluster_name)
+                    )]),
                     (Some(old_task), Some(new_task)) => {
                         // Tasks are largely immutable, but we can update tags
                         let old_task: resource::Task = RON.from_str(&old_task)?;
@@ -309,15 +301,13 @@ impl EcsConnector {
                         // They're registered when EC2 instances join the ECS cluster
                         Ok(vec![])
                     }
-                    (Some(_old_container_instance), None) => {
-                        Ok(vec![connector_op!(
-                            EcsConnectorOp::DeregisterContainerInstance { force: false },
-                            format!(
-                                "Deregister ECS container instance {} from cluster {}",
-                                container_instance_id, cluster_name
-                            )
-                        )])
-                    }
+                    (Some(_old_container_instance), None) => Ok(vec![connector_op!(
+                        EcsConnectorOp::DeregisterContainerInstance { force: false },
+                        format!(
+                            "Deregister ECS container instance {} from cluster {}",
+                            container_instance_id, cluster_name
+                        )
+                    )]),
                     (Some(old_container_instance), Some(new_container_instance)) => {
                         let old_container_instance: resource::ContainerInstance = RON.from_str(&old_container_instance)?;
                         let new_container_instance: resource::ContainerInstance = RON.from_str(&new_container_instance)?;

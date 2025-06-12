@@ -1,5 +1,4 @@
 use std::{
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -86,8 +85,8 @@ impl Connector for Route53Connector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, optional_string_from_utf8(current)?, optional_string_from_utf8(desired)?)
             .await
@@ -116,7 +115,7 @@ impl Connector for Route53Connector {
             Route53Resource::RecordSet(RecordSet {
                 ttl: Some(600),
                 alias_target: None,
-                resource_records: Some(vec!["record text goes here".into()])
+                resource_records: Some(vec!["record text goes here".into()]),
             })
         ));
         tracing::error!("route53::get_skeletons");
@@ -124,7 +123,7 @@ impl Connector for Route53Connector {
         Ok(res)
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = Route53ResourceAddress::from_path(addr)?;
 
         match addr {
@@ -134,7 +133,7 @@ impl Connector for Route53Connector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = Route53ResourceAddress::from_path(addr)?;
 
         match addr {

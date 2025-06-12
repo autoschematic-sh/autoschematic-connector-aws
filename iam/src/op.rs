@@ -1,13 +1,12 @@
-
-
 use autoschematic_core::connector::ConnectorOp;
 use serde::{Deserialize, Serialize};
 
-
 use autoschematic_core::util::RON;
 
-use super::tags::Tags;
+use crate::resource::IamGroup;
+
 use super::resource::{IamPolicy, IamRole, IamUser};
+use super::tags::Tags;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum IamConnectorOp {
@@ -16,12 +15,21 @@ pub enum IamConnectorOp {
     AttachUserPolicy(String),
     DetachUserPolicy(String),
     DeleteUser,
+
     CreateRole(IamRole),
     AttachRolePolicy(String),
     DetachRolePolicy(String),
     UpdateAssumeRolePolicy(Option<ron::Value>, Option<ron::Value>),
     UpdateRoleTags(Tags, Tags),
     DeleteRole,
+
+    CreateGroup,
+    AddUserToGroup(String),
+    AttachGroupPolicy(String),
+    DetachGroupPolicy(String),
+    RemoveUserFromGroup(String),
+    DeleteGroup,
+
     CreatePolicy(IamPolicy),
     UpdatePolicyDocument(ron::Value, ron::Value),
     UpdatePolicyTags(Tags, Tags),

@@ -1,8 +1,3 @@
-use std::{
-    ffi::{OsStr, OsString},
-    os::unix::ffi::OsStrExt,
-};
-
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +59,7 @@ pub enum EcrResource {
 
 // Implement the Resource trait
 impl Resource for EcrResource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         let pretty_config = autoschematic_core::util::PrettyConfig::default();
         match self {
             EcrResource::Repository(repo) => Ok(RON.to_string_pretty(&repo, pretty_config)?.into()),
@@ -75,27 +70,19 @@ impl Resource for EcrResource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = EcrResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
 
         match addr {
-            EcrResourceAddress::Repository { region, name } => {
-                Ok(EcrResource::Repository(RON.from_str(s)?))
-            }
-            EcrResourceAddress::RepositoryPolicy { region, name } => {
-                Ok(EcrResource::RepositoryPolicy(RON.from_str(s)?))
-            }
-            EcrResourceAddress::LifecyclePolicy { region, name } => {
-                Ok(EcrResource::LifecyclePolicy(RON.from_str(s)?))
-            }
-            EcrResourceAddress::RegistryPolicy { region } => {
-                Ok(EcrResource::RegistryPolicy(RON.from_str(s)?))
-            }
+            EcrResourceAddress::Repository { region, name } => Ok(EcrResource::Repository(RON.from_str(s)?)),
+            EcrResourceAddress::RepositoryPolicy { region, name } => Ok(EcrResource::RepositoryPolicy(RON.from_str(s)?)),
+            EcrResourceAddress::LifecyclePolicy { region, name } => Ok(EcrResource::LifecyclePolicy(RON.from_str(s)?)),
+            EcrResourceAddress::RegistryPolicy { region } => Ok(EcrResource::RegistryPolicy(RON.from_str(s)?)),
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => {
                 Ok(EcrResource::PullThroughCacheRule(RON.from_str(s)?))
             }

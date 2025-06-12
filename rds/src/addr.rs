@@ -32,28 +32,28 @@ impl ResourceAddress for RdsResourceAddress {
                 let instance_id = instance_id.strip_suffix(".ron").unwrap().to_string();
                 Ok(RdsResourceAddress::DBInstance {
                     region: region.to_string(),
-                    id: instance_id,
+                    id:     instance_id,
                 })
             }
             ["aws", "rds", region, "clusters", cluster_id] if cluster_id.ends_with(".ron") => {
                 let cluster_id = cluster_id.strip_suffix(".ron").unwrap().to_string();
                 Ok(RdsResourceAddress::DBCluster {
                     region: region.to_string(),
-                    id: cluster_id,
+                    id:     cluster_id,
                 })
             }
             ["aws", "rds", region, "subnet-groups", group_name] if group_name.ends_with(".ron") => {
                 let group_name = group_name.strip_suffix(".ron").unwrap().to_string();
                 Ok(RdsResourceAddress::DBSubnetGroup {
                     region: region.to_string(),
-                    name: group_name,
+                    name:   group_name,
                 })
             }
             ["aws", "rds", region, "parameter-groups", group_name] if group_name.ends_with(".ron") => {
                 let group_name = group_name.strip_suffix(".ron").unwrap().to_string();
                 Ok(RdsResourceAddress::DBParameterGroup {
                     region: region.to_string(),
-                    name: group_name,
+                    name:   group_name,
                 })
             }
             _ => Err(invalid_addr_path(path)),

@@ -16,10 +16,7 @@ impl ResourceAddress for S3ResourceAddress {
     }
 
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
-        let path_components: Vec<&str> = path
-            .components()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         match path_components[..] {
             ["aws", "s3", region, "buckets", name] if name.ends_with(".ron") => {
@@ -29,7 +26,7 @@ impl ResourceAddress for S3ResourceAddress {
                     name,
                 })
             }
-            _ => Err(invalid_addr_path(path))
+            _ => Err(invalid_addr_path(path)),
         }
     }
 }

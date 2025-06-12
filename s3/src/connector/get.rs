@@ -87,7 +87,7 @@ impl S3Connector {
                 };
 
                 return Ok(Some(GetResourceOutput {
-                    resource_definition: resource::S3Resource::Bucket(bucket).to_os_string()?,
+                    resource_definition: resource::S3Resource::Bucket(bucket).to_bytes()?,
                     outputs: None,
                 }));
             }

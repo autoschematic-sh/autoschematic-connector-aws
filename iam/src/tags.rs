@@ -1,27 +1,25 @@
+use std::collections::HashMap;
 
-use autoschematic_core::connector::{
-    Connector, ConnectorOp,
-};
-use indexmap::IndexMap;
+use autoschematic_core::connector::{Connector, ConnectorOp};
 use serde::{Deserialize, Serialize};
 
 use aws_sdk_iam::types::Tag;
 
-#[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
-pub struct Tags(IndexMap<String, String>);
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct Tags(HashMap<String, String>);
 
 impl From<Option<Vec<Tag>>> for Tags {
     fn from(value: Option<Vec<Tag>>) -> Self {
         match value {
             Some(mut tags) => {
                 tags.sort_by_key(|t| t.key.clone());
-                let mut out_map = IndexMap::new();
+                let mut out_map = HashMap::new();
                 for tag in tags {
                     out_map.insert(tag.key, tag.value);
                 }
                 Tags(out_map)
             }
-            None => Tags(IndexMap::new()),
+            None => Tags(HashMap::new()),
         }
     }
 }

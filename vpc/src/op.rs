@@ -11,6 +11,8 @@ pub enum VpcConnectorOp {
     // VPC operations
     CreateVpc(Vpc),
     UpdateVpcTags(Tags, Tags),
+    UpdateVpcCidrBlock(String),
+    UpdateVpcInstanceTenancy(String),
     UpdateVpcAttributes {
         enable_dns_support: Option<bool>,
         enable_dns_hostnames: Option<bool>,

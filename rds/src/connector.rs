@@ -1,13 +1,12 @@
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
 };
 
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
 use autoschematic_core::{
     connector::{Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, ResourceAddress},
     diag::DiagnosticOutput,
@@ -33,7 +32,7 @@ mod plan;
 pub struct RdsConnector {
     pub prefix: PathBuf,
     pub client_cache: Mutex<HashMap<String, Arc<aws_sdk_rds::Client>>>,
-    pub account_id: Mutex<Option<String>>,
+    pub account_id: Mutex<String>,
     pub config: Mutex<RdsConnectorConfig>,
 }
 
@@ -51,60 +50,14 @@ impl Connector for RdsConnector {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
+        let secrets_config: RdsConnectorConfig = RdsConnectorConfig::try_load(&self.prefix).await?;
 
-        let region_provider = RegionProviderChain::default_provider();
+        let account_id = secrets_config.verify_sts().await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region_provider)
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .connect_timeout(Duration::from_secs(30))
-                    .operation_timeout(Duration::from_secs(30))
-                    .operation_attempt_timeout(Duration::from_secs(30))
-                    .read_timeout(Duration::from_secs(30))
-                    .build(),
-            )
-            .load()
-            .await;
-
-        let sts_region = RegionProviderChain::first_try(aws_sdk_sts::config::Region::new("us-east-1".to_owned()));
-        let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(sts_region)
-            .load()
-            .await;
-
-        let sts_client = aws_sdk_sts::Client::new(&sts_config);
-
-        let caller_identity = sts_client.get_caller_identity().send().await;
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
-
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let rds_config: RdsConnectorConfig = RdsConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
-
-                *self.client_cache.lock().await = HashMap::new();
-                *self.account_id.lock().await = Some(account_id);
-                *self.config.lock().await = rds_config;
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
-        }
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = secrets_config;
+        *self.account_id.lock().await = account_id;
+        Ok(())
     }
 
     async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
@@ -128,8 +81,8 @@ impl Connector for RdsConnector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
@@ -138,7 +91,7 @@ impl Connector for RdsConnector {
         self.do_op_exec(addr, op).await
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> Result<bool, anyhow::Error> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> Result<bool, anyhow::Error> {
         let addr = RdsResourceAddress::from_path(addr)?;
 
         match addr {
@@ -149,7 +102,7 @@ impl Connector for RdsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = RdsResourceAddress::from_path(addr)?;
 
         match addr {

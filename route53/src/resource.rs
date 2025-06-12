@@ -1,8 +1,3 @@
-use std::{
-    ffi::{OsStr, OsString},
-    os::unix::ffi::OsStrExt,
-};
-
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::PrettyConfig,
@@ -35,46 +30,34 @@ pub enum Route53Resource {
 }
 
 impl Resource for Route53Resource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         match self {
-            Route53Resource::HostedZone(hosted_zone) => {
-                match RON.to_string_pretty(&hosted_zone, PrettyConfig::default()) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            Route53Resource::RecordSet(record_set) => {
-                match RON.to_string_pretty(&record_set, PrettyConfig::default()) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            Route53Resource::HealthCheck(health_check) => {
-                match RON.to_string_pretty(&health_check, PrettyConfig::default()) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
+            Route53Resource::HostedZone(hosted_zone) => match RON.to_string_pretty(&hosted_zone, PrettyConfig::default()) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            Route53Resource::RecordSet(record_set) => match RON.to_string_pretty(&record_set, PrettyConfig::default()) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            Route53Resource::HealthCheck(health_check) => match RON.to_string_pretty(&health_check, PrettyConfig::default()) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = Route53ResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
         match addr {
-            Route53ResourceAddress::HostedZone(_name) => {
-                Ok(Route53Resource::HostedZone(RON.from_str(s)?))
-            }
-            Route53ResourceAddress::ResourceRecordSet(_, _, _) => {
-                Ok(Route53Resource::RecordSet(RON.from_str(s)?))
-            }
-            Route53ResourceAddress::HealthCheck(_) => {
-                Ok(Route53Resource::HealthCheck(RON.from_str(s)?))
-            }
+            Route53ResourceAddress::HostedZone(_name) => Ok(Route53Resource::HostedZone(RON.from_str(s)?)),
+            Route53ResourceAddress::ResourceRecordSet(_, _, _) => Ok(Route53Resource::RecordSet(RON.from_str(s)?)),
+            Route53ResourceAddress::HealthCheck(_) => Ok(Route53Resource::HealthCheck(RON.from_str(s)?)),
         }
     }
 }

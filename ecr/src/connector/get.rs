@@ -51,14 +51,18 @@ impl EcrConnector {
 
                                 // Build repository resource
                                 let repository = Repository {
-                                    encryption_configuration: repo.encryption_configuration.as_ref().map(|encrypt_config| EncryptionConfiguration {
+                                    encryption_configuration: repo.encryption_configuration.as_ref().map(|encrypt_config| {
+                                        EncryptionConfiguration {
                                             encryption_type: encrypt_config.encryption_type.as_str().to_string(),
                                             kms_key: encrypt_config.kms_key.clone(),
-                                        }),
+                                        }
+                                    }),
                                     image_tag_mutability: repo.image_tag_mutability.as_ref().map(|m| m.to_string()),
-                                    image_scanning_configuration: repo.image_scanning_configuration.as_ref().map(|scan_config| ImageScanningConfiguration {
+                                    image_scanning_configuration: repo.image_scanning_configuration.as_ref().map(
+                                        |scan_config| ImageScanningConfiguration {
                                             scan_on_push: scan_config.scan_on_push,
-                                        }),
+                                        },
+                                    ),
                                     tags,
                                 };
 
@@ -89,7 +93,7 @@ impl EcrConnector {
                             let repo_policy = RepositoryPolicy { policy_document: rval };
 
                             return Ok(Some(GetResourceOutput {
-                                resource_definition: EcrResource::RepositoryPolicy(repo_policy).to_os_string()?,
+                                resource_definition: EcrResource::RepositoryPolicy(repo_policy).to_bytes()?,
                                 outputs: None,
                             }));
                         }
@@ -119,7 +123,7 @@ impl EcrConnector {
                             };
 
                             return Ok(Some(GetResourceOutput {
-                                resource_definition: EcrResource::LifecyclePolicy(lifecycle_policy).to_os_string()?,
+                                resource_definition: EcrResource::LifecyclePolicy(lifecycle_policy).to_bytes()?,
                                 outputs: None,
                             }));
                         }
@@ -147,7 +151,7 @@ impl EcrConnector {
                             let registry_policy = RegistryPolicy { policy_document: rval };
 
                             return Ok(Some(GetResourceOutput {
-                                resource_definition: EcrResource::RegistryPolicy(registry_policy).to_os_string()?,
+                                resource_definition: EcrResource::RegistryPolicy(registry_policy).to_bytes()?,
                                 outputs: None,
                             }));
                         }
@@ -184,7 +188,7 @@ impl EcrConnector {
 
                                         return Ok(Some(GetResourceOutput {
                                             resource_definition: EcrResource::PullThroughCacheRule(pull_through_rule)
-                                                .to_os_string()?,
+                                                .to_bytes()?,
                                             outputs: None,
                                         }));
                                     }

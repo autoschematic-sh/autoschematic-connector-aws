@@ -1,6 +1,3 @@
-use std::ffi::{OsStr, OsString};
-use std::os::unix::ffi::OsStrExt;
-
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use serde::{Deserialize, Serialize};
 
@@ -45,15 +42,15 @@ pub struct RdsDBCluster {
 #[serde(deny_unknown_fields)]
 pub struct RdsDBSubnetGroup {
     pub description: String,
-    pub subnet_ids: Vec<String>,
+    pub subnet_ids:  Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RdsDBParameterGroup {
     pub description: Option<String>,
-    pub family: String,
-    pub parameters: std::collections::HashMap<String, String>,
+    pub family:      String,
+    pub parameters:  std::collections::HashMap<String, String>,
 }
 
 pub enum RdsResource {
@@ -64,43 +61,35 @@ pub enum RdsResource {
 }
 
 impl Resource for RdsResource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         let pretty_config = PrettyConfig::default().struct_names(true);
         match self {
-            RdsResource::DBInstance(instance) => {
-                match RON.to_string_pretty(&instance, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            RdsResource::DBCluster(cluster) => {
-                match RON.to_string_pretty(&cluster, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            RdsResource::DBSubnetGroup(group) => {
-                match RON.to_string_pretty(&group, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            RdsResource::DBParameterGroup(group) => {
-                match RON.to_string_pretty(&group, pretty_config) {
-                    Ok(s) => Ok(s.into()),
-                    Err(e) => Err(e.into()),
-                }
-            }
+            RdsResource::DBInstance(instance) => match RON.to_string_pretty(&instance, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            RdsResource::DBCluster(cluster) => match RON.to_string_pretty(&cluster, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            RdsResource::DBSubnetGroup(group) => match RON.to_string_pretty(&group, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
+            RdsResource::DBParameterGroup(group) => match RON.to_string_pretty(&group, pretty_config) {
+                Ok(s) => Ok(s.into()),
+                Err(e) => Err(e.into()),
+            },
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = RdsResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
         match addr {
             RdsResourceAddress::DBInstance { region, id } => Ok(RdsResource::DBInstance(RON.from_str(s)?)),
             RdsResourceAddress::DBCluster { region, id } => Ok(RdsResource::DBCluster(RON.from_str(s)?)),

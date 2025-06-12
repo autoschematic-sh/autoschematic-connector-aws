@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use aws_sdk_ec2::types::{AttributeBooleanValue, IpPermission, IpRange, Tag, UserIdGroupPair};
 use std::collections::HashMap;
 
@@ -6,23 +6,18 @@ use super::{
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc},
     tags::Tags,
 };
-use autoschematic_core::{
-    connector::OpExecOutput,
-    op_exec_output,
-};
+use autoschematic_core::{connector::OpExecOutput, op_exec_output};
 
 /// Creates a VPC using the provided configuration
-pub async fn create_vpc(
-    client: &aws_sdk_ec2::Client,
-    vpc: &Vpc,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_vpc(client: &aws_sdk_ec2::Client, vpc: &Vpc) -> Result<OpExecOutput, anyhow::Error> {
     // Create a new VPC with the specified CIDR block and instance tenancy
+
+    let instance_tenancy = vpc.instance_tenancy.clone().unwrap_or(String::from("default"));
+
     let create_vpc_resp = client
         .create_vpc()
         .cidr_block(vpc.cidr_block.clone())
-        .instance_tenancy(aws_sdk_ec2::types::Tenancy::from(
-            vpc.instance_tenancy.as_str(),
-        ))
+        .instance_tenancy(aws_sdk_ec2::types::Tenancy::from(instance_tenancy.as_str()))
         .send()
         .await?;
 
@@ -118,6 +113,19 @@ pub async fn update_vpc_tags(
     op_exec_output!(format!("Updated tags for VPC {}", vpc_id))
 }
 
+// pub async fn associate_vpc_cidr_block(
+//     client: &aws_sdk_ec2::Client,
+//     vpc_id: &str,
+//     cidr: &str,
+// ) -> Result<OpExecOutput, anyhow::Error> {
+//     // client.associate_vpc_cidr_block().ipv4_ipam_pool_id(input).ipv6_cidr_block_network_border_group(input)
+//     //     .amazon_provided_ipv6_cidr_block(input)
+//     //     .ipv4_netmask_length(input)
+
+//     // client.disassociate_vpc_cidr_block().
+//     // clone_into(target);
+// }
+
 /// Updates VPC attributes
 pub async fn update_vpc_attributes(
     client: &aws_sdk_ec2::Client,
@@ -129,11 +137,7 @@ pub async fn update_vpc_attributes(
         client
             .modify_vpc_attribute()
             .vpc_id(vpc_id)
-            .enable_dns_support(
-                AttributeBooleanValue::builder()
-                    .value(enable_dns_support)
-                    .build(),
-            )
+            .enable_dns_support(AttributeBooleanValue::builder().value(enable_dns_support).build())
             .send()
             .await?;
     }
@@ -142,11 +146,7 @@ pub async fn update_vpc_attributes(
         client
             .modify_vpc_attribute()
             .vpc_id(vpc_id)
-            .enable_dns_hostnames(
-                AttributeBooleanValue::builder()
-                    .value(enable_dns_hostnames)
-                    .build(),
-            )
+            .enable_dns_hostnames(AttributeBooleanValue::builder().value(enable_dns_hostnames).build())
             .send()
             .await?;
     }
@@ -155,10 +155,7 @@ pub async fn update_vpc_attributes(
 }
 
 /// Deletes a VPC
-pub async fn delete_vpc(
-    client: &aws_sdk_ec2::Client,
-    vpc_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_vpc(client: &aws_sdk_ec2::Client, vpc_id: &str) -> Result<OpExecOutput, anyhow::Error> {
     client.delete_vpc().vpc_id(vpc_id).send().await?;
 
     op_exec_output!(
@@ -168,11 +165,7 @@ pub async fn delete_vpc(
 }
 
 /// Creates a subnet
-pub async fn create_subnet(
-    client: &aws_sdk_ec2::Client,
-    vpc_id: &str,
-    subnet: &Subnet,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_subnet(client: &aws_sdk_ec2::Client, vpc_id: &str, subnet: &Subnet) -> Result<OpExecOutput, anyhow::Error> {
     let create_subnet_resp = client
         .create_subnet()
         .vpc_id(vpc_id)
@@ -194,11 +187,7 @@ pub async fn create_subnet(
         client
             .modify_subnet_attribute()
             .subnet_id(&new_subnet_id)
-            .map_public_ip_on_launch(
-                AttributeBooleanValue::builder()
-                    .value(subnet.map_public_ip_on_launch)
-                    .build(),
-            )
+            .map_public_ip_on_launch(AttributeBooleanValue::builder().value(subnet.map_public_ip_on_launch).build())
             .send()
             .await?;
     }
@@ -221,10 +210,7 @@ pub async fn create_subnet(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!(
-            "Created subnet {} in VPC {}",
-            new_subnet_id, vpc_id
-        )),
+        friendly_message: Some(format!("Created subnet {} in VPC {}", new_subnet_id, vpc_id)),
     })
 }
 
@@ -284,11 +270,7 @@ pub async fn update_subnet_attributes(
         client
             .modify_subnet_attribute()
             .subnet_id(subnet_id)
-            .map_public_ip_on_launch(
-                AttributeBooleanValue::builder()
-                    .value(map_public_ip_on_launch)
-                    .build(),
-            )
+            .map_public_ip_on_launch(AttributeBooleanValue::builder().value(map_public_ip_on_launch).build())
             .send()
             .await?;
     }
@@ -300,10 +282,7 @@ pub async fn update_subnet_attributes(
 }
 
 /// Deletes a subnet
-pub async fn delete_subnet(
-    client: &aws_sdk_ec2::Client,
-    subnet_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_subnet(client: &aws_sdk_ec2::Client, subnet_id: &str) -> Result<OpExecOutput, anyhow::Error> {
     client.delete_subnet().subnet_id(subnet_id).send().await?;
 
     Ok(OpExecOutput {
@@ -320,9 +299,7 @@ pub async fn create_internet_gateway(
     let create_igw_resp = client.create_internet_gateway().send().await?;
 
     let Some(new_igw) = create_igw_resp.internet_gateway else {
-        bail!(
-            "Failed to create internet gateway: response did not contain internet gateway details"
-        );
+        bail!("Failed to create internet gateway: response did not contain internet gateway details");
     };
 
     let Some(new_igw_id) = new_igw.internet_gateway_id else {
@@ -353,10 +330,7 @@ pub async fn create_internet_gateway(
     }
 
     let mut outputs = HashMap::new();
-    outputs.insert(
-        String::from("internet_gateway_id"),
-        Some(new_igw_id.clone()),
-    );
+    outputs.insert(String::from("internet_gateway_id"), Some(new_igw_id.clone()));
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
@@ -379,10 +353,7 @@ pub async fn attach_internet_gateway(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Attached internet gateway {} to VPC {}",
-            igw_id, vpc_id
-        )),
+        friendly_message: Some(format!("Attached internet gateway {} to VPC {}", igw_id, vpc_id)),
     })
 }
 
@@ -401,10 +372,7 @@ pub async fn detach_internet_gateway(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Detached internet gateway {} from VPC {}",
-            igw_id, vpc_id
-        )),
+        friendly_message: Some(format!("Detached internet gateway {} from VPC {}", igw_id, vpc_id)),
     })
 }
 
@@ -455,10 +423,7 @@ pub async fn update_internet_gateway_tags(
 }
 
 /// Deletes an internet gateway
-pub async fn delete_internet_gateway(
-    client: &aws_sdk_ec2::Client,
-    igw_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_internet_gateway(client: &aws_sdk_ec2::Client, igw_id: &str) -> Result<OpExecOutput, anyhow::Error> {
     // First, need to check if it's attached and detach if necessary
     let igw_resp = client
         .describe_internet_gateways()
@@ -485,11 +450,7 @@ pub async fn delete_internet_gateway(
     }
 
     // Now delete the internet gateway
-    client
-        .delete_internet_gateway()
-        .internet_gateway_id(igw_id)
-        .send()
-        .await?;
+    client.delete_internet_gateway().internet_gateway_id(igw_id).send().await?;
 
     Ok(OpExecOutput {
         outputs: None,
@@ -570,10 +531,7 @@ pub async fn create_route_table(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!(
-            "Created route table {} in VPC {}",
-            new_rt_id, vpc_id
-        )),
+        friendly_message: Some(format!("Created route table {} in VPC {}", new_rt_id, vpc_id)),
     })
 }
 
@@ -624,11 +582,7 @@ pub async fn update_route_table_tags(
 }
 
 /// Creates a route in a route table
-pub async fn create_route(
-    client: &aws_sdk_ec2::Client,
-    rt_id: &str,
-    route: &Route,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_route(client: &aws_sdk_ec2::Client, rt_id: &str, route: &Route) -> Result<OpExecOutput, anyhow::Error> {
     let mut create_route = client.create_route().route_table_id(rt_id);
 
     if let Some(destination_cidr_block) = &route.destination_cidr_block {
@@ -660,11 +614,7 @@ pub async fn create_route(
 }
 
 /// Deletes a route from a route table
-pub async fn delete_route(
-    client: &aws_sdk_ec2::Client,
-    rt_id: &str,
-    route: &Route,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_route(client: &aws_sdk_ec2::Client, rt_id: &str, route: &Route) -> Result<OpExecOutput, anyhow::Error> {
     let mut builder = client.delete_route().route_table_id(rt_id);
 
     if let Some(destination_cidr_block) = &route.destination_cidr_block {
@@ -702,10 +652,7 @@ pub async fn associate_route_table(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Associated route table {} with subnet {}",
-            rt_id, subnet_id
-        )),
+        friendly_message: Some(format!("Associated route table {} with subnet {}", rt_id, subnet_id)),
     })
 }
 
@@ -722,24 +669,14 @@ pub async fn disassociate_route_table(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Disassociated route table association {}",
-            association_id
-        )),
+        friendly_message: Some(format!("Disassociated route table association {}", association_id)),
     })
 }
 
 /// Deletes a route table
-pub async fn delete_route_table(
-    client: &aws_sdk_ec2::Client,
-    rt_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_route_table(client: &aws_sdk_ec2::Client, rt_id: &str) -> Result<OpExecOutput, anyhow::Error> {
     // First, need to disassociate any associated subnets
-    let rt_resp = client
-        .describe_route_tables()
-        .route_table_ids(rt_id)
-        .send()
-        .await?;
+    let rt_resp = client.describe_route_tables().route_table_ids(rt_id).send().await?;
 
     if let Some(route_tables) = rt_resp.route_tables {
         if let Some(rt) = route_tables.first() {
@@ -747,11 +684,7 @@ pub async fn delete_route_table(
                 for assoc in associations {
                     if let Some(assoc_id) = &assoc.route_table_association_id {
                         // Disassociate route table
-                        client
-                            .disassociate_route_table()
-                            .association_id(assoc_id)
-                            .send()
-                            .await?;
+                        client.disassociate_route_table().association_id(assoc_id).send().await?;
                     }
                 }
             }
@@ -759,11 +692,7 @@ pub async fn delete_route_table(
     }
 
     // Now delete the route table
-    client
-        .delete_route_table()
-        .route_table_id(rt_id)
-        .send()
-        .await?;
+    client.delete_route_table().route_table_id(rt_id).send().await?;
 
     Ok(OpExecOutput {
         outputs: None,
@@ -890,10 +819,7 @@ pub async fn create_security_group(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!(
-            "Created security group {} in VPC {}",
-            new_sg_id, vpc_id
-        )),
+        friendly_message: Some(format!("Created security group {} in VPC {}", new_sg_id, vpc_id)),
     })
 }
 
@@ -1172,15 +1098,8 @@ pub async fn revoke_security_group_egress(
 }
 
 /// Deletes a security group
-pub async fn delete_security_group(
-    client: &aws_sdk_ec2::Client,
-    sg_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
-    client
-        .delete_security_group()
-        .group_id(sg_id)
-        .send()
-        .await?;
+pub async fn delete_security_group(client: &aws_sdk_ec2::Client, sg_id: &str) -> Result<OpExecOutput, anyhow::Error> {
+    client.delete_security_group().group_id(sg_id).send().await?;
 
     Ok(OpExecOutput {
         outputs: None,

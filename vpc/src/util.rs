@@ -26,14 +26,12 @@ pub async fn get_vpc(client: &aws_sdk_ec2::Client, vpc_id: &str) -> anyhow::Resu
         return Ok(None);
     };
 
-    if let Some(vpc) = vpcs.first() {
+    if let Some(ref vpc) = vpcs.first() {
         let cidr_block = vpc.cidr_block.clone().unwrap_or_default();
 
-        let instance_tenancy = if let Some(tenancy) = &vpc.instance_tenancy {
-            tenancy.as_str().to_string()
-        } else {
-            "default".to_string()
-        };
+        let instance_tenancy = vpc.instance_tenancy.as_ref().map(|t| t.as_str().to_string());
+
+        let dhcp_options_id = vpc.dhcp_options_id.clone();
 
         // Get VPC attributes (DNS support and hostnames)
         let dns_support_resp = client
@@ -59,6 +57,7 @@ pub async fn get_vpc(client: &aws_sdk_ec2::Client, vpc_id: &str) -> anyhow::Resu
 
         let vpc_resource = Vpc {
             cidr_block,
+            dhcp_options_id,
             instance_tenancy,
             enable_dns_support,
             enable_dns_hostnames,
@@ -321,7 +320,10 @@ pub async fn get_security_group(
 }
 
 pub fn get_phy_vpc_id(prefix: &Path, region: &str, virt_vpc_id: &str) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::Vpc(region.to_string(), virt_vpc_id.to_string());
+    let addr = VpcResourceAddress::Vpc {
+        region: region.to_string(),
+        vpc_id: virt_vpc_id.to_string(),
+    };
 
     load_resource_output_key(prefix, &addr, "vpc_id")
 }
@@ -332,7 +334,11 @@ pub fn get_phy_security_group_id(
     virt_vpc_id: &str,
     virt_sg_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::SecurityGroup(region.to_string(), virt_vpc_id.to_string(), virt_sg_id.to_string());
+    let addr = VpcResourceAddress::SecurityGroup {
+        region: region.to_string(),
+        vpc_id: virt_vpc_id.to_string(),
+        sg_id:  virt_sg_id.to_string(),
+    };
 
     load_resource_output_key(prefix, &addr, "security_group_id")
 }
@@ -343,7 +349,11 @@ pub fn get_phy_subnet_id(
     virt_vpc_id: &str,
     virt_subnet_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::Subnet(region.to_string(), virt_vpc_id.to_string(), virt_subnet_id.to_string());
+    let addr = VpcResourceAddress::Subnet {
+        region:    region.to_string(),
+        vpc_id:    virt_vpc_id.to_string(),
+        subnet_id: virt_subnet_id.to_string(),
+    };
 
     load_resource_output_key(prefix, &addr, "subnet_id")
 }
@@ -354,13 +364,20 @@ pub fn get_phy_route_table_id(
     virt_vpc_id: &str,
     virt_route_table_id: &str,
 ) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::RouteTable(region.to_string(), virt_vpc_id.to_string(), virt_route_table_id.to_string());
+    let addr = VpcResourceAddress::RouteTable {
+        region: region.to_string(),
+        vpc_id: virt_vpc_id.to_string(),
+        rt_id:  virt_route_table_id.to_string(),
+    };
 
     load_resource_output_key(prefix, &addr, "route_table_id")
 }
 
 pub fn get_phy_internet_gateway_id(prefix: &Path, region: &str, virt_igw_id: &str) -> anyhow::Result<Option<String>> {
-    let addr = VpcResourceAddress::InternetGateway(region.to_string(), virt_igw_id.to_string());
+    let addr = VpcResourceAddress::InternetGateway {
+        region: region.to_string(),
+        igw_id: virt_igw_id.to_string(),
+    };
 
     load_resource_output_key(prefix, &addr, "internet_gateway_id")
 }

@@ -2,14 +2,13 @@ use std::path::{Path, PathBuf};
 
 use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_path};
 
-type Region = String;
 #[derive(Debug, Clone)]
 pub enum EcrResourceAddress {
-    Repository { region: String, name: String },             // (region, repository_name)
-    RepositoryPolicy { region: String, name: String },       // (region, repository_name)
-    LifecyclePolicy { region: String, name: String },        // (region, repository_name)
-    RegistryPolicy { region: String },                       // (region)
-    PullThroughCacheRule { region: String, prefix: String }, // (region, ecr_repository_prefix)
+    Repository { region: String, name: String },
+    RepositoryPolicy { region: String, name: String },
+    LifecyclePolicy { region: String, name: String },
+    RegistryPolicy { region: String },
+    PullThroughCacheRule { region: String, prefix: String },
 }
 
 impl ResourceAddress for EcrResourceAddress {
@@ -32,10 +31,7 @@ impl ResourceAddress for EcrResourceAddress {
     }
 
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
-        let path_components: Vec<&str> = path
-            .components()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         match &path_components[..] {
             ["aws", "ecr", region, "repositories", name] if name.ends_with(".ron") => {
@@ -45,23 +41,19 @@ impl ResourceAddress for EcrResourceAddress {
                     name,
                 })
             }
-            ["aws", "ecr", region, "repositories", name, "policy.ron"] => {
-                Ok(EcrResourceAddress::RepositoryPolicy {
-                    region: region.to_string(),
-                    name: name.to_string(),
-                })
-            }
+            ["aws", "ecr", region, "repositories", name, "policy.ron"] => Ok(EcrResourceAddress::RepositoryPolicy {
+                region: region.to_string(),
+                name:   name.to_string(),
+            }),
             ["aws", "ecr", region, "repositories", repo_name, "lifecycle_policy.ron"] => {
                 Ok(EcrResourceAddress::LifecyclePolicy {
                     region: region.to_string(),
-                    name: repo_name.to_string(),
+                    name:   repo_name.to_string(),
                 })
             }
-            ["aws", "ecr", region, "registry_policy.ron"] => {
-                Ok(EcrResourceAddress::RegistryPolicy {
-                    region: region.to_string(),
-                })
-            }
+            ["aws", "ecr", region, "registry_policy.ron"] => Ok(EcrResourceAddress::RegistryPolicy {
+                region: region.to_string(),
+            }),
             ["aws", "ecr", region, "pull_through_cache_rules", prefix] if prefix.ends_with(".ron") => {
                 let prefix = prefix.strip_suffix(".ron").unwrap().to_string();
                 Ok(EcrResourceAddress::PullThroughCacheRule {
@@ -69,7 +61,7 @@ impl ResourceAddress for EcrResourceAddress {
                     prefix,
                 })
             }
-            _ => Err(invalid_addr_path(path))
+            _ => Err(invalid_addr_path(path)),
         }
     }
 }

@@ -3,7 +3,6 @@ pub use crate::op::SecretsManagerConnectorOp;
 
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -30,7 +29,7 @@ use serde_json;
 use tokio::sync::Mutex;
 
 use crate::resource;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
 use tags::Tags;
 
 pub mod get;
@@ -126,64 +125,14 @@ impl Connector for SecretsManagerConnector {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
+        let secrets_config: SecretsManagerConnectorConfig = SecretsManagerConnectorConfig::try_load(&self.prefix).await?;
 
-        let region_str = "us-east-1";
-        let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
+        let account_id = secrets_config.verify_sts().await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .connect_timeout(Duration::from_secs(30))
-                    .operation_timeout(Duration::from_secs(30))
-                    .operation_attempt_timeout(Duration::from_secs(30))
-                    .read_timeout(Duration::from_secs(30))
-                    .build(),
-            )
-            .load()
-            .await;
-
-        tracing::warn!("SecretsManagerConnector::new()!");
-
-        // Get account ID from STS
-        let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(RegionProviderChain::first_try(Region::new("us-east-1".to_owned())))
-            .load()
-            .await;
-
-        let sts_client = aws_sdk_sts::Client::new(&sts_config);
-        let caller_identity = sts_client.get_caller_identity().send().await;
-
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
-
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let secrets_config: SecretsManagerConnectorConfig =
-                    SecretsManagerConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
-
-                *self.client_cache.lock().await = HashMap::new();
-                *self.config.lock().await = secrets_config;
-                *self.account_id.lock().await = account_id;
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
-        }
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = secrets_config;
+        *self.account_id.lock().await = account_id;
+        Ok(())
     }
 
     async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
@@ -220,8 +169,8 @@ impl Connector for SecretsManagerConnector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
@@ -258,21 +207,21 @@ impl Connector for SecretsManagerConnector {
         res.push(skeleton!(
             SecretsManagerResourceAddress::Secret {
                 region: String::from("[region]"),
-                name: String::from("[secret_name]")
+                name:   String::from("[secret_name]"),
             },
             SecretsManagerResource::Secret(Secret {
                 description: Some(String::from("Example secret description")),
                 kms_key_id: None,
                 secret_ref: Some(String::from("secret://aws/secretmanager/some/secret.sealed")),
                 tags: Tags::default(),
-                policy_document: default_policy
+                policy_document: default_policy,
             })
         ));
 
         Ok(res)
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
         match addr {
@@ -280,7 +229,7 @@ impl Connector for SecretsManagerConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
         match addr {

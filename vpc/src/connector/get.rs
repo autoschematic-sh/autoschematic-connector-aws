@@ -19,21 +19,25 @@ impl VpcConnector {
         let addr = VpcResourceAddress::from_path(addr)?;
 
         match addr {
-            VpcResourceAddress::Vpc(region, vpc_id) => {
+            VpcResourceAddress::Vpc { region, vpc_id } => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(vpc) = get_vpc(&client, &vpc_id).await? else {
                     return Ok(None);
                 };
                 get_resource_output!(VpcResource::Vpc(vpc), [(String::from("vpc_id"), Some(vpc_id))])
             }
-            VpcResourceAddress::Subnet(region, vpc_id, subnet_id) => {
+            VpcResourceAddress::Subnet {
+                region,
+                vpc_id,
+                subnet_id,
+            } => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(subnet) = get_subnet(&client, &vpc_id, &subnet_id).await? else {
                     return Ok(None);
                 };
                 get_resource_output!(VpcResource::Subnet(subnet), [(String::from("subnet_id"), Some(subnet_id))])
             }
-            VpcResourceAddress::InternetGateway(region, igw_id) => {
+            VpcResourceAddress::InternetGateway { region, igw_id } => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(igw) = get_igw(&client, &igw_id).await? else {
                     return Ok(None);
@@ -43,7 +47,7 @@ impl VpcConnector {
                     [(String::from("internet_gateway_id"), Some(igw_id))]
                 )
             }
-            VpcResourceAddress::RouteTable(region, vpc_id, rt_id) => {
+            VpcResourceAddress::RouteTable { region, vpc_id, rt_id } => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(route_table) = get_route_table(&client, &vpc_id, &rt_id).await? else {
                     return Ok(None);
@@ -53,7 +57,7 @@ impl VpcConnector {
                     [(String::from("route_table_id"), Some(rt_id))]
                 )
             }
-            VpcResourceAddress::SecurityGroup(region, vpc_id, sg_id) => {
+            VpcResourceAddress::SecurityGroup { region, vpc_id, sg_id } => {
                 let client = self.get_or_init_client(&region).await?;
                 let Some(security_group) = get_security_group(&client, &vpc_id, &sg_id).await? else {
                     return Ok(None);

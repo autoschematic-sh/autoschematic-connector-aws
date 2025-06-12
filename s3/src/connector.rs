@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -109,8 +108,8 @@ impl Connector for S3Connector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
@@ -147,7 +146,7 @@ impl Connector for S3Connector {
         res.push(skeleton!(
             S3ResourceAddress::Bucket {
                 region: String::from("[region]"),
-                name: String::from("[bucket_name]")
+                name:   String::from("[bucket_name]"),
             },
             resource::S3Resource::Bucket(resource::S3Bucket {
                 policy: Some(policy_ron_value),
@@ -155,35 +154,35 @@ impl Connector for S3Connector {
                     block_public_acls: true,
                     ignore_public_acls: true,
                     block_public_policy: true,
-                    restrict_public_buckets: true
+                    restrict_public_buckets: true,
                 }),
                 acl: resource::Acl {
                     owner_id: String::from("[owner_id]"),
-                    grants: vec![resource::Grant {
+                    grants:   vec![resource::Grant {
                         grantee_id: String::from("[grantee_id]"),
-                        permission: String::from("READ")
+                        permission: String::from("READ"),
                     }],
                 },
-                tags: Tags::default()
+                tags: Tags::default(),
             })
         ));
 
         Ok(res)
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = S3ResourceAddress::from_path(addr)?;
 
         match addr {
-            S3ResourceAddress::Bucket { region, name } => ron_check_eq::<resource::S3Bucket>(a, b),
+            S3ResourceAddress::Bucket { .. } => ron_check_eq::<resource::S3Bucket>(a, b),
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = S3ResourceAddress::from_path(addr)?;
 
         match addr {
-            S3ResourceAddress::Bucket { region, name } => ron_check_syntax::<resource::S3Bucket>(a),
+            S3ResourceAddress::Bucket { .. } => ron_check_syntax::<resource::S3Bucket>(a),
         }
     }
 }

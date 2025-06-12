@@ -9,9 +9,9 @@ type TargetGroupName = String;
 
 #[derive(Debug, Clone)]
 pub enum ElbResourceAddress {
-    LoadBalancer(Region, LoadBalancerName),                  // (region, load_balancer_name)
-    TargetGroup(Region, TargetGroupName),                   // (region, target_group_name)
-    Listener(Region, LoadBalancerName, ListenerId),          // (region, load_balancer_name, listener_id)
+    LoadBalancer(Region, LoadBalancerName),         // (region, load_balancer_name)
+    TargetGroup(Region, TargetGroupName),           // (region, target_group_name)
+    Listener(Region, LoadBalancerName, ListenerId), // (region, load_balancer_name, listener_id)
 }
 
 impl ResourceAddress for ElbResourceAddress {
@@ -31,30 +31,18 @@ impl ResourceAddress for ElbResourceAddress {
     }
 
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
-        let path_components: Vec<&str> = path
-            .components()
-            .into_iter()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         match &path_components[..] {
             ["aws", "elb", region, "load_balancers", name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
-                Ok(ElbResourceAddress::LoadBalancer(
-                    region.to_string(),
-                    name,
-                ))
+                Ok(ElbResourceAddress::LoadBalancer(region.to_string(), name))
             }
             ["aws", "elb", region, "target_groups", name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
-                Ok(ElbResourceAddress::TargetGroup(
-                    region.to_string(),
-                    name,
-                ))
+                Ok(ElbResourceAddress::TargetGroup(region.to_string(), name))
             }
-            ["aws", "elb", region, "load_balancers", lb_name, "listeners", listener_id]
-                if listener_id.ends_with(".ron") =>
-            {
+            ["aws", "elb", region, "load_balancers", lb_name, "listeners", listener_id] if listener_id.ends_with(".ron") => {
                 let listener_id = listener_id.strip_suffix(".ron").unwrap().to_string();
                 Ok(ElbResourceAddress::Listener(
                     region.to_string(),
@@ -62,7 +50,7 @@ impl ResourceAddress for ElbResourceAddress {
                     listener_id,
                 ))
             }
-            _ => Err(invalid_addr_path(path))
+            _ => Err(invalid_addr_path(path)),
         }
     }
 }

@@ -22,7 +22,13 @@ impl VpcConnector {
                     let Some(vpc_id) = vpc.vpc_id else {
                         continue;
                     };
-                    results.push(VpcResourceAddress::Vpc(region_name.to_string(), vpc_id.clone()).to_path_buf());
+                    results.push(
+                        VpcResourceAddress::Vpc {
+                            region: region_name.to_string(),
+                            vpc_id: vpc_id.clone(),
+                        }
+                        .to_path_buf(),
+                    );
 
                     let vpc_filter = Filter::builder().name("vpc-id").values(&vpc_id).build();
 
@@ -32,8 +38,12 @@ impl VpcConnector {
                         for subnet in subnets {
                             if let Some(subnet_id) = subnet.subnet_id {
                                 results.push(
-                                    VpcResourceAddress::Subnet(region_name.to_string(), vpc_id.clone(), subnet_id)
-                                        .to_path_buf(),
+                                    VpcResourceAddress::Subnet {
+                                        region: region_name.to_string(),
+                                        vpc_id: vpc_id.clone(),
+                                        subnet_id,
+                                    }
+                                    .to_path_buf(),
                                 );
                             }
                         }
@@ -45,7 +55,12 @@ impl VpcConnector {
                         for rt in route_tables {
                             if let Some(rt_id) = rt.route_table_id {
                                 results.push(
-                                    VpcResourceAddress::RouteTable(region_name.clone(), vpc_id.clone(), rt_id).to_path_buf(),
+                                    VpcResourceAddress::RouteTable {
+                                        region: region_name.clone(),
+                                        vpc_id: vpc_id.clone(),
+                                        rt_id,
+                                    }
+                                    .to_path_buf(),
                                 );
                             }
                         }
@@ -55,7 +70,12 @@ impl VpcConnector {
                         for sg in security_groups {
                             if let Some(sg_id) = sg.group_id {
                                 results.push(
-                                    VpcResourceAddress::SecurityGroup(region_name.clone(), vpc_id.clone(), sg_id).to_path_buf(),
+                                    VpcResourceAddress::SecurityGroup {
+                                        region: region_name.clone(),
+                                        vpc_id: vpc_id.clone(),
+                                        sg_id,
+                                    }
+                                    .to_path_buf(),
                                 );
                             }
                         }
@@ -67,7 +87,13 @@ impl VpcConnector {
             if let Some(igws) = igws_resp.internet_gateways {
                 for igw in igws {
                     if let Some(igw_id) = igw.internet_gateway_id {
-                        results.push(VpcResourceAddress::InternetGateway(region_name.clone(), igw_id).to_path_buf());
+                        results.push(
+                            VpcResourceAddress::InternetGateway {
+                                region: region_name.clone(),
+                                igw_id,
+                            }
+                            .to_path_buf(),
+                        );
                     }
                 }
             }

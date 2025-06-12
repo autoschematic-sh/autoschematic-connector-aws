@@ -4,7 +4,6 @@ use crate::resource::{self, FixedResponseConfig, RedirectConfig};
 
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -23,7 +22,7 @@ use autoschematic_core::{
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
 
 #[derive(Default)]
 pub struct ElbConnector {
@@ -85,64 +84,14 @@ impl Connector for ElbConnector {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
+        let elb_config: ElbConnectorConfig = ElbConnectorConfig::try_load(&self.prefix).await?;
 
-        let region_str = "us-east-1";
-        let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
+        let account_id = elb_config.verify_sts().await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .connect_timeout(Duration::from_secs(30))
-                    .operation_timeout(Duration::from_secs(30))
-                    .operation_attempt_timeout(Duration::from_secs(30))
-                    .read_timeout(Duration::from_secs(30))
-                    .build(),
-            )
-            .load()
-            .await;
-
-        tracing::warn!("VpcConnector::new()!");
-
-        // Get account ID from STS
-        let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(RegionProviderChain::first_try(Region::new("us-east-1".to_owned())))
-            .load()
-            .await;
-
-        let sts_client = aws_sdk_sts::Client::new(&sts_config);
-        let caller_identity = sts_client.get_caller_identity().send().await;
-
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
-
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let vpc_config: ElbConnectorConfig = ElbConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
-
-                *self.client_cache.lock().await = HashMap::new();
-                *self.config.lock().await = vpc_config;
-                *self.account_id.lock().await = account_id;
-                Ok(())
-            }
-
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
-        }
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = elb_config;
+        *self.account_id.lock().await = account_id;
+        Ok(())
     }
 
     async fn list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
@@ -263,7 +212,7 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::LoadBalancer(lb_resource).to_os_string()?,
+                    resource_definition: ElbResource::LoadBalancer(lb_resource).to_bytes()?,
                     outputs: None,
                 }))
             }
@@ -316,17 +265,15 @@ impl Connector for ElbConnector {
 
                 // Construct health check
                 let health_check = match &tg.health_check_protocol {
-                    Some(protocol) => {
-                        resource::HealthCheck {
-                            protocol: protocol.as_str().to_string(),
-                            port: tg.health_check_port.clone().unwrap_or_else(|| "traffic-port".to_string()),
-                            path: tg.health_check_path.clone(),
-                            interval_seconds: tg.health_check_interval_seconds.unwrap_or(30),
-                            timeout_seconds: tg.health_check_timeout_seconds.unwrap_or(5),
-                            healthy_threshold_count: tg.healthy_threshold_count.unwrap_or(5),
-                            unhealthy_threshold_count: tg.unhealthy_threshold_count.unwrap_or(2),
-                        }
-                    }
+                    Some(protocol) => resource::HealthCheck {
+                        protocol: protocol.as_str().to_string(),
+                        port: tg.health_check_port.clone().unwrap_or_else(|| "traffic-port".to_string()),
+                        path: tg.health_check_path.clone(),
+                        interval_seconds: tg.health_check_interval_seconds.unwrap_or(30),
+                        timeout_seconds: tg.health_check_timeout_seconds.unwrap_or(5),
+                        healthy_threshold_count: tg.healthy_threshold_count.unwrap_or(5),
+                        unhealthy_threshold_count: tg.unhealthy_threshold_count.unwrap_or(2),
+                    },
                     None => {
                         // Default health check
                         resource::HealthCheck {
@@ -356,7 +303,7 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::TargetGroup(tg_resource).to_os_string()?,
+                    resource_definition: ElbResource::TargetGroup(tg_resource).to_bytes()?,
                     outputs: None,
                 }))
             }
@@ -415,11 +362,9 @@ impl Connector for ElbConnector {
                 let certificates = listener.certificates.as_ref().map(|certs| {
                     certs
                         .iter()
-                        .map(|c| {
-                            resource::Certificate {
-                                certificate_arn: c.certificate_arn.clone().unwrap_or_default(),
-                                is_default: c.is_default.unwrap_or(false),
-                            }
+                        .map(|c| resource::Certificate {
+                            certificate_arn: c.certificate_arn.clone().unwrap_or_default(),
+                            is_default:      c.is_default.unwrap_or(false),
                         })
                         .collect()
                 });
@@ -457,7 +402,7 @@ impl Connector for ElbConnector {
                             let fixed_response_config = if action_type == "fixed-response" {
                                 if let Some(fixed_response_config) = &a.fixed_response_config {
                                     Some(FixedResponseConfig {
-                                        status_code: fixed_response_config.status_code.as_ref().map(|s| s.to_string()),
+                                        status_code:  fixed_response_config.status_code.as_ref().map(|s| s.to_string()),
                                         content_type: fixed_response_config.content_type.clone(),
                                         message_body: fixed_response_config.message_body.clone(),
                                     })
@@ -492,7 +437,7 @@ impl Connector for ElbConnector {
                 };
 
                 Ok(Some(GetResourceOutput {
-                    resource_definition: ElbResource::Listener(listener_resource).to_os_string()?,
+                    resource_definition: ElbResource::Listener(listener_resource).to_bytes()?,
                     outputs: None,
                 }))
             }
@@ -502,8 +447,8 @@ impl Connector for ElbConnector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         todo!()
     }
@@ -512,7 +457,7 @@ impl Connector for ElbConnector {
         todo!()
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {
@@ -522,7 +467,7 @@ impl Connector for ElbConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {

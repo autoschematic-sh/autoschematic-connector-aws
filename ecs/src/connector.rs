@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -14,8 +13,7 @@ use async_trait::async_trait;
 use autoschematic_core::{connector::FilterOutput, skeleton};
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress, SkeletonOutput,
     },
     diag::DiagnosticOutput,
     util::{ron_check_eq, ron_check_syntax},
@@ -23,7 +21,7 @@ use autoschematic_core::{
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
 
 pub mod get;
 pub mod list;
@@ -33,7 +31,7 @@ pub mod plan;
 #[derive(Default)]
 pub struct EcsConnector {
     client_cache: Mutex<HashMap<String, Arc<aws_sdk_ecs::Client>>>,
-    account_id: Mutex<Option<String>>,
+    account_id: Mutex<String>,
     config: Mutex<EcsConnectorConfig>,
     prefix: PathBuf,
 }
@@ -82,63 +80,14 @@ impl Connector for EcsConnector {
     }
 
     async fn init(&self) -> anyhow::Result<()> {
-        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
+        let ecs_config: EcsConnectorConfig = EcsConnectorConfig::try_load(&self.prefix).await?;
 
-        let region_str = "us-east-1";
-        let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
+        let account_id = ecs_config.verify_sts().await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .connect_timeout(Duration::from_secs(30))
-                    .operation_timeout(Duration::from_secs(30))
-                    .operation_attempt_timeout(Duration::from_secs(30))
-                    .read_timeout(Duration::from_secs(30))
-                    .build(),
-            )
-            .load()
-            .await;
-
-        tracing::warn!("EcsConnector::new()!");
-
-        // Get account ID from STS
-        let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(RegionProviderChain::first_try(Region::new("us-east-1".to_owned())))
-            .load()
-            .await;
-
-        let sts_client = aws_sdk_sts::Client::new(&sts_config);
-        let caller_identity = sts_client.get_caller_identity().send().await;
-
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
-
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let vpc_config: EcsConnectorConfig = EcsConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
-
-                *self.client_cache.lock().await = HashMap::new();
-                *self.config.lock().await = vpc_config;
-                *self.account_id.lock().await = Some(account_id);
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
-        }
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = ecs_config;
+        *self.account_id.lock().await = account_id;
+        Ok(())
     }
 
     async fn filter(&self, addr: &Path) -> anyhow::Result<FilterOutput> {
@@ -160,8 +109,8 @@ impl Connector for EcsConnector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
@@ -192,7 +141,7 @@ impl Connector for EcsConnector {
                     },
                 ],
                 settings: vec![resource::ClusterSetting {
-                    name: String::from("containerInsights"),
+                    name:  String::from("containerInsights"),
                     value: String::from("enabled"),
                 }],
                 configuration: Some(resource::ClusterConfiguration {
@@ -222,7 +171,7 @@ impl Connector for EcsConnector {
                 platform_family: None,
                 deployment_configuration: Some(resource::DeploymentConfiguration {
                     deployment_circuit_breaker: Some(resource::DeploymentCircuitBreaker {
-                        enable: true,
+                        enable:   true,
                         rollback: true,
                     }),
                     maximum_percent: Some(200),
@@ -241,12 +190,12 @@ impl Connector for EcsConnector {
                 placement_constraints: Vec::new(),
                 placement_strategy: Vec::new(),
                 load_balancers: vec![resource::LoadBalancer {
-                    target_group_arn: Some(String::from(
+                    target_group_arn:   Some(String::from(
                         "arn:aws:elasticloadbalancing:[region]:[account_id]:targetgroup/[target-group-name]/[target-group-id]"
                     )),
                     load_balancer_name: None,
-                    container_name: Some(String::from("web")),
-                    container_port: Some(80),
+                    container_name:     Some(String::from("web")),
+                    container_port:     Some(80),
                 },],
                 service_registries: Vec::new(),
                 scheduling_strategy: Some(String::from("REPLICA")),
@@ -280,7 +229,7 @@ impl Connector for EcsConnector {
                     entry_point: Vec::new(),
                     command: Vec::new(),
                     environment: vec![resource::KeyValuePair {
-                        name: Some(String::from("ENVIRONMENT")),
+                        name:  Some(String::from("ENVIRONMENT")),
                         value: Some(String::from("production")),
                     },],
                     environment_files: Vec::new(),
@@ -317,10 +266,10 @@ impl Connector for EcsConnector {
                         secret_options: Vec::new(),
                     }),
                     health_check: Some(resource::HealthCheck {
-                        command: vec![String::from("CMD-SHELL"), String::from("curl -f http://localhost/ || exit 1"),],
-                        interval: Some(30),
-                        timeout: Some(5),
-                        retries: Some(3),
+                        command:      vec![String::from("CMD-SHELL"), String::from("curl -f http://localhost/ || exit 1"),],
+                        interval:     Some(30),
+                        timeout:      Some(5),
+                        retries:      Some(3),
                         start_period: Some(60),
                     }),
                     system_controls: Vec::new(),
@@ -391,20 +340,20 @@ impl Connector for EcsConnector {
                 platform_version: Some(String::from("1.4.0")),
                 platform_family: None,
                 attachments: vec![resource::Attachment {
-                    id: String::from("attachment-1234567890abcdef0"),
-                    r#type: String::from("ElasticNetworkInterface"),
-                    status: String::from("ATTACHED"),
+                    id:      String::from("attachment-1234567890abcdef0"),
+                    r#type:  String::from("ElasticNetworkInterface"),
+                    status:  String::from("ATTACHED"),
                     details: vec![
                         resource::KeyValuePair {
-                            name: Some(String::from("subnetId")),
+                            name:  Some(String::from("subnetId")),
                             value: Some(String::from("subnet-0123456789abcdef0")),
                         },
                         resource::KeyValuePair {
-                            name: Some(String::from("networkInterfaceId")),
+                            name:  Some(String::from("networkInterfaceId")),
                             value: Some(String::from("eni-0123456789abcdef0")),
                         },
                         resource::KeyValuePair {
-                            name: Some(String::from("privateIPv4Address")),
+                            name:  Some(String::from("privateIPv4Address")),
                             value: Some(String::from("10.0.1.100")),
                         },
                     ],
@@ -425,8 +374,8 @@ impl Connector for EcsConnector {
                 capacity_provider_name: Some(String::from("capacity-provider-name")),
                 version: Some(8),
                 version_info: Some(resource::VersionInfo {
-                    agent_version: Some(String::from("1.57.1")),
-                    agent_hash: Some(String::from("12345678abc")),
+                    agent_version:  Some(String::from("1.57.1")),
+                    agent_hash:     Some(String::from("12345678abc")),
                     docker_version: Some(String::from("20.10.13")),
                 }),
                 remaining_resources: vec![
@@ -499,7 +448,7 @@ impl Connector for EcsConnector {
         Ok(res)
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = EcsResourceAddress::from_path(addr)?;
         match addr {
             EcsResourceAddress::Cluster(_, _) => ron_check_eq::<resource::Cluster>(a, b),
@@ -510,7 +459,7 @@ impl Connector for EcsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
 
         match addr {

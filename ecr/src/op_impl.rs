@@ -1,4 +1,4 @@
-use anyhow::{bail, Context};
+use anyhow::{Context, bail};
 use std::collections::HashMap;
 
 use super::{
@@ -10,18 +10,19 @@ use autoschematic_core::connector::OpExecOutput;
 /// Creates a repository using the provided configuration
 pub async fn create_repository(
     client: &aws_sdk_ecr::Client,
+    name: &String,
     repo: &Repository,
 ) -> Result<OpExecOutput, anyhow::Error> {
     // Create the repository
-    let mut create_repo = client.create_repository();
+    let mut create_repo = client.create_repository().repository_name(name);
 
     if let Some(image_tag_mutability) = &repo.image_tag_mutability {
         create_repo = create_repo.image_tag_mutability(image_tag_mutability.as_str().into());
     }
 
     if let Some(encryption) = &repo.encryption_configuration {
-        let mut encryption_config = aws_sdk_ecr::types::EncryptionConfiguration::builder()
-            .encryption_type(encryption.encryption_type.as_str().into());
+        let mut encryption_config =
+            aws_sdk_ecr::types::EncryptionConfiguration::builder().encryption_type(encryption.encryption_type.as_str().into());
 
         if let Some(kms_key) = &encryption.kms_key {
             encryption_config = encryption_config.kms_key(kms_key);
@@ -58,10 +59,7 @@ pub async fn create_repository(
     };
 
     let mut outputs = HashMap::new();
-    outputs.insert(
-        String::from("repository_name"),
-        Some(repository_name.clone()),
-    );
+    outputs.insert(String::from("repository_name"), Some(repository_name.clone()));
     outputs.insert(String::from("repository_uri"), Some(repository_uri.clone()));
 
     Ok(OpExecOutput {
@@ -121,10 +119,7 @@ pub async fn update_repository_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Updated tags for ECR repository {}",
-            repository_name
-        )),
+        friendly_message: Some(format!("Updated tags for ECR repository {}", repository_name)),
     })
 }
 
@@ -184,8 +179,8 @@ pub async fn update_encryption_configuration(
     encryption_configuration: Option<EncryptionConfiguration>,
 ) -> Result<OpExecOutput, anyhow::Error> {
     let encryption_config = if let Some(encryption) = encryption_configuration {
-        let mut builder = aws_sdk_ecr::types::EncryptionConfiguration::builder()
-            .encryption_type(encryption.encryption_type.as_str().into());
+        let mut builder =
+            aws_sdk_ecr::types::EncryptionConfiguration::builder().encryption_type(encryption.encryption_type.as_str().into());
 
         if let Some(kms_key) = &encryption.kms_key {
             builder = builder.kms_key(kms_key);
@@ -263,8 +258,7 @@ pub async fn set_repository_policy(
     policy_document: &ron::Value,
 ) -> Result<OpExecOutput, anyhow::Error> {
     // Convert RON policy to JSON
-    let policy_json = serde_json::to_string(policy_document)
-        .context("Failed to serialize repository policy as JSON")?;
+    let policy_json = serde_json::to_string(policy_document).context("Failed to serialize repository policy as JSON")?;
 
     client
         .set_repository_policy()
@@ -275,10 +269,7 @@ pub async fn set_repository_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Set repository policy for ECR repository {}",
-            repository_name
-        )),
+        friendly_message: Some(format!("Set repository policy for ECR repository {}", repository_name)),
     })
 }
 
@@ -295,10 +286,7 @@ pub async fn delete_repository_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Deleted repository policy for ECR repository {}",
-            repository_name
-        )),
+        friendly_message: Some(format!("Deleted repository policy for ECR repository {}", repository_name)),
     })
 }
 
@@ -309,8 +297,7 @@ pub async fn set_lifecycle_policy(
     lifecycle_policy_text: &ron::Value,
 ) -> Result<OpExecOutput, anyhow::Error> {
     // Convert RON policy to JSON
-    let policy_json = serde_json::to_string(lifecycle_policy_text)
-        .context("Failed to serialize lifecycle policy as JSON")?;
+    let policy_json = serde_json::to_string(lifecycle_policy_text).context("Failed to serialize lifecycle policy as JSON")?;
 
     client
         .put_lifecycle_policy()
@@ -321,10 +308,7 @@ pub async fn set_lifecycle_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Set lifecycle policy for ECR repository {}",
-            repository_name
-        )),
+        friendly_message: Some(format!("Set lifecycle policy for ECR repository {}", repository_name)),
     })
 }
 
@@ -341,10 +325,7 @@ pub async fn delete_lifecycle_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Deleted lifecycle policy for ECR repository {}",
-            repository_name
-        )),
+        friendly_message: Some(format!("Deleted lifecycle policy for ECR repository {}", repository_name)),
     })
 }
 
@@ -354,14 +335,9 @@ pub async fn set_registry_policy(
     policy_document: &ron::Value,
 ) -> Result<OpExecOutput, anyhow::Error> {
     // Convert RON policy to JSON
-    let policy_json = serde_json::to_string(policy_document)
-        .context("Failed to serialize registry policy as JSON")?;
+    let policy_json = serde_json::to_string(policy_document).context("Failed to serialize registry policy as JSON")?;
 
-    client
-        .put_registry_policy()
-        .policy_text(policy_json)
-        .send()
-        .await?;
+    client.put_registry_policy().policy_text(policy_json).send().await?;
 
     Ok(OpExecOutput {
         outputs: None,
@@ -370,9 +346,7 @@ pub async fn set_registry_policy(
 }
 
 /// Deletes a registry policy
-pub async fn delete_registry_policy(
-    client: &aws_sdk_ecr::Client,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_registry_policy(client: &aws_sdk_ecr::Client) -> Result<OpExecOutput, anyhow::Error> {
     client.delete_registry_policy().send().await?;
 
     Ok(OpExecOutput {
@@ -414,20 +388,13 @@ pub async fn untag_image(
     client
         .batch_delete_image()
         .repository_name(repository_name)
-        .image_ids(
-            aws_sdk_ecr::types::ImageIdentifier::builder()
-                .image_tag(image_tag)
-                .build(),
-        )
+        .image_ids(aws_sdk_ecr::types::ImageIdentifier::builder().image_tag(image_tag).build())
         .send()
         .await?;
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Untagged image {} in ECR repository {}",
-            image_tag, repository_name
-        )),
+        friendly_message: Some(format!("Untagged image {} in ECR repository {}", image_tag, repository_name)),
     })
 }
 
@@ -572,9 +539,7 @@ pub async fn set_replication_configuration(
 }
 
 /// Deletes replication configuration
-pub async fn delete_replication_configuration(
-    client: &aws_sdk_ecr::Client,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_replication_configuration(client: &aws_sdk_ecr::Client) -> Result<OpExecOutput, anyhow::Error> {
     // To delete all replication rules, set an empty rules array
     let replication_config = aws_sdk_ecr::types::ReplicationConfiguration::builder()
         .set_rules(Some(Vec::new()))

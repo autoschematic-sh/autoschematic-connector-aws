@@ -9,7 +9,6 @@ pub mod plan;
 
 use std::{
     collections::HashMap,
-    ffi::{OsStr, OsString},
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
@@ -17,7 +16,11 @@ use std::{
 
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_core::{connector::FilterOutput, skeleton};
+use autoschematic_core::{
+    connector::FilterOutput,
+    skeleton,
+    util::{ron_check_eq, ron_check_syntax},
+};
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
@@ -36,12 +39,12 @@ use crate::resource::{
     RepositoryPolicy,
 };
 use crate::tags::Tags;
-use autoschematic_connector_aws_core::config::AwsConnectorConfig;
+use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
 
 #[derive(Default)]
 pub struct EcrConnector {
     client_cache: Mutex<HashMap<String, Arc<aws_sdk_ecr::Client>>>,
-    account_id: Mutex<Option<String>>,
+    account_id: Mutex<String>,
     config: Mutex<EcrConnectorConfig>,
     prefix: PathBuf,
 }
@@ -98,61 +101,14 @@ impl Connector for EcrConnector {
     }
 
     async fn init(&self) -> Result<(), anyhow::Error> {
-        let config_file = AwsConnectorConfig::try_load(&self.prefix)?;
+        let ecr_config: EcrConnectorConfig = EcrConnectorConfig::try_load(&self.prefix).await?;
 
-        let region_str = "us-east-1";
-        let region = RegionProviderChain::first_try(Region::new(region_str.to_owned()));
+        let account_id = ecr_config.verify_sts().await?;
 
-        let config = aws_config::defaults(BehaviorVersion::latest())
-            .region(region)
-            .timeout_config(
-                TimeoutConfig::builder()
-                    .connect_timeout(Duration::from_secs(30))
-                    .operation_timeout(Duration::from_secs(30))
-                    .operation_attempt_timeout(Duration::from_secs(30))
-                    .read_timeout(Duration::from_secs(30))
-                    .build(),
-            )
-            .load()
-            .await;
-
-        // Get account ID from STS
-        let sts_config = aws_config::defaults(BehaviorVersion::latest())
-            .region(RegionProviderChain::first_try(Region::new("us-east-1".to_owned())))
-            .load()
-            .await;
-
-        let sts_client = aws_sdk_sts::Client::new(&sts_config);
-        let caller_identity = sts_client.get_caller_identity().send().await;
-
-        match caller_identity {
-            Ok(caller_identity) => {
-                let Some(account_id) = caller_identity.account else {
-                    bail!("Failed to get current account ID!");
-                };
-
-                if let Some(config_file) = config_file {
-                    if config_file.account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_file.account_id
-                        );
-                    }
-                }
-
-                let vpc_config: EcrConnectorConfig = EcrConnectorConfig::try_load(&self.prefix)?.unwrap_or_default();
-
-                *self.client_cache.lock().await = HashMap::new();
-                *self.config.lock().await = vpc_config;
-                *self.account_id.lock().await = Some(account_id);
-                Ok(())
-            }
-            Err(e) => {
-                tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
-                Err(e.into())
-            }
-        }
+        *self.client_cache.lock().await = HashMap::new();
+        *self.config.lock().await = ecr_config;
+        *self.account_id.lock().await = account_id;
+        Ok(())
     }
 
     async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
@@ -166,8 +122,8 @@ impl Connector for EcrConnector {
     async fn plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
@@ -183,7 +139,7 @@ impl Connector for EcrConnector {
         res.push(skeleton!(
             EcrResourceAddress::Repository {
                 region: String::from("[region]"),
-                name: String::from("[repository_name]")
+                name:   String::from("[repository_name]"),
             },
             EcrResource::Repository(Repository {
                 encryption_configuration: Some(EncryptionConfiguration {
@@ -192,7 +148,7 @@ impl Connector for EcrConnector {
                 }),
                 image_tag_mutability: Some(String::from("IMMUTABLE")), // or "MUTABLE"
                 image_scanning_configuration: Some(ImageScanningConfiguration { scan_on_push: true }),
-                tags: Tags::default()
+                tags: Tags::default(),
             })
         ));
 
@@ -220,7 +176,7 @@ impl Connector for EcrConnector {
         res.push(skeleton!(
             EcrResourceAddress::RepositoryPolicy {
                 region: String::from("[region]"),
-                name: String::from("[repository_name]")
+                name:   String::from("[repository_name]"),
             },
             EcrResource::RepositoryPolicy(RepositoryPolicy {
                 policy_document: repo_policy_ron_value,
@@ -263,7 +219,7 @@ impl Connector for EcrConnector {
         res.push(skeleton!(
             EcrResourceAddress::LifecyclePolicy {
                 region: String::from("[region]"),
-                name: String::from("[repository_name]")
+                name:   String::from("[repository_name]"),
             },
             EcrResource::LifecyclePolicy(LifecyclePolicy {
                 lifecycle_policy_text: lifecycle_policy_ron_value,
@@ -301,7 +257,7 @@ impl Connector for EcrConnector {
 
         res.push(skeleton!(
             EcrResourceAddress::RegistryPolicy {
-                region: String::from("[region]")
+                region: String::from("[region]"),
             },
             EcrResource::RegistryPolicy(RegistryPolicy {
                 policy_document: registry_policy_ron_value,
@@ -312,7 +268,7 @@ impl Connector for EcrConnector {
         res.push(skeleton!(
             EcrResourceAddress::PullThroughCacheRule {
                 region: String::from("[region]"),
-                prefix: String::from("[ecr_repository_prefix]")
+                prefix: String::from("[ecr_repository_prefix]"),
             },
             EcrResource::PullThroughCacheRule(PullThroughCacheRule {
                 upstream_registry_url: String::from("public.ecr.aws"), // Example for AWS public registry
@@ -323,26 +279,26 @@ impl Connector for EcrConnector {
         Ok(res)
     }
 
-    async fn eq(&self, addr: &Path, a: &OsStr, b: &OsStr) -> anyhow::Result<bool> {
+    async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = EcrResourceAddress::from_path(addr)?;
         match addr {
-            EcrResourceAddress::Repository { region: _, name: _ } => todo!(),
-            EcrResourceAddress::RepositoryPolicy { region: _, name: _ } => todo!(),
-            EcrResourceAddress::LifecyclePolicy { region, name } => todo!(),
-            EcrResourceAddress::RegistryPolicy { region } => todo!(),
-            EcrResourceAddress::PullThroughCacheRule { region, prefix } => todo!(),
+            EcrResourceAddress::Repository { region: _, name: _ } => ron_check_eq::<Repository>(a, b),
+            EcrResourceAddress::RepositoryPolicy { region: _, name: _ } => ron_check_eq::<RepositoryPolicy>(a, b),
+            EcrResourceAddress::LifecyclePolicy { region, name } => ron_check_eq::<LifecyclePolicy>(a, b),
+            EcrResourceAddress::RegistryPolicy { region } => ron_check_eq::<RegistryPolicy>(a, b),
+            EcrResourceAddress::PullThroughCacheRule { region, prefix } => ron_check_eq::<PullThroughCacheRule>(a, b),
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &OsStr) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = EcrResourceAddress::from_path(addr)?;
 
         match addr {
-            EcrResourceAddress::Repository { region, name } => todo!(),
-            EcrResourceAddress::RepositoryPolicy { region, name } => todo!(),
-            EcrResourceAddress::LifecyclePolicy { region, name } => todo!(),
-            EcrResourceAddress::RegistryPolicy { region } => todo!(),
-            EcrResourceAddress::PullThroughCacheRule { region, prefix } => todo!(),
+            EcrResourceAddress::Repository { region: _, name: _ } => ron_check_syntax::<Repository>(a),
+            EcrResourceAddress::RepositoryPolicy { region: _, name: _ } => ron_check_syntax::<RepositoryPolicy>(a),
+            EcrResourceAddress::LifecyclePolicy { region, name } => ron_check_syntax::<LifecyclePolicy>(a),
+            EcrResourceAddress::RegistryPolicy { region } => ron_check_syntax::<RegistryPolicy>(a),
+            EcrResourceAddress::PullThroughCacheRule { region, prefix } => ron_check_syntax::<PullThroughCacheRule>(a),
         }
     }
 }

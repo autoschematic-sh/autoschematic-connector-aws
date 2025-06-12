@@ -1,9 +1,9 @@
-use std::{ffi::OsString, path::Path};
+use std::path::Path;
 
 use autoschematic_core::{
     connector::{OpPlanOutput, ResourceAddress},
     connector_op,
-    util::{diff_ron_values, optional_string_from_utf8, RON},
+    util::{RON, diff_ron_values, optional_string_from_utf8},
 };
 
 use autoschematic_core::connector::ConnectorOp;
@@ -16,8 +16,8 @@ impl EcrConnector {
     pub async fn do_plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         let addr = EcrResourceAddress::from_path(addr)?;
 
@@ -35,12 +35,10 @@ impl EcrConnector {
                             format!("Create new ECR repository {} in region {}", name, region)
                         )])
                     }
-                    (Some(_old_repo), None) => {
-                        Ok(vec![connector_op!(
-                            EcrConnectorOp::DeleteRepository { force: true },
-                            format!("DELETE ECR repository {} in region {}", name, region)
-                        )])
-                    }
+                    (Some(_old_repo), None) => Ok(vec![connector_op!(
+                        EcrConnectorOp::DeleteRepository { force: true },
+                        format!("DELETE ECR repository {} in region {}", name, region)
+                    )]),
                     (Some(old_repo), Some(new_repo)) => {
                         let old_repo: Repository = RON.from_str(&old_repo)?;
                         let new_repo: Repository = RON.from_str(&new_repo)?;
@@ -96,117 +94,105 @@ impl EcrConnector {
                     }
                 }
             }
-            EcrResourceAddress::RepositoryPolicy { region, name } => {
-                match (current, desired) {
-                    (None, None) => Ok(Vec::new()),
-                    (None, Some(new_policy)) => {
-                        let new_policy: RepositoryPolicy = RON.from_str(&new_policy)?;
+            EcrResourceAddress::RepositoryPolicy { region, name } => match (current, desired) {
+                (None, None) => Ok(Vec::new()),
+                (None, Some(new_policy)) => {
+                    let new_policy: RepositoryPolicy = RON.from_str(&new_policy)?;
+                    Ok(vec![connector_op!(
+                        EcrConnectorOp::SetRepositoryPolicy {
+                            policy_document: new_policy.policy_document,
+                        },
+                        format!("Create repository policy for ECR repository {} in region {}", name, region)
+                    )])
+                }
+                (Some(_old_policy), None) => Ok(vec![connector_op!(
+                    EcrConnectorOp::DeleteRepositoryPolicy,
+                    format!("DELETE repository policy for ECR repository {} in region {}", name, region)
+                )]),
+                (Some(old_policy), Some(new_policy)) => {
+                    let old_policy: RepositoryPolicy = RON.from_str(&old_policy)?;
+                    let new_policy: RepositoryPolicy = RON.from_str(&new_policy)?;
+
+                    if old_policy.policy_document != new_policy.policy_document {
+                        let diff =
+                            diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
                         Ok(vec![connector_op!(
                             EcrConnectorOp::SetRepositoryPolicy {
                                 policy_document: new_policy.policy_document,
                             },
-                            format!("Create repository policy for ECR repository {} in region {}", name, region)
+                            format!("Update repository policy for ECR repository `{}`\n{}", name, diff)
                         )])
-                    }
-                    (Some(_old_policy), None) => {
-                        Ok(vec![connector_op!(
-                            EcrConnectorOp::DeleteRepositoryPolicy,
-                            format!("DELETE repository policy for ECR repository {} in region {}", name, region)
-                        )])
-                    }
-                    (Some(old_policy), Some(new_policy)) => {
-                        let old_policy: RepositoryPolicy = RON.from_str(&old_policy)?;
-                        let new_policy: RepositoryPolicy = RON.from_str(&new_policy)?;
-
-                        if old_policy.policy_document != new_policy.policy_document {
-                            let diff =
-                                diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
-                            Ok(vec![connector_op!(
-                                EcrConnectorOp::SetRepositoryPolicy {
-                                    policy_document: new_policy.policy_document,
-                                },
-                                format!("Update repository policy for ECR repository `{}`\n{}", name, diff)
-                            )])
-                        } else {
-                            Ok(Vec::new())
-                        }
+                    } else {
+                        Ok(Vec::new())
                     }
                 }
-            }
-            EcrResourceAddress::LifecyclePolicy { region, name } => {
-                match (current, desired) {
-                    (None, None) => Ok(Vec::new()),
-                    (None, Some(new_policy)) => {
-                        let new_policy: LifecyclePolicy = RON.from_str(&new_policy)?;
+            },
+            EcrResourceAddress::LifecyclePolicy { region, name } => match (current, desired) {
+                (None, None) => Ok(Vec::new()),
+                (None, Some(new_policy)) => {
+                    let new_policy: LifecyclePolicy = RON.from_str(&new_policy)?;
+                    Ok(vec![connector_op!(
+                        EcrConnectorOp::SetLifecyclePolicy {
+                            lifecycle_policy_text: new_policy.lifecycle_policy_text,
+                        },
+                        format!("Create lifecycle policy for ECR repository {} in region {}", name, region)
+                    )])
+                }
+                (Some(_old_policy), None) => Ok(vec![connector_op!(
+                    EcrConnectorOp::DeleteLifecyclePolicy,
+                    format!("DELETE lifecycle policy for ECR repository {} in region {}", name, region)
+                )]),
+                (Some(old_policy), Some(new_policy)) => {
+                    let old_policy: LifecyclePolicy = RON.from_str(&old_policy)?;
+                    let new_policy: LifecyclePolicy = RON.from_str(&new_policy)?;
+
+                    if old_policy.lifecycle_policy_text != new_policy.lifecycle_policy_text {
+                        let diff = diff_ron_values(&old_policy.lifecycle_policy_text, &new_policy.lifecycle_policy_text)
+                            .unwrap_or_default();
                         Ok(vec![connector_op!(
                             EcrConnectorOp::SetLifecyclePolicy {
                                 lifecycle_policy_text: new_policy.lifecycle_policy_text,
                             },
-                            format!("Create lifecycle policy for ECR repository {} in region {}", name, region)
+                            format!("Update lifecycle policy for ECR repository `{}`\n{}", name, diff)
                         )])
-                    }
-                    (Some(_old_policy), None) => {
-                        Ok(vec![connector_op!(
-                            EcrConnectorOp::DeleteLifecyclePolicy,
-                            format!("DELETE lifecycle policy for ECR repository {} in region {}", name, region)
-                        )])
-                    }
-                    (Some(old_policy), Some(new_policy)) => {
-                        let old_policy: LifecyclePolicy = RON.from_str(&old_policy)?;
-                        let new_policy: LifecyclePolicy = RON.from_str(&new_policy)?;
-
-                        if old_policy.lifecycle_policy_text != new_policy.lifecycle_policy_text {
-                            let diff = diff_ron_values(&old_policy.lifecycle_policy_text, &new_policy.lifecycle_policy_text)
-                                .unwrap_or_default();
-                            Ok(vec![connector_op!(
-                                EcrConnectorOp::SetLifecyclePolicy {
-                                    lifecycle_policy_text: new_policy.lifecycle_policy_text,
-                                },
-                                format!("Update lifecycle policy for ECR repository `{}`\n{}", name, diff)
-                            )])
-                        } else {
-                            Ok(Vec::new())
-                        }
+                    } else {
+                        Ok(Vec::new())
                     }
                 }
-            }
-            EcrResourceAddress::RegistryPolicy { region } => {
-                match (current, desired) {
-                    (None, None) => Ok(Vec::new()),
-                    (None, Some(new_policy)) => {
-                        let new_policy: RegistryPolicy = RON.from_str(&new_policy)?;
+            },
+            EcrResourceAddress::RegistryPolicy { region } => match (current, desired) {
+                (None, None) => Ok(Vec::new()),
+                (None, Some(new_policy)) => {
+                    let new_policy: RegistryPolicy = RON.from_str(&new_policy)?;
+                    Ok(vec![connector_op!(
+                        EcrConnectorOp::SetRegistryPolicy {
+                            policy_document: new_policy.policy_document,
+                        },
+                        format!("Create registry policy in region {}", region)
+                    )])
+                }
+                (Some(_old_policy), None) => Ok(vec![connector_op!(
+                    EcrConnectorOp::DeleteRegistryPolicy,
+                    format!("DELETE registry policy in region {}", region)
+                )]),
+                (Some(old_policy), Some(new_policy)) => {
+                    let old_policy: RegistryPolicy = RON.from_str(&old_policy)?;
+                    let new_policy: RegistryPolicy = RON.from_str(&new_policy)?;
+
+                    if old_policy.policy_document != new_policy.policy_document {
+                        let diff =
+                            diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
                         Ok(vec![connector_op!(
                             EcrConnectorOp::SetRegistryPolicy {
                                 policy_document: new_policy.policy_document,
                             },
-                            format!("Create registry policy in region {}", region)
+                            format!("Update registry policy in region `{}`\n{}", region, diff)
                         )])
-                    }
-                    (Some(_old_policy), None) => {
-                        Ok(vec![connector_op!(
-                            EcrConnectorOp::DeleteRegistryPolicy,
-                            format!("DELETE registry policy in region {}", region)
-                        )])
-                    }
-                    (Some(old_policy), Some(new_policy)) => {
-                        let old_policy: RegistryPolicy = RON.from_str(&old_policy)?;
-                        let new_policy: RegistryPolicy = RON.from_str(&new_policy)?;
-
-                        if old_policy.policy_document != new_policy.policy_document {
-                            let diff =
-                                diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
-                            Ok(vec![connector_op!(
-                                EcrConnectorOp::SetRegistryPolicy {
-                                    policy_document: new_policy.policy_document,
-                                },
-                                format!("Update registry policy in region `{}`\n{}", region, diff)
-                            )])
-                        } else {
-                            Ok(Vec::new())
-                        }
+                    } else {
+                        Ok(Vec::new())
                     }
                 }
-            }
+            },
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => {
                 match (current, desired) {
                     (None, None) => Ok(Vec::new()),
@@ -220,13 +206,10 @@ impl EcrConnector {
                             format!("Create pull through cache rule for prefix {} in region {}", prefix, region)
                         )])
                     }
-                    (Some(_old_rule), None) => {
-                        Ok(vec![connector_op!(
-                            EcrConnectorOp::DeletePullThroughCacheRule {
-                            },
-                            format!("DELETE pull through cache rule for prefix {} in region {}", prefix, region)
-                        )])
-                    }
+                    (Some(_old_rule), None) => Ok(vec![connector_op!(
+                        EcrConnectorOp::DeletePullThroughCacheRule {},
+                        format!("DELETE pull through cache rule for prefix {} in region {}", prefix, region)
+                    )]),
                     (Some(old_rule), Some(new_rule)) => {
                         let old_rule: PullThroughCacheRule = RON.from_str(&old_rule)?;
                         let new_rule: PullThroughCacheRule = RON.from_str(&new_rule)?;
@@ -236,8 +219,7 @@ impl EcrConnector {
                         if old_rule != new_rule {
                             Ok(vec![
                                 connector_op!(
-                                    EcrConnectorOp::DeletePullThroughCacheRule {
-                                    },
+                                    EcrConnectorOp::DeletePullThroughCacheRule {},
                                     format!("DELETE existing pull through cache rule for prefix {}", prefix)
                                 ),
                                 connector_op!(

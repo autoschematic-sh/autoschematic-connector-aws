@@ -1,17 +1,16 @@
+use std::collections::HashMap;
 
 use aws_sdk_ec2::types::Tag;
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 
-
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Tags(IndexMap<String, String>);
+pub struct Tags(HashMap<String, String>);
 
 impl From<Option<Vec<Tag>>> for Tags {
     fn from(value: Option<Vec<Tag>>) -> Self {
         match value {
             Some(mut tags) => {
-                let mut out_map = IndexMap::new();
+                let mut out_map = HashMap::new();
                 tags.sort_by_key(|t| t.key.clone());
                 for tag in tags {
                     if let (Some(key), Some(value)) = (tag.key, tag.value) {
@@ -20,7 +19,7 @@ impl From<Option<Vec<Tag>>> for Tags {
                 }
                 Tags(out_map)
             }
-            None => Tags(IndexMap::new()),
+            None => Tags(HashMap::new()),
         }
     }
 }

@@ -1,20 +1,16 @@
 use anyhow::Context;
 use aws_sdk_ecs::{
+    Client,
     types::{
-        CapacityProviderStrategyItem, ClusterSetting, ContainerDefinition,
-        DeploymentCircuitBreaker, DeploymentConfiguration, KeyValuePair, LoadBalancer,
-        NetworkConfiguration, PlacementConstraint, PlacementStrategy, ServiceRegistry, Tag,
+        CapacityProviderStrategyItem, ClusterSetting, ContainerDefinition, DeploymentCircuitBreaker, DeploymentConfiguration,
+        KeyValuePair, LoadBalancer, NetworkConfiguration, PlacementConstraint, PlacementStrategy, ServiceRegistry, Tag,
         TaskDefinitionPlacementConstraint, TaskOverride,
     },
-    Client,
 };
 use std::collections::HashMap;
 
 use super::{
-    op::{
-        NetworkConfigurationRequest,
-        TaskOverride as OpTaskOverride,
-    },
+    op::{NetworkConfigurationRequest, TaskOverride as OpTaskOverride},
     resource::{Cluster as EcsCluster, Service, TaskDefinition},
     tags::Tags,
     util::{get_cluster, get_service},
@@ -24,19 +20,14 @@ use autoschematic_core::connector::OpExecOutput;
 // Cluster Operations
 
 /// Creates a new ECS cluster
-pub async fn create_cluster(
-    client: &Client,
-    cluster: &EcsCluster,
-    cluster_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name: &str) -> Result<OpExecOutput, anyhow::Error> {
     let mut create_cluster = client.create_cluster();
 
     create_cluster = create_cluster.cluster_name(cluster_name);
 
     // Add capacity providers if specified
     if !cluster.capacity_providers.is_empty() {
-        create_cluster =
-            create_cluster.set_capacity_providers(Some(cluster.capacity_providers.clone()));
+        create_cluster = create_cluster.set_capacity_providers(Some(cluster.capacity_providers.clone()));
     }
 
     // Add default capacity provider strategy if specified
@@ -44,8 +35,7 @@ pub async fn create_cluster(
         let mut strategy_items = Vec::new();
 
         for item in &cluster.default_capacity_provider_strategy {
-            let mut builder =
-                CapacityProviderStrategyItem::builder().capacity_provider(&item.capacity_provider);
+            let mut builder = CapacityProviderStrategyItem::builder().capacity_provider(&item.capacity_provider);
 
             if let Some(weight) = item.weight {
                 builder = builder.weight(weight);
@@ -61,8 +51,7 @@ pub async fn create_cluster(
         }
 
         if !strategy_items.is_empty() {
-            create_cluster =
-                create_cluster.set_default_capacity_provider_strategy(Some(strategy_items));
+            create_cluster = create_cluster.set_default_capacity_provider_strategy(Some(strategy_items));
         }
     }
 
@@ -77,9 +66,7 @@ pub async fn create_cluster(
                 _ => continue,
             };
 
-            let setting_builder = ClusterSetting::builder()
-                .name(setting_name)
-                .value(&setting.value);
+            let setting_builder = ClusterSetting::builder().name(setting_name).value(&setting.value);
 
             settings.push(setting_builder.build());
         }
@@ -100,13 +87,11 @@ pub async fn create_cluster(
 
     // Create the cluster
     let resp = create_cluster.send().await?;
-    let cluster = resp
-        .cluster
-        .context("No cluster returned from create_cluster")?;
+    let cluster = resp.cluster.context("No cluster returned from create_cluster")?;
     let cluster_arn = cluster.cluster_arn.context("No cluster ARN returned")?;
 
     let mut outputs = HashMap::new();
-    outputs.insert(String::from("cluster_arn"), Some(cluster_arn.clone()));
+    outputs.insert(String::from("arn"), Some(cluster_arn.clone()));
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
@@ -248,18 +233,12 @@ pub async fn update_cluster_capacity_providers(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Updated capacity providers for ECS cluster {}",
-            cluster_name
-        )),
+        friendly_message: Some(format!("Updated capacity providers for ECS cluster {}", cluster_name)),
     })
 }
 
 /// Deletes an ECS cluster
-pub async fn delete_cluster(
-    client: &Client,
-    cluster_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_cluster(client: &Client, cluster_name: &str) -> Result<OpExecOutput, anyhow::Error> {
     client.delete_cluster().cluster(cluster_name).send().await?;
 
     Ok(OpExecOutput {
@@ -289,16 +268,9 @@ pub async fn create_service(
     // Set launch type if specified
     if let Some(launch_type) = &service.launch_type {
         match launch_type.as_str() {
-            "EC2" => {
-                create_service = create_service.launch_type(aws_sdk_ecs::types::LaunchType::Ec2)
-            }
-            "FARGATE" => {
-                create_service = create_service.launch_type(aws_sdk_ecs::types::LaunchType::Fargate)
-            }
-            "EXTERNAL" => {
-                create_service =
-                    create_service.launch_type(aws_sdk_ecs::types::LaunchType::External)
-            }
+            "EC2" => create_service = create_service.launch_type(aws_sdk_ecs::types::LaunchType::Ec2),
+            "FARGATE" => create_service = create_service.launch_type(aws_sdk_ecs::types::LaunchType::Fargate),
+            "EXTERNAL" => create_service = create_service.launch_type(aws_sdk_ecs::types::LaunchType::External),
             _ => {}
         }
     }
@@ -308,8 +280,7 @@ pub async fn create_service(
         let mut strategy_items = Vec::new();
 
         for item in &service.capacity_provider_strategy {
-            let mut builder =
-                CapacityProviderStrategyItem::builder().capacity_provider(&item.capacity_provider);
+            let mut builder = CapacityProviderStrategyItem::builder().capacity_provider(&item.capacity_provider);
 
             if let Some(weight) = item.weight {
                 builder = builder.weight(weight);
@@ -367,22 +338,14 @@ pub async fn create_service(
 
             if let Some(assign_public_ip) = &awsvpc_config.assign_public_ip {
                 match assign_public_ip.as_str() {
-                    "ENABLED" => {
-                        builder =
-                            builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Enabled)
-                    }
-                    "DISABLED" => {
-                        builder =
-                            builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Disabled)
-                    }
+                    "ENABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Enabled),
+                    "DISABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Disabled),
                     _ => {}
                 }
             }
 
             if let Ok(vpc_config) = builder.build() {
-                let network_config = NetworkConfiguration::builder()
-                    .awsvpc_configuration(vpc_config)
-                    .build();
+                let network_config = NetworkConfiguration::builder().awsvpc_configuration(vpc_config).build();
 
                 create_service = create_service.network_configuration(network_config);
             }
@@ -394,8 +357,7 @@ pub async fn create_service(
         let mut constraints = Vec::new();
 
         for constraint in &service.placement_constraints {
-            let mut builder =
-                PlacementConstraint::builder().r#type(constraint.r#type.as_str().into());
+            let mut builder = PlacementConstraint::builder().r#type(constraint.r#type.as_str().into());
 
             if let Some(expression) = &constraint.expression {
                 builder = builder.expression(expression);
@@ -493,14 +455,8 @@ pub async fn create_service(
     // Set scheduling strategy if specified
     if let Some(scheduling_strategy) = &service.scheduling_strategy {
         match scheduling_strategy.as_str() {
-            "REPLICA" => {
-                create_service = create_service
-                    .scheduling_strategy(aws_sdk_ecs::types::SchedulingStrategy::Replica)
-            }
-            "DAEMON" => {
-                create_service = create_service
-                    .scheduling_strategy(aws_sdk_ecs::types::SchedulingStrategy::Daemon)
-            }
+            "REPLICA" => create_service = create_service.scheduling_strategy(aws_sdk_ecs::types::SchedulingStrategy::Replica),
+            "DAEMON" => create_service = create_service.scheduling_strategy(aws_sdk_ecs::types::SchedulingStrategy::Daemon),
             _ => {}
         }
     }
@@ -513,13 +469,9 @@ pub async fn create_service(
     // Set propagate_tags if specified
     if let Some(propagate_tags) = &service.propagate_tags {
         match propagate_tags.as_str() {
-            "SERVICE" => {
-                create_service =
-                    create_service.propagate_tags(aws_sdk_ecs::types::PropagateTags::Service)
-            }
+            "SERVICE" => create_service = create_service.propagate_tags(aws_sdk_ecs::types::PropagateTags::Service),
             "TASK_DEFINITION" => {
-                create_service =
-                    create_service.propagate_tags(aws_sdk_ecs::types::PropagateTags::TaskDefinition)
+                create_service = create_service.propagate_tags(aws_sdk_ecs::types::PropagateTags::TaskDefinition)
             }
             _ => {}
         }
@@ -541,22 +493,17 @@ pub async fn create_service(
 
     // Create the service
     let resp = create_service.send().await?;
-    let service = resp
-        .service
-        .context("No service returned from create_service")?;
+    let service = resp.service.context("No service returned from create_service")?;
     let service_arn = service.service_arn.context("No service ARN returned")?;
     let service_name = service.service_name.context("No service name returned")?;
 
     let mut outputs = HashMap::new();
-    outputs.insert(String::from("service_arn"), Some(service_arn.clone()));
+    outputs.insert(String::from("arn"), Some(service_arn.clone()));
     outputs.insert(String::from("service_name"), Some(service_name.clone()));
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!(
-            "Created ECS service {} in cluster {}",
-            service_name, cluster_name
-        )),
+        friendly_message: Some(format!("Created ECS service {} in cluster {}", service_name, cluster_name)),
     })
 }
 
@@ -571,10 +518,7 @@ pub async fn update_service_tags(
     // Get the service to retrieve the ARN
     let service = get_service(client, cluster_name, service_name)
         .await?
-        .context(format!(
-            "Service {} not found in cluster {}",
-            service_name, cluster_name
-        ))?;
+        .context(format!("Service {} not found in cluster {}", service_name, cluster_name))?;
 
     let service_arn = service.service_arn.context("No service ARN returned")?;
 
@@ -733,11 +677,7 @@ pub async fn enable_execute_command(
 }
 
 /// Deletes an ECS service
-pub async fn delete_service(
-    client: &Client,
-    cluster_name: &str,
-    service_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_service(client: &Client, cluster_name: &str, service_name: &str) -> Result<OpExecOutput, anyhow::Error> {
     client
         .delete_service()
         .cluster(cluster_name)
@@ -748,10 +688,7 @@ pub async fn delete_service(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Deleted ECS service {} from cluster {}",
-            service_name, cluster_name
-        )),
+        friendly_message: Some(format!("Deleted ECS service {} from cluster {}", service_name, cluster_name)),
     })
 }
 
@@ -763,9 +700,7 @@ pub async fn register_task_definition(
     family: &str,
     task_definition: &TaskDefinition,
 ) -> Result<OpExecOutput, anyhow::Error> {
-    let mut register_task_def = client
-        .register_task_definition()
-        .family(family);
+    let mut register_task_def = client.register_task_definition().family(family);
 
     // Set task role ARN if specified
     if let Some(task_role_arn) = &task_definition.task_role_arn {
@@ -780,22 +715,10 @@ pub async fn register_task_definition(
     // Set network mode if specified
     if let Some(network_mode) = &task_definition.network_mode {
         match network_mode.as_str() {
-            "bridge" => {
-                register_task_def =
-                    register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Bridge)
-            }
-            "host" => {
-                register_task_def =
-                    register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Host)
-            }
-            "awsvpc" => {
-                register_task_def =
-                    register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Awsvpc)
-            }
-            "none" => {
-                register_task_def =
-                    register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::None)
-            }
+            "bridge" => register_task_def = register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Bridge),
+            "host" => register_task_def = register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Host),
+            "awsvpc" => register_task_def = register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::Awsvpc),
+            "none" => register_task_def = register_task_def.network_mode(aws_sdk_ecs::types::NetworkMode::None),
             _ => {}
         }
     }
@@ -804,9 +727,7 @@ pub async fn register_task_definition(
     let mut container_defs = Vec::new();
 
     for container in &task_definition.container_definitions {
-        let mut builder = ContainerDefinition::builder()
-            .name(&container.name)
-            .image(&container.image);
+        let mut builder = ContainerDefinition::builder().name(&container.name).image(&container.image);
 
         // Set CPU if specified
         if let Some(cpu) = container.cpu {
@@ -845,14 +766,8 @@ pub async fn register_task_definition(
 
                 if let Some(protocol) = &pm.protocol {
                     match protocol.as_str() {
-                        "tcp" => {
-                            pm_builder =
-                                pm_builder.protocol(aws_sdk_ecs::types::TransportProtocol::Tcp)
-                        }
-                        "udp" => {
-                            pm_builder =
-                                pm_builder.protocol(aws_sdk_ecs::types::TransportProtocol::Udp)
-                        }
+                        "tcp" => pm_builder = pm_builder.protocol(aws_sdk_ecs::types::TransportProtocol::Tcp),
+                        "udp" => pm_builder = pm_builder.protocol(aws_sdk_ecs::types::TransportProtocol::Udp),
                         _ => {}
                     }
                 }
@@ -946,8 +861,7 @@ pub async fn register_task_definition(
         let mut constraints = Vec::new();
 
         for constraint in &task_definition.placement_constraints {
-            let mut builder = TaskDefinitionPlacementConstraint::builder()
-                .r#type(constraint.r#type.as_str().into());
+            let mut builder = TaskDefinitionPlacementConstraint::builder().r#type(constraint.r#type.as_str().into());
 
             if let Some(expression) = &constraint.expression {
                 builder = builder.expression(expression);
@@ -975,8 +889,7 @@ pub async fn register_task_definition(
         }
 
         if !compatibilities.is_empty() {
-            register_task_def =
-                register_task_def.set_requires_compatibilities(Some(compatibilities));
+            register_task_def = register_task_def.set_requires_compatibilities(Some(compatibilities));
         }
     }
 
@@ -993,12 +906,8 @@ pub async fn register_task_definition(
     // Set PID mode if specified
     if let Some(pid_mode) = &task_definition.pid_mode {
         match pid_mode.as_str() {
-            "host" => {
-                register_task_def = register_task_def.pid_mode(aws_sdk_ecs::types::PidMode::Host)
-            }
-            "task" => {
-                register_task_def = register_task_def.pid_mode(aws_sdk_ecs::types::PidMode::Task)
-            }
+            "host" => register_task_def = register_task_def.pid_mode(aws_sdk_ecs::types::PidMode::Host),
+            "task" => register_task_def = register_task_def.pid_mode(aws_sdk_ecs::types::PidMode::Task),
             _ => {}
         }
     }
@@ -1006,34 +915,22 @@ pub async fn register_task_definition(
     // Set IPC mode if specified
     if let Some(ipc_mode) = &task_definition.ipc_mode {
         match ipc_mode.as_str() {
-            "host" => {
-                register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::Host)
-            }
-            "task" => {
-                register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::Task)
-            }
-            "none" => {
-                register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::None)
-            }
+            "host" => register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::Host),
+            "task" => register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::Task),
+            "none" => register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::None),
             _ => {}
         }
     }
-
 
     // Register the task definition
     let resp = register_task_def.send().await?;
     let task_def = resp
         .task_definition
         .context("No task definition returned from register_task_definition")?;
-    let task_def_arn = task_def
-        .task_definition_arn
-        .context("No task definition ARN returned")?;
+    let task_def_arn = task_def.task_definition_arn.context("No task definition ARN returned")?;
 
     let mut outputs = HashMap::new();
-    outputs.insert(
-        String::from("task_definition_arn"),
-        Some(task_def_arn.clone()),
-    );
+    outputs.insert(String::from("arn"), Some(task_def_arn.clone()));
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
@@ -1073,18 +970,12 @@ pub async fn update_task_definition_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Updated tags for task definition {}",
-            task_definition_arn
-        )),
+        friendly_message: Some(format!("Updated tags for task definition {}", task_definition_arn)),
     })
 }
 
 /// Deregisters a task definition
-pub async fn deregister_task_definition(
-    client: &Client,
-    task_definition: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn deregister_task_definition(client: &Client, task_definition: &str) -> Result<OpExecOutput, anyhow::Error> {
     client
         .deregister_task_definition()
         .task_definition(task_definition)
@@ -1147,9 +1038,7 @@ pub async fn run_task(
         }
 
         if let Ok(vpc_config) = builder.build() {
-            let network_config = NetworkConfiguration::builder()
-                .awsvpc_configuration(vpc_config)
-                .build();
+            let network_config = NetworkConfiguration::builder().awsvpc_configuration(vpc_config).build();
 
             run_task = run_task.network_configuration(network_config);
         }
@@ -1164,8 +1053,7 @@ pub async fn run_task(
             let mut container_overrides = Vec::new();
 
             for container in &override_config.container_overrides {
-                let mut builder =
-                    aws_sdk_ecs::types::ContainerOverride::builder().name(&container.name);
+                let mut builder = aws_sdk_ecs::types::ContainerOverride::builder().name(&container.name);
 
                 // Set command if specified
                 if let Some(command) = &container.command {
@@ -1204,8 +1092,7 @@ pub async fn run_task(
             }
 
             if !container_overrides.is_empty() {
-                task_override_builder =
-                    task_override_builder.set_container_overrides(Some(container_overrides));
+                task_override_builder = task_override_builder.set_container_overrides(Some(container_overrides));
             }
         }
 
@@ -1357,8 +1244,7 @@ pub async fn register_container_instance(
         }
 
         if !container_attributes.is_empty() {
-            register_container_instance =
-                register_container_instance.set_attributes(Some(container_attributes));
+            register_container_instance = register_container_instance.set_attributes(Some(container_attributes));
         }
     }
 
@@ -1381,17 +1267,11 @@ pub async fn register_container_instance(
         .context("No container instance ARN returned")?;
 
     let mut outputs = HashMap::new();
-    outputs.insert(
-        String::from("container_instance_arn"),
-        Some(container_instance_arn.clone()),
-    );
+    outputs.insert(String::from("arn"), Some(container_instance_arn.clone()));
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!(
-            "Registered container instance in cluster {}",
-            cluster
-        )),
+        friendly_message: Some(format!("Registered container instance in cluster {}", cluster)),
     })
 }
 
@@ -1502,10 +1382,7 @@ pub async fn update_container_instance_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!(
-            "Updated tags for container instance {}",
-            container_instance_arn
-        )),
+        friendly_message: Some(format!("Updated tags for container instance {}", container_instance_arn)),
     })
 }
 

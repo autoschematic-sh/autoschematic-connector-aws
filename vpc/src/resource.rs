@@ -1,5 +1,4 @@
-use std::ffi::{OsStr, OsString};
-use std::os::unix::ffi::OsStrExt;
+use std::collections::HashSet;
 
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use autoschematic_core::util::{PrettyConfig, RON};
@@ -9,11 +8,27 @@ use super::{addr::VpcResourceAddress, tags::Tags};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct Vpc {
+    // #need(plan, Vpc.cidr_block)
     pub cidr_block: String,
-    pub instance_tenancy: String,
+    // #need(plan, Vpc.instance_tenancy)
+    pub instance_tenancy: Option<String>,
+    // #need(plan, Vpc.enable_dns_support)
     pub enable_dns_support: bool,
+    // #need(plan, Vpc.dhcpOptionsId)
+    pub dhcp_options_id: Option<String>,
+    // // #_need(plan, Vpc.cidr_block_association_set)
+    // pub cidr_block_association_set: Option<HashSet<String>>,
+    // // #_need(plan, Vpc.ipv6_cidr_block_association_set)
+    // pub ipv6_cidr_block_association_set: Option<HashSet<String>>,
+    // #need(plan, Vpc.enable_dns_hostnames)
     pub enable_dns_hostnames: bool,
+    // #need(plan, Vpc.tags)
     pub tags: Tags,
+}
+
+pub enum CidrBlockAssociation {
+    Ipv6AmazonProvided { border_group: Option<String> },
+    Ipv4IpamPool { id: String, netmask_length: i32 },
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -27,7 +42,7 @@ pub struct Subnet {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct InternetGateway {
     pub vpc_id: Option<String>,
-    pub tags: Tags,
+    pub tags:   Tags,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -72,7 +87,7 @@ pub enum VpcResource {
 }
 
 impl Resource for VpcResource {
-    fn to_os_string(&self) -> Result<OsString, anyhow::Error> {
+    fn to_bytes(&self) -> Result<Vec<u8>, anyhow::Error> {
         let pretty_config = PrettyConfig::default().struct_names(true);
         // .extensions(ron::extensions::Extensions::IMPLICIT_SOME);
         match self {
@@ -99,29 +114,23 @@ impl Resource for VpcResource {
         }
     }
 
-    fn from_os_str(addr: &impl ResourceAddress, s: &OsStr) -> Result<Self, anyhow::Error>
+    fn from_bytes(addr: &impl ResourceAddress, s: &[u8]) -> Result<Self, anyhow::Error>
     where
         Self: Sized,
     {
         let addr = VpcResourceAddress::from_path(&addr.to_path_buf())?;
 
-        let s = str::from_utf8(s.as_bytes())?;
+        let s = str::from_utf8(s)?;
         match addr {
-            VpcResourceAddress::Vpc(_region, _vpc_id) => {
-                Ok(VpcResource::Vpc(RON.from_str(s)?))
-            }
-            VpcResourceAddress::Subnet(_region, _vpc_id, _subnet_id) => {
-                Ok(VpcResource::Subnet(RON.from_str(s)?))
-            }
-            VpcResourceAddress::InternetGateway(_region, _igw_id) => {
-                Ok(VpcResource::InternetGateway(RON.from_str(s)?))
-            }
-            VpcResourceAddress::RouteTable(_region, _vpc_id, _rt_id) => {
-                Ok(VpcResource::RouteTable(RON.from_str(s)?))
-            }
-            VpcResourceAddress::SecurityGroup(_region, _vpc_id, _sg_id) => {
-                Ok(VpcResource::SecurityGroup(RON.from_str(s)?))
-            }
+            VpcResourceAddress::Vpc { region, vpc_id } => Ok(VpcResource::Vpc(RON.from_str(s)?)),
+            VpcResourceAddress::Subnet {
+                region,
+                vpc_id,
+                subnet_id,
+            } => Ok(VpcResource::Subnet(RON.from_str(s)?)),
+            VpcResourceAddress::InternetGateway { region, igw_id } => Ok(VpcResource::InternetGateway(RON.from_str(s)?)),
+            VpcResourceAddress::RouteTable { region, vpc_id, rt_id } => Ok(VpcResource::RouteTable(RON.from_str(s)?)),
+            VpcResourceAddress::SecurityGroup { region, vpc_id, sg_id } => Ok(VpcResource::SecurityGroup(RON.from_str(s)?)),
         }
     }
 }

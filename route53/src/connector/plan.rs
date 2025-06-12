@@ -92,27 +92,6 @@ impl Route53Connector {
                     _ => Ok(vec![]),
                 }
             }
-            // Some(Route53ResourceAddress::HealthCheck(name)) => {
-            //     match (current, desired) {
-            //         (None, None) => Ok(vec![]),
-            //         (None, Some(health_check)) => {
-            //             Ok(vec![Route53ConnectorOp::CreateHostedZone(new_zone)])
-            //         }
-            //         (Some(Route53Resource::HostedZone(old_zone)), None) => {
-            //             Ok(vec![Route53ConnectorOp::DeleteHostedZone(old_zone)])
-            //         }
-            //         (
-            //             Some(Route53Resource::HostedZone(old_zone)),
-            //             Some(Route53Resource::HostedZone(new_zone)),
-            //         ) => Ok(vec![Route53ConnectorOp::ModifyHostedZone(
-            //             old_zone, new_zone,
-            //         )]),
-            //         _ => {
-            //             // Should never happen?
-            //             Ok(vec![])
-            //         }
-            //     }
-            // }
             _ => Ok(vec![]),
         }
     }

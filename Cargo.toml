@@ -2,12 +2,17 @@
 
 members = [
     "core",
+    "apigatewayv2",
+    "cloudfront",
+    "cloudwatch",
     "vpc",
     "ecs",
     "route53",
     "iam",
     "ecr",
+    "efs",
     "rds",
+    "kms",
     "s3",
     "secretsmanager",
     "elb",

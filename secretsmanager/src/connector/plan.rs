@@ -1,4 +1,4 @@
-use std::{ffi::OsString, path::Path};
+use std::path::Path;
 
 use autoschematic_core::{
     connector::{OpPlanOutput, ResourceAddress},
@@ -16,8 +16,8 @@ impl SecretsManagerConnector {
     pub async fn do_plan(
         &self,
         addr: &Path,
-        current: Option<OsString>,
-        desired: Option<OsString>,
+        current: Option<Vec<u8>>,
+        desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
@@ -106,7 +106,7 @@ impl SecretsManagerConnector {
 
                             ops.push(connector_op!(
                                 SecretsManagerConnectorOp::SetSecretPolicy {
-                                    policy_document: new_secret.policy_document,
+                                    policy_document:     new_secret.policy_document,
                                     block_public_policy: None,
                                 },
                                 format!("Update policy for secret '{}'\n{}", name, diff)

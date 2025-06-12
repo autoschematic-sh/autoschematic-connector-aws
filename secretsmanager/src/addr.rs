@@ -17,10 +17,7 @@ impl ResourceAddress for SecretsManagerResourceAddress {
     }
 
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
-        let path_components: Vec<&str> = path
-            .components()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         match &path_components[..] {
             ["aws", "secretsmanager", region, "secrets", name @ ..] => {

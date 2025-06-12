@@ -8,6 +8,7 @@ use crate::{
     op::VpcConnectorOp,
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc},
 };
+use anyhow::bail;
 use autoschematic_core::{
     connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
     connector_op,
@@ -23,7 +24,7 @@ impl VpcConnector {
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
         let addr = VpcResourceAddress::from_path(addr)?;
         match addr {
-            VpcResourceAddress::Vpc(_region, vpc_id) => {
+            VpcResourceAddress::Vpc { region, vpc_id } => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_vpc)) => {
@@ -33,18 +34,17 @@ impl VpcConnector {
                             format!("Create new VPC {}", vpc_id)
                         )])
                     }
-                    (Some(_old_vpc), None) => {
-                        Ok(vec![connector_op!(
-                            VpcConnectorOp::DeleteVpc,
-                            format!("DELETE VPC {}", vpc_id)
-                        )])
-                    }
+                    (Some(_old_vpc), None) => Ok(vec![connector_op!(
+                        VpcConnectorOp::DeleteVpc,
+                        format!("DELETE VPC {}", vpc_id)
+                    )]),
                     (Some(old_vpc), Some(new_vpc)) => {
                         let old_vpc: Vpc = RON.from_str(&old_vpc)?;
                         let new_vpc: Vpc = RON.from_str(&new_vpc)?;
                         let mut ops = Vec::new();
 
                         // Check for tag changes
+                        // #provide(plan, Vpc.tags)
                         if old_vpc.tags != new_vpc.tags {
                             let diff = diff_ron_values(&old_vpc.tags, &new_vpc.tags).unwrap_or_default();
                             ops.push(connector_op!(
@@ -54,15 +54,39 @@ impl VpcConnector {
                         }
 
                         // Check for DNS settings changes
+                        // #provide(plan, Vpc.enable_dns_support)
+                        // #provide(plan, Vpc.enable_dns_hostnames)
                         if old_vpc.enable_dns_support != new_vpc.enable_dns_support
                             || old_vpc.enable_dns_hostnames != new_vpc.enable_dns_hostnames
                         {
                             ops.push(connector_op!(
                                 VpcConnectorOp::UpdateVpcAttributes {
-                                    enable_dns_support: Some(new_vpc.enable_dns_support),
+                                    enable_dns_support:   Some(new_vpc.enable_dns_support),
                                     enable_dns_hostnames: Some(new_vpc.enable_dns_hostnames),
                                 },
                                 format!("Modify DNS settings for VPC `{}`", vpc_id)
+                            ));
+                        }
+
+                        // #provide(plan, Vpc.cidr_block)
+                        if old_vpc.cidr_block != new_vpc.cidr_block {
+                            bail!(
+                                "Primary CIDR block for a VPC cannot be modified. Use cidr_block_association_set or ipv6_cidr_block_association_set to add additional CIDR blocks, or recreate the VPC."
+                            )
+                        }
+
+                        // #provide(plan, Vpc.instance_tenancy)
+                        if old_vpc.instance_tenancy != new_vpc.instance_tenancy {
+                            let new_instance_tenancy = new_vpc.instance_tenancy.unwrap_or(String::from("default"));
+                            if new_instance_tenancy != String::from("default") {
+                                bail!(
+                                    "Instance tenancy for a VPC cannot be changed to any value except \"default\". You must delete and recreate this VPC to set its instance tenancy to {}.",
+                                    new_instance_tenancy
+                                )
+                            }
+                            ops.push(connector_op!(
+                                VpcConnectorOp::UpdateVpcInstanceTenancy(new_instance_tenancy.clone()),
+                                format!("Set instance tenancy to `{}` for VPC `{}`", new_instance_tenancy, vpc_id)
                             ));
                         }
 
@@ -70,7 +94,11 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::Subnet(_region, _vpc_id, subnet_id) => {
+            VpcResourceAddress::Subnet {
+                region,
+                vpc_id,
+                subnet_id,
+            } => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_subnet)) => {
@@ -80,12 +108,10 @@ impl VpcConnector {
                             format!("Create new Subnet {}", subnet_id)
                         )])
                     }
-                    (Some(_old_subnet), None) => {
-                        Ok(vec![connector_op!(
-                            VpcConnectorOp::DeleteSubnet,
-                            format!("DELETE Subnet {}", subnet_id)
-                        )])
-                    }
+                    (Some(_old_subnet), None) => Ok(vec![connector_op!(
+                        VpcConnectorOp::DeleteSubnet,
+                        format!("DELETE Subnet {}", subnet_id)
+                    )]),
                     (Some(old_subnet), Some(new_subnet)) => {
                         let old_subnet: Subnet = RON.from_str(&old_subnet)?;
                         let new_subnet: Subnet = RON.from_str(&new_subnet)?;
@@ -114,7 +140,7 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::InternetGateway(_region, igw_id) => {
+            VpcResourceAddress::InternetGateway { region, igw_id } => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_igw)) => {
@@ -125,7 +151,7 @@ impl VpcConnector {
                         ops.push(connector_op!(
                             VpcConnectorOp::CreateInternetGateway(InternetGateway {
                                 vpc_id: new_igw.vpc_id.clone(),
-                                tags: new_igw.tags.clone(),
+                                tags:   new_igw.tags.clone(),
                             }),
                             format!("Create new Internet Gateway {}", igw_id)
                         ));
@@ -140,12 +166,10 @@ impl VpcConnector {
 
                         Ok(ops)
                     }
-                    (Some(_old_igw), None) => {
-                        Ok(vec![connector_op!(
-                            VpcConnectorOp::DeleteInternetGateway,
-                            format!("DELETE Internet Gateway {}", igw_id)
-                        )])
-                    }
+                    (Some(_old_igw), None) => Ok(vec![connector_op!(
+                        VpcConnectorOp::DeleteInternetGateway,
+                        format!("DELETE Internet Gateway {}", igw_id)
+                    )]),
                     (Some(old_igw), Some(new_igw)) => {
                         let old_igw: InternetGateway = RON.from_str(&old_igw)?;
                         let new_igw: InternetGateway = RON.from_str(&new_igw)?;
@@ -204,9 +228,10 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::RouteTable(_region, _vpc_id, rt_id) => {
+            VpcResourceAddress::RouteTable { region, vpc_id, rt_id } => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
+
                     (None, Some(new_rt)) => {
                         let new_rt: RouteTable = RON.from_str(&new_rt)?;
                         Ok(vec![connector_op!(
@@ -214,12 +239,12 @@ impl VpcConnector {
                             format!("Create new Route Table {}", rt_id)
                         )])
                     }
-                    (Some(_old_rt), None) => {
-                        Ok(vec![connector_op!(
-                            VpcConnectorOp::DeleteRouteTable,
-                            format!("DELETE Route Table {}", rt_id)
-                        )])
-                    }
+
+                    (Some(_old_rt), None) => Ok(vec![connector_op!(
+                        VpcConnectorOp::DeleteRouteTable,
+                        format!("DELETE Route Table {}", rt_id)
+                    )]),
+
                     (Some(old_rt), Some(new_rt)) => {
                         let old_rt: RouteTable = RON.from_str(&old_rt)?;
                         let new_rt: RouteTable = RON.from_str(&new_rt)?;
@@ -299,7 +324,7 @@ impl VpcConnector {
                     }
                 }
             }
-            VpcResourceAddress::SecurityGroup(_region, _vpc_id, sg_id) => {
+            VpcResourceAddress::SecurityGroup { region, vpc_id, sg_id } => {
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_sg)) => {
@@ -309,12 +334,10 @@ impl VpcConnector {
                             format!("Create new Security Group {}", sg_id)
                         )])
                     }
-                    (Some(_old_sg), None) => {
-                        Ok(vec![connector_op!(
-                            VpcConnectorOp::DeleteSecurityGroup,
-                            format!("DELETE Security Group {}", sg_id)
-                        )])
-                    }
+                    (Some(_old_sg), None) => Ok(vec![connector_op!(
+                        VpcConnectorOp::DeleteSecurityGroup,
+                        format!("DELETE Security Group {}", sg_id)
+                    )]),
                     (Some(old_sg), Some(new_sg)) => {
                         let old_sg: SecurityGroup = RON.from_str(&old_sg)?;
                         let new_sg: SecurityGroup = RON.from_str(&new_sg)?;

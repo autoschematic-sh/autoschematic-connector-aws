@@ -3,8 +3,8 @@ use connector::EcrConnector;
 
 pub mod connector;
 // pub mod client_cache;
-pub mod config;
 pub mod addr;
+pub mod config;
 pub mod op;
 pub mod op_impl;
 pub mod resource;

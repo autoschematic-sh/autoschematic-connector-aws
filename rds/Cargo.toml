@@ -1,20 +1,20 @@
 [package]
-name = "autoschematic-connector-aws-template"
-version = "0.4.0"
+name = "autoschematic-connector-aws-rds"
+version = "0.5.0"
 edition = "2024"
 
 [[bin]]
-name = "autoschematic-connector-aws-template"
+name = "autoschematic-connector-aws-rds"
 path = "src/main.rs"
 [lib]
-name = "autoschematic_connector_aws_template"
+name = "autoschematic_connector_aws_rds"
 path = "src/lib.rs"
 
 [dependencies]
 anyhow = "1.0.95"
 async-trait = "0.1.86"
-autoschematic-connector-aws-core = { path = "../core", version = "0.4.0" }
-autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.4.0" }
+autoschematic-connector-aws-core = { path = "../core", version = "0.5.0" }
+autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.5.0" }
 # autoschematic-core = "0.3.0"
 aws-config = "1.5.16"
 ron = { version = "0.10.1", features = ["indexmap"] }

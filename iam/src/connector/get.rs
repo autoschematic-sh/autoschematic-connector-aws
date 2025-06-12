@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use crate::addr::IamResourceAddress;
+use crate::{addr::IamResourceAddress, resource::IamGroup, util::list_attached_group_policies};
 use anyhow::{Context, bail};
 use autoschematic_core::{
     connector::{GetResourceOutput, Resource, ResourceAddress},
@@ -27,9 +27,10 @@ impl IamConnector {
         let Some(account_id) = self.account_id.lock().await.clone() else {
             bail!("No account ID");
         };
+
         match addr {
-            IamResourceAddress::User(user_name) => {
-                let user_result = client.get_user().user_name(&user_name).send().await;
+            IamResourceAddress::User { path, name } => {
+                let user_result = client.get_user().user_name(&name).send().await;
 
                 match user_result {
                     Ok(user_output) => {
@@ -37,23 +38,26 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_user_policies(&client, &user_name).await?;
+                        let attached_policies = list_attached_user_policies(&client, &name).await?;
 
                         let iam_user = IamUser {
                             attached_policies,
                             tags: user.tags.into(),
                         };
 
-                        get_resource_output!(
-                            IamResource::User(iam_user),
-                            [("user_arn", Some(format!("arn:aws:iam::{}:user/{}", account_id, user_name)))]
-                        )
+                        get_resource_output!(IamResource::User(iam_user))
                     }
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        match e.as_service_error() {
+                            Some(aws_sdk_iam::operation::get_user::GetUserError::NoSuchEntityException(_)) => Ok(None),
+                            _ => return Err(e.into()),
+                        }
+                    }
                 }
             }
-            IamResourceAddress::Role(role_name) => {
-                let role_result = client.get_role().role_name(&role_name).send().await;
+
+            IamResourceAddress::Role { path, name } => {
+                let role_result = client.get_role().role_name(&name).send().await;
 
                 match role_result {
                     Ok(role_output) => {
@@ -61,7 +65,7 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_role_policies(&client, &role_name).await?;
+                        let attached_policies = list_attached_role_policies(&client, &name).await?;
 
                         let iam_role = if let Some(assume_role_policy) = role.assume_role_policy_document {
                             let json_s = urlencoding::decode(&assume_role_policy)?;
@@ -82,16 +86,47 @@ impl IamConnector {
                             }
                         };
 
-                        get_resource_output!(
-                            IamResource::Role(iam_role),
-                            vec![("role_arn", Some(format!("arn:aws:iam::{}:role/{}", account_id, role_name)))]
-                        )
+                        get_resource_output!(IamResource::Role(iam_role))
                     }
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        match e.as_service_error() {
+                            Some(aws_sdk_iam::operation::get_role::GetRoleError::NoSuchEntityException(_)) => Ok(None),
+                            _ => return Err(e.into()),
+                        }
+                    }
                 }
             }
-            IamResourceAddress::Policy(policy_name) => {
-                let arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy_name);
+
+            IamResourceAddress::Group { path, name } => {
+                let group_result = client.get_group().group_name(&name).send().await;
+
+                match group_result {
+                    Ok(group_output) => {
+                        let Some(ref group) = group_output.group else {
+                            return Ok(None);
+                        };
+
+                        let group_user_names = group_output.users().iter().map(|user| user.user_name.clone()).collect();
+
+                        let attached_policies = list_attached_group_policies(&client, &name).await?;
+
+                        let iam_group = IamGroup {
+                            users: group_user_names,
+                            attached_policies,
+                        };
+
+                        get_resource_output!(IamResource::Group(iam_group))
+                    }
+                    Err(e) => {
+                        match e.as_service_error() {
+                            Some(aws_sdk_iam::operation::get_group::GetGroupError::NoSuchEntityException(_)) => Ok(None),
+                            _ => return Err(e.into()),
+                        }
+                    }
+                }
+            }
+            IamResourceAddress::Policy { path, name } => {
+                let arn = format!("arn:aws:iam::{}:policy{}{}", account_id, path, name);
                 let policy_result = client.get_policy().policy_arn(&arn).send().await;
 
                 match policy_result {
@@ -110,6 +145,7 @@ impl IamConnector {
                             .version_id(&version_id)
                             .send()
                             .await;
+
                         if let Err(e) = get_policy_version_output {
                             bail!("Couldn't get policy version {} for ARN {}: {}", version_id, arn, e);
                         };
@@ -131,15 +167,15 @@ impl IamConnector {
                             policy_document: rval,
                             tags: policy.tags.into(),
                         };
-                        get_resource_output!(
-                            IamResource::Policy(iam_policy),
-                            [(
-                                "policy_arn",
-                                Some(format!("arn:aws:iam::{}:policy/{}", account_id, policy_name))
-                            )]
-                        )
+
+                        get_resource_output!(IamResource::Policy(iam_policy))
                     }
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        match e.as_service_error() {
+                            Some(aws_sdk_iam::operation::get_policy::GetPolicyError::NoSuchEntityException(_)) => Ok(None),
+                            _ => return Err(e.into()),
+                        }
+                    }
                 }
             }
         }
