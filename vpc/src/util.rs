@@ -26,7 +26,7 @@ pub async fn get_vpc(client: &aws_sdk_ec2::Client, vpc_id: &str) -> anyhow::Resu
         return Ok(None);
     };
 
-    if let Some(ref vpc) = vpcs.first() {
+    if let Some(vpc) = vpcs.first() {
         let cidr_block = vpc.cidr_block.clone().unwrap_or_default();
 
         let instance_tenancy = vpc.instance_tenancy.as_ref().map(|t| t.as_str().to_string());

@@ -6,7 +6,7 @@
 // pub mod tags;
 
 pub use addr::ApiGatewayV2ResourceAddress;
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 pub use op::ApiGatewayV2ConnectorOp;
 
 use std::{
@@ -20,7 +20,7 @@ use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput,
         ResourceAddress, SkeletonOutput,
     },
     diag::DiagnosticOutput,

@@ -29,7 +29,7 @@ use serde_json;
 use tokio::sync::Mutex;
 
 use crate::resource;
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use tags::Tags;
 
 pub mod get;

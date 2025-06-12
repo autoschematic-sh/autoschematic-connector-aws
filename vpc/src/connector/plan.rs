@@ -78,7 +78,7 @@ impl VpcConnector {
                         // #provide(plan, Vpc.instance_tenancy)
                         if old_vpc.instance_tenancy != new_vpc.instance_tenancy {
                             let new_instance_tenancy = new_vpc.instance_tenancy.unwrap_or(String::from("default"));
-                            if new_instance_tenancy != String::from("default") {
+                            if new_instance_tenancy != *"default" {
                                 bail!(
                                     "Instance tenancy for a VPC cannot be changed to any value except \"default\". You must delete and recreate this VPC to set its instance tenancy to {}.",
                                     new_instance_tenancy

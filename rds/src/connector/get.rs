@@ -25,7 +25,7 @@ impl RdsConnector {
                 match db_instance {
                     Some(db_instance) => {
                         let instance = crate::resource::RdsResource::DBInstance(map_db_instance(&db_instance)?);
-                        return get_resource_output!(instance, [(String::from("id"), Some(id))]);
+                        get_resource_output!(instance, [(String::from("id"), Some(id))])
                     }
                     None => Ok(None),
                 }
@@ -44,7 +44,7 @@ impl RdsConnector {
                 };
 
                 let cluster = crate::resource::RdsResource::DBCluster(map_db_cluster(cluster)?);
-                return get_resource_output!(cluster, [(String::from("id"), Some(id))]);
+                get_resource_output!(cluster, [(String::from("id"), Some(id))])
             }
             RdsResourceAddress::DBSubnetGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
@@ -60,7 +60,7 @@ impl RdsConnector {
                 };
 
                 let group = crate::resource::RdsResource::DBSubnetGroup(map_db_subnet_group(db_subnet_group)?);
-                return get_resource_output!(group, [(String::from("name"), Some(name))]);
+                get_resource_output!(group, [(String::from("name"), Some(name))])
             }
             RdsResourceAddress::DBParameterGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
@@ -79,8 +79,8 @@ impl RdsConnector {
                     return Ok(None);
                 };
 
-                let group = crate::resource::RdsResource::DBParameterGroup(map_db_parameter_group(&db_parameter_group)?);
-                return get_resource_output!(group, [(String::from("name"), Some(name))]);
+                let group = crate::resource::RdsResource::DBParameterGroup(map_db_parameter_group(db_parameter_group)?);
+                get_resource_output!(group, [(String::from("name"), Some(name))])
             }
         }
     }

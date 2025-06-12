@@ -7,19 +7,16 @@ use std::{
 
 use crate::addr::S3ResourceAddress;
 use crate::config::S3ConnectorConfig;
-use crate::op::S3ConnectorOp;
-use crate::util;
-use anyhow::{Context, bail};
+use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
         ResourceAddress, SkeletonOutput,
     },
-    connector_op,
     diag::DiagnosticOutput,
     skeleton,
-    util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+    util::{RON, ron_check_eq, ron_check_syntax},
 };
 
 use crate::resource;

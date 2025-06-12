@@ -26,7 +26,7 @@ use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, tim
 use config::EfsConnectorConfig;
 use tokio::sync::Mutex;
 
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 
 use resource::{AccessPoint, FileSystem, MountTarget};
 use tags::Tags;
@@ -107,7 +107,7 @@ impl Connector for EfsConnector {
         let mut results = Vec::<PathBuf>::new();
 
         for region_name in &self.config.lock().await.enabled_regions {
-            let client = self.get_or_init_client(&region_name).await?;
+            let client = self.get_or_init_client(region_name).await?;
 
             // List file systems
             let mut next_token: Option<String> = None;

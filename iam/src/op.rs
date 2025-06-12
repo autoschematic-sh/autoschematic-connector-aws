@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::RON;
 
-use crate::resource::IamGroup;
 
 use super::resource::{IamPolicy, IamRole, IamUser};
 use super::tags::Tags;

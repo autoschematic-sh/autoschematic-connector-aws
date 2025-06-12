@@ -22,7 +22,7 @@ use autoschematic_core::{
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 
 #[derive(Default)]
 pub struct ElbConnector {
@@ -100,7 +100,7 @@ impl Connector for ElbConnector {
         let config = self.config.lock().await;
 
         for region_name in &config.enabled_regions {
-            let client = self.get_or_init_client(&region_name).await?;
+            let client = self.get_or_init_client(region_name).await?;
 
             // List Load Balancers
             let load_balancers_resp = client.describe_load_balancers().send().await?;
@@ -383,8 +383,7 @@ impl Connector for ElbConnector {
                             };
 
                             let redirect_config = if action_type == "redirect" {
-                                if let Some(redirect_config) = &a.redirect_config {
-                                    Some(RedirectConfig {
+                                a.redirect_config.as_ref().map(|redirect_config| RedirectConfig {
                                         host: redirect_config.host.clone(),
                                         path: redirect_config.path.clone(),
                                         port: redirect_config.port.clone(),
@@ -392,23 +391,16 @@ impl Connector for ElbConnector {
                                         query: redirect_config.query.clone(),
                                         status_code: redirect_config.status_code.as_ref().map(|s| s.to_string()),
                                     })
-                                } else {
-                                    None
-                                }
                             } else {
                                 None
                             };
 
                             let fixed_response_config = if action_type == "fixed-response" {
-                                if let Some(fixed_response_config) = &a.fixed_response_config {
-                                    Some(FixedResponseConfig {
+                                a.fixed_response_config.as_ref().map(|fixed_response_config| FixedResponseConfig {
                                         status_code:  fixed_response_config.status_code.as_ref().map(|s| s.to_string()),
                                         content_type: fixed_response_config.content_type.clone(),
                                         message_body: fixed_response_config.message_body.clone(),
                                     })
-                                } else {
-                                    None
-                                }
                             } else {
                                 None
                             };

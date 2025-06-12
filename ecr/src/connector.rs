@@ -39,7 +39,7 @@ use crate::resource::{
     RepositoryPolicy,
 };
 use crate::tags::Tags;
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 
 #[derive(Default)]
 pub struct EcrConnector {

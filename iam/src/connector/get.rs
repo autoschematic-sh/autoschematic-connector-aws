@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use crate::{addr::IamResourceAddress, resource::IamGroup, util::list_attached_group_policies};
 use anyhow::{Context, bail};
@@ -38,7 +38,7 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_user_policies(&client, &name).await?;
+                        let attached_policies = list_attached_user_policies(client, &name).await?;
 
                         let iam_user = IamUser {
                             attached_policies,
@@ -50,7 +50,7 @@ impl IamConnector {
                     Err(e) => {
                         match e.as_service_error() {
                             Some(aws_sdk_iam::operation::get_user::GetUserError::NoSuchEntityException(_)) => Ok(None),
-                            _ => return Err(e.into()),
+                            _ => Err(e.into()),
                         }
                     }
                 }
@@ -65,7 +65,7 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_role_policies(&client, &name).await?;
+                        let attached_policies = list_attached_role_policies(client, &name).await?;
 
                         let iam_role = if let Some(assume_role_policy) = role.assume_role_policy_document {
                             let json_s = urlencoding::decode(&assume_role_policy)?;
@@ -91,7 +91,7 @@ impl IamConnector {
                     Err(e) => {
                         match e.as_service_error() {
                             Some(aws_sdk_iam::operation::get_role::GetRoleError::NoSuchEntityException(_)) => Ok(None),
-                            _ => return Err(e.into()),
+                            _ => Err(e.into()),
                         }
                     }
                 }
@@ -108,7 +108,7 @@ impl IamConnector {
 
                         let group_user_names = group_output.users().iter().map(|user| user.user_name.clone()).collect();
 
-                        let attached_policies = list_attached_group_policies(&client, &name).await?;
+                        let attached_policies = list_attached_group_policies(client, &name).await?;
 
                         let iam_group = IamGroup {
                             users: group_user_names,
@@ -120,7 +120,7 @@ impl IamConnector {
                     Err(e) => {
                         match e.as_service_error() {
                             Some(aws_sdk_iam::operation::get_group::GetGroupError::NoSuchEntityException(_)) => Ok(None),
-                            _ => return Err(e.into()),
+                            _ => Err(e.into()),
                         }
                     }
                 }
@@ -173,7 +173,7 @@ impl IamConnector {
                     Err(e) => {
                         match e.as_service_error() {
                             Some(aws_sdk_iam::operation::get_policy::GetPolicyError::NoSuchEntityException(_)) => Ok(None),
-                            _ => return Err(e.into()),
+                            _ => Err(e.into()),
                         }
                     }
                 }

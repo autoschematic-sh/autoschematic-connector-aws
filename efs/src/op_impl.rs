@@ -6,7 +6,7 @@ use super::{
     resource::{AccessPoint, FileSystem, FileSystemProtection, LifecyclePolicy, MountTarget},
     tags::{tag_diff, Tags},
 };
-use autoschematic_core::connector::{OpExecOutput, Resource};
+use autoschematic_core::connector::OpExecOutput;
 
 // FileSystem operations
 pub async fn create_file_system(

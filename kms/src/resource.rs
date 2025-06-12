@@ -1,9 +1,7 @@
-use anyhow::bail;
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::RON,
 };
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
 use super::{addr::KmsResourceAddress, tags::Tags};
@@ -73,10 +71,10 @@ impl Resource for KmsResource {
         let addr = KmsResourceAddress::from_path(&addr.to_path_buf())?;
         let s = str::from_utf8(s)?;
         match addr {
-            KmsResourceAddress::Key(_region, _key_id) => return Ok(KmsResource::Key(RON.from_str(s)?)),
-            KmsResourceAddress::KeyPolicy(_region, _key_id) => return Ok(KmsResource::KeyPolicy(RON.from_str(s)?)),
-            KmsResourceAddress::Alias(_region, _alias_name) => return Ok(KmsResource::Alias(RON.from_str(s)?)),
-            KmsResourceAddress::KeyRotation(_region, _key_id) => return Ok(KmsResource::KeyRotation(RON.from_str(s)?)),
+            KmsResourceAddress::Key(_region, _key_id) => Ok(KmsResource::Key(RON.from_str(s)?)),
+            KmsResourceAddress::KeyPolicy(_region, _key_id) => Ok(KmsResource::KeyPolicy(RON.from_str(s)?)),
+            KmsResourceAddress::Alias(_region, _alias_name) => Ok(KmsResource::Alias(RON.from_str(s)?)),
+            KmsResourceAddress::KeyRotation(_region, _key_id) => Ok(KmsResource::KeyRotation(RON.from_str(s)?)),
         }
     }
 }

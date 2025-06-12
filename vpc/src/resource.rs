@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use autoschematic_core::util::{PrettyConfig, RON};

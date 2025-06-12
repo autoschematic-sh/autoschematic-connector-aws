@@ -1,6 +1,5 @@
 use std::path::Path;
 
-use anyhow::bail;
 use autoschematic_core::{
     connector::{ConnectorOp, OpExecOutput, ResourceAddress},
     error_util::invalid_op,

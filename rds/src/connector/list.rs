@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use autoschematic_core::connector::ResourceAddress;
 
-use crate::{addr::RdsResourceAddress, client_cache, resource::RdsResource};
+use crate::addr::RdsResourceAddress;
 
 use super::RdsConnector;
 
@@ -64,7 +64,7 @@ impl RdsConnector {
                         results.push(
                             RdsResourceAddress::DBSubnetGroup {
                                 region: region.into(),
-                                name: name,
+                                name,
                             }
                             .to_path_buf(),
                         );
@@ -84,7 +84,7 @@ impl RdsConnector {
                         results.push(
                             RdsResourceAddress::DBParameterGroup {
                                 region: region.into(),
-                                name: name,
+                                name,
                             }
                             .to_path_buf(),
                         );

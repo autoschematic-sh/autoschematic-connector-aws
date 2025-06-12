@@ -1,4 +1,3 @@
-use std::path::Path;
 
 use autoschematic_core::connector::{DocIdent, GetDocOutput};
 use documented::{Documented, DocumentedFields};

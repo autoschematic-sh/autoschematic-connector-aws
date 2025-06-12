@@ -21,11 +21,11 @@ impl From<Option<Vec<aws_sdk_kms::types::Tag>>> for Tags {
     }
 }
 
-impl Into<Option<Vec<aws_sdk_kms::types::Tag>>> for Tags {
-    fn into(self) -> Option<Vec<aws_sdk_kms::types::Tag>> {
+impl From<Tags> for Option<Vec<aws_sdk_kms::types::Tag>> {
+    fn from(val: Tags) -> Self {
         let mut out_vec = Vec::new();
 
-        for (k, v) in self.0 {
+        for (k, v) in val.0 {
             out_vec.push(aws_sdk_kms::types::Tag::builder().tag_key(k).tag_value(v).build().unwrap());
         }
 
@@ -42,7 +42,7 @@ impl Tags {
 // From a pair of hashmaps, determine the set of aws_kms::Tag structs to add and remove
 pub fn kms_tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>, Vec<aws_sdk_kms::types::Tag>)> {
     let mut remove_keys = Vec::new();
-    for (k, _) in &old_tags.0 {
+    for k in old_tags.0.keys() {
         if !new_tags.0.contains_key(k) {
             remove_keys.push(k.to_string());
         }

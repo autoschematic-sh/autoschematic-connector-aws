@@ -1,12 +1,9 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 use crate::addr::RdsResourceAddress;
-use crate::resource::{RdsDBCluster, RdsDBInstance, RdsDBParameterGroup, RdsDBSubnetGroup};
 use autoschematic_core::{
-    connector::{Connector, ConnectorOp, OpPlanOutput, ResourceAddress},
-    connector_op,
-    util::{RON, diff_ron_values, optional_string_from_utf8},
+    connector::{OpPlanOutput, ResourceAddress},
+    util::optional_string_from_utf8,
 };
 
 use super::RdsConnector;

@@ -1,12 +1,9 @@
 use autoschematic_core::{connector::ConnectorOp, util::RON};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use super::{
     resource::{
-        Alarm, AlarmAction, Dashboard, Dimension, EventPattern, EventRule, EventTarget, InputTransformer, LogGroup, LogStream,
-        Metric, MetricDataQuery, MetricFilter, MetricIdentifier, MetricStat, MetricTransformation, RetentionPolicy,
-        StatOptions,
+        Alarm, AlarmAction, Dashboard, Dimension, EventPattern, EventRule, EventTarget, LogGroup, LogStream, MetricDataQuery, MetricTransformation,
     },
     tags::Tags,
 };

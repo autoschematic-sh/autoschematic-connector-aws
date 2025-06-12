@@ -9,7 +9,7 @@ pub struct Tags(HashMap<String, String>);
 
 impl From<Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>> for Tags {
     fn from(value: Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>) -> Self {
-        if let Some(mut tags) = value {
+        if let Some(tags) = value {
             let mut out_map = HashMap::new();
             for tag in tags {
                 if let (Some(tag_key), Some(tag_value)) = (tag.key, tag.value) {
@@ -23,11 +23,11 @@ impl From<Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>> for Tags {
     }
 }
 
-impl Into<Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>>> for Tags {
-    fn into(self) -> std::option::Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>> {
+impl From<Tags> for Option<Vec<aws_sdk_elasticloadbalancingv2::types::Tag>> {
+    fn from(val: Tags) -> Self {
         let mut out_vec = Vec::new();
 
-        for (k, v) in self.0 {
+        for (k, v) in val.0 {
             out_vec.push(aws_sdk_elasticloadbalancingv2::types::Tag::builder().key(k).value(v).build());
         }
 
@@ -47,7 +47,7 @@ fn s3_tag_diff(
     new_tags: &Tags,
 ) -> anyhow::Result<(Vec<String>, Vec<aws_sdk_elasticloadbalancingv2::types::Tag>)> {
     let mut untag_keys = Vec::new();
-    for (k, _) in &old_tags.0 {
+    for k in old_tags.0.keys() {
         if !new_tags.0.contains_key(k) {
             untag_keys.push(k.to_string());
         }

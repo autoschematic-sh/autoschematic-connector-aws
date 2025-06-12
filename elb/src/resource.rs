@@ -1,9 +1,7 @@
-use anyhow::bail;
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::RON,
 };
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
 use super::{addr::ElbResourceAddress, tags::Tags};

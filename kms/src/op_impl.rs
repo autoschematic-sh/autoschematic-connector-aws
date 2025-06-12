@@ -6,7 +6,7 @@ use super::{
     resource::{KmsKey, KmsKeyPolicy, KmsAlias},
     tags::Tags,
 };
-use autoschematic_core::connector::{OpExecOutput, Resource};
+use autoschematic_core::connector::OpExecOutput;
 
 /// Creates a KMS key using the provided configuration
 pub async fn create_key(

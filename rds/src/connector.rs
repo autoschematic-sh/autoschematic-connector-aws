@@ -2,19 +2,16 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, ResourceAddress},
     diag::DiagnosticOutput,
     util::{ron_check_eq, ron_check_syntax},
 };
 
-use anyhow::bail;
-use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
 use crate::{

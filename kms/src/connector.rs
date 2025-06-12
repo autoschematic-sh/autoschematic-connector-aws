@@ -12,7 +12,7 @@ use crate::{op::KmsConnectorOp, op_impl};
 use anyhow::Context;
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
@@ -144,7 +144,6 @@ impl Connector for KmsConnector {
 
         let path_components: Vec<&str> = subpath
             .components()
-            .into_iter()
             .map(|s| s.as_os_str().to_str().unwrap())
             .collect();
 

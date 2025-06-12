@@ -2,7 +2,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use crate::{
@@ -10,7 +9,6 @@ use crate::{
     resource::{InternetGateway, Route, RouteTable, SecurityGroup, SecurityGroupRule, Subnet, Vpc, VpcResource},
     tags::Tags,
 };
-use anyhow::{Context, bail};
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
@@ -25,8 +23,6 @@ use autoschematic_core::{
     util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 
-use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_ec2::config::Region;
 use tokio::sync::Mutex;
 
 use crate::config::VpcConnectorConfig;

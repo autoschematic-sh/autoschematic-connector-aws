@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use autoschematic_core::connector::{Resource, ResourceAddress};
-use documented::{Documented, DocumentedFields, DocumentedVariants};
+use documented::{Documented, DocumentedFields};
 use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::{PrettyConfig, RON};

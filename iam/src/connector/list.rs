@@ -5,7 +5,6 @@ use anyhow::bail;
 use autoschematic_connector_aws_core::arn::parse_arn;
 use autoschematic_core::connector::ResourceAddress;
 
-use aws_sdk_iam::types::PolicyScopeType;
 
 use super::IamConnector;
 
@@ -75,7 +74,7 @@ impl IamConnector {
                 for policy in policies {
                     if let (Some(path), Some(name), Some(arn)) = (policy.path, policy.policy_name, policy.arn) {
                         if parse_arn(&arn)?.account_id == account_id {
-                            results.push(IamResourceAddress::Policy { path: path, name: name }.to_path_buf());
+                            results.push(IamResourceAddress::Policy { path, name }.to_path_buf());
                         }
                     }
                 }

@@ -1,7 +1,6 @@
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
-    time::Duration,
 };
 
 use crate::{addr::IamResourceAddress, resource::IamGroup};
@@ -19,7 +18,7 @@ use autoschematic_core::{
 };
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
 
-use aws_config::{BehaviorVersion, meta::region::RegionProviderChain, timeout::TimeoutConfig};
+use aws_config::{BehaviorVersion, meta::region::RegionProviderChain};
 use aws_sdk_iam::config::Region;
 use tags::Tags;
 use tokio::sync::Mutex;

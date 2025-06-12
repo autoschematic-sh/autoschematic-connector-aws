@@ -1,9 +1,7 @@
-use anyhow::bail;
 use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::RON,
 };
-use ron::ser::PrettyConfig;
 use serde::{Deserialize, Serialize};
 
 use crate::tags::Tags;
@@ -210,21 +208,21 @@ impl Resource for CloudWatchResource {
         let s = str::from_utf8(s)?;
 
         match addr {
-            CloudWatchResourceAddress::Alarm(_region, _name) => return Ok(CloudWatchResource::Alarm(RON.from_str(s)?)),
+            CloudWatchResourceAddress::Alarm(_region, _name) => Ok(CloudWatchResource::Alarm(RON.from_str(s)?)),
             CloudWatchResourceAddress::Dashboard(_region, _name) => {
-                return Ok(CloudWatchResource::Dashboard(RON.from_str(s)?));
+                Ok(CloudWatchResource::Dashboard(RON.from_str(s)?))
             }
             CloudWatchResourceAddress::LogGroup(_region, _name) => {
-                return Ok(CloudWatchResource::LogGroup(RON.from_str(s)?));
+                Ok(CloudWatchResource::LogGroup(RON.from_str(s)?))
             }
             CloudWatchResourceAddress::LogStream(_region, _group_name, _stream_name) => {
-                return Ok(CloudWatchResource::LogStream(RON.from_str(s)?));
+                Ok(CloudWatchResource::LogStream(RON.from_str(s)?))
             }
             CloudWatchResourceAddress::Metric(_region, _namespace, _name) => {
-                return Ok(CloudWatchResource::Metric(RON.from_str(s)?));
+                Ok(CloudWatchResource::Metric(RON.from_str(s)?))
             }
             CloudWatchResourceAddress::EventRule(_region, _name) => {
-                return Ok(CloudWatchResource::EventRule(RON.from_str(s)?));
+                Ok(CloudWatchResource::EventRule(RON.from_str(s)?))
             }
         }
     }

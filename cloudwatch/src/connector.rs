@@ -5,10 +5,8 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
-use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
@@ -16,7 +14,6 @@ use autoschematic_core::{
     diag::DiagnosticOutput,
     util::{ron_check_eq, ron_check_syntax},
 };
-use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use config::CloudWatchConnectorConfig;
 use tokio::sync::Mutex;
 

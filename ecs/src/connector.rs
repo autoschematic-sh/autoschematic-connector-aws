@@ -21,7 +21,7 @@ use autoschematic_core::{
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use tokio::sync::Mutex;
 
-use autoschematic_connector_aws_core::config::{AwsConnectorConfig, AwsServiceConfig};
+use autoschematic_connector_aws_core::config::AwsServiceConfig;
 
 pub mod get;
 pub mod list;
