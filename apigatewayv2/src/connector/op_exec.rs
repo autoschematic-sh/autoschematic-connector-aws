@@ -1,12 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::bail;
-use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
-    error::{AutoschematicError, AutoschematicErrorType},
-    op_exec_output,
-};
-use aws_sdk_route53::types::{AliasTarget, Change, ChangeBatch, RrType};
+use autoschematic_core::connector::OpExecOutput;
 
 use crate::{addr::ApiGatewayV2ResourceAddress, op::ApiGatewayV2ConnectorOp};
 

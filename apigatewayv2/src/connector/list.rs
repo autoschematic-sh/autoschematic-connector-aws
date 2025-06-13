@@ -2,10 +2,7 @@ use std::path::{Path, PathBuf};
 
 use autoschematic_core::connector::ResourceAddress;
 
-use crate::{
-    addr::ApiGatewayV2ResourceAddress,
-    util::{list_hosted_zones, list_resource_record_sets},
-};
+use crate::addr::ApiGatewayV2ResourceAddress;
 
 use super::ApiGatewayV2Connector;
 

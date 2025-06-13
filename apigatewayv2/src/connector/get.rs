@@ -1,12 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
-use aws_sdk_route53::types::RrType;
 
-use crate::{
-    addr::ApiGatewayV2ResourceAddress,
-    resource::{HostedZone, RecordSet, ApiGatewayV2Resource},
-};
+use crate::addr::ApiGatewayV2ResourceAddress;
 
 use super::ApiGatewayV2Connector;
 
