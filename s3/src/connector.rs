@@ -153,13 +153,7 @@ impl Connector for S3Connector {
                     block_public_policy: true,
                     restrict_public_buckets: true,
                 }),
-                acl: resource::Acl {
-                    owner_id: String::from("[owner_id]"),
-                    grants:   vec![resource::Grant {
-                        grantee_id: String::from("[grantee_id]"),
-                        permission: String::from("READ"),
-                    }],
-                },
+                acl: None,
                 tags: Tags::default(),
             })
         ));

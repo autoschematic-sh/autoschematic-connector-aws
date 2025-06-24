@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use aws_sdk_rds::types::Tag;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -25,8 +26,8 @@ impl From<&Option<Vec<aws_sdk_rds::types::Tag>>> for Tags {
     }
 }
 
-impl From<Option<Vec<aws_sdk_rds::types::Tag>>> for Tags {
-    fn from(tags: Option<Vec<aws_sdk_rds::types::Tag>>) -> Self {
+impl From<Option<Vec<Tag>>> for Tags {
+    fn from(tags: Option<Vec<Tag>>) -> Self {
         if let Some(tags) = tags {
             let mut out_map = HashMap::new();
             for tag in tags {
@@ -45,12 +46,12 @@ impl From<Option<Vec<aws_sdk_rds::types::Tag>>> for Tags {
     }
 }
 
-impl From<Tags> for Option<Vec<aws_sdk_rds::types::Tag>> {
+impl From<Tags> for Option<Vec<Tag>> {
     fn from(val: Tags) -> Self {
         let mut out_vec = Vec::new();
 
         for (k, v) in val.0 {
-            out_vec.push(aws_sdk_rds::types::Tag::builder().key(k).value(v).build())
+            out_vec.push(Tag::builder().key(k).value(v).build())
         }
 
         Some(out_vec)
@@ -61,4 +62,28 @@ impl Tags {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+}
+
+pub fn tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>, Vec<Tag>)> {
+    let mut untag_keys = Vec::new();
+    for k in old_tags.0.keys() {
+        if !new_tags.0.contains_key(k) {
+            untag_keys.push(k.to_string());
+        }
+    }
+
+    let mut new_tagset = Vec::new();
+    for (key, new_value) in &new_tags.0 {
+        if !old_tags.0.contains_key(key) {
+            let tag = Tag::builder().key(key).value(new_value).build();
+            new_tagset.push(tag);
+        } else if let Some(old_value) = old_tags.0.get(key) {
+            if old_value != new_value {
+                let tag = Tag::builder().key(key).value(new_value).build();
+                new_tagset.push(tag);
+            }
+        }
+    }
+
+    Ok((untag_keys, new_tagset))
 }

@@ -41,8 +41,8 @@ impl Tags {
     }
 }
 
-// From a pair of hashmap, determine the set of aws_s3::Tag structs to pass to untag and set_tags respectively
-fn s3_tag_diff(
+// From a pair of hashmaps, determine the set of Tag structs to pass to untag and set_tags respectively
+pub fn tag_diff(
     old_tags: &Tags,
     new_tags: &Tags,
 ) -> anyhow::Result<(Vec<String>, Vec<aws_sdk_elasticloadbalancingv2::types::Tag>)> {

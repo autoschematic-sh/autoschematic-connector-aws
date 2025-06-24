@@ -6,9 +6,9 @@ pub mod connector;
 pub mod addr;
 pub mod config;
 pub mod op;
-// pub mod op_impl;
+pub mod op_impl;
 pub mod resource;
-// pub mod tags;
+pub mod tags;
 pub mod util;
 
 #[tokio::main]

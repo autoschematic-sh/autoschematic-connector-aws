@@ -7,18 +7,21 @@ use serde::{Deserialize, Serialize};
 use super::{addr::S3ResourceAddress, tags::Tags};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Grant {
     pub grantee_id: String,
     pub permission: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Acl {
     pub owner_id: String,
     pub grants:   Vec<Grant>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct PublicAccessBlock {
     pub block_public_acls: bool,
     pub ignore_public_acls: bool,
@@ -27,16 +30,16 @@ pub struct PublicAccessBlock {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct S3Bucket {
     pub policy: Option<ron::Value>,
     pub public_access_block: Option<PublicAccessBlock>,
-    pub acl: Acl,
+    pub acl: Option<Acl>,
     pub tags: Tags,
 }
 
 pub enum S3Resource {
     Bucket(S3Bucket),
-    // Object(S3Object),
 }
 
 impl Resource for S3Resource {

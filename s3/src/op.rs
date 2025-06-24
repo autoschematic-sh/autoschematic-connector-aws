@@ -10,7 +10,7 @@ pub enum S3ConnectorOp {
     CreateBucket(S3Bucket),
     UpdateBucketPolicy(Option<ron::Value>, Option<ron::Value>),
     UpdateBucketPublicAccessBlock(Option<PublicAccessBlock>),
-    UpdateBucketAcl(Acl, Acl),
+    UpdateBucketAcl(Option<Acl>, Option<Acl>),
     UpdateBucketTags(Tags, Tags),
     DeleteBucket,
 }

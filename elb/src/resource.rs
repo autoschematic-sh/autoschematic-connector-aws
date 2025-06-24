@@ -8,9 +8,10 @@ use super::{addr::ElbResourceAddress, tags::Tags};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct HealthCheck {
+    pub enabled: bool,
     pub protocol: String,
     pub port: String,
-    pub path: Option<String>,
+    pub path: String,
     pub interval_seconds: i32,
     pub timeout_seconds: i32,
     pub healthy_threshold_count: i32,
@@ -36,7 +37,7 @@ pub struct TargetGroup {
     pub port: i32,
     pub vpc_id: String,
     pub target_type: String, // instance, ip, lambda
-    pub health_check: HealthCheck,
+    pub health_check: Option<HealthCheck>,
     pub targets: Vec<String>,
     pub tags: Tags,
 }

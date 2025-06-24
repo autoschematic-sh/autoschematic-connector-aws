@@ -9,10 +9,12 @@ use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
+    connector_util::{get_output_or_bail, load_resource_output_key, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
+    read_outputs::ReadOutput,
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use aws_sdk_apigatewayv2::{
@@ -29,10 +31,12 @@ use crate::{
     addr,
     config::{self},
     op,
+    resource::{Api, ApiGatewayV2Resource, Authorizer, Integration, Route, Stage},
 };
 
 pub use addr::ApiGatewayV2ResourceAddress;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
+use autoschematic_core::skeleton;
 pub use op::ApiGatewayV2ConnectorOp;
 
 pub mod get;
@@ -134,65 +138,343 @@ impl Connector for ApiGatewayV2Connector {
         self.do_op_exec(addr, op).await
     }
 
-    // async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
-    //     let Some(addr) = ApiGatewayV2ResourceAddress::from_path(addr)? else {
-    //         return Ok(None);
-    //     };
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
+        let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
-    //     let Some(outputs) = get_outputs(&self.prefix, &addr)? else {
-    //         return Ok(None);
-    //     };
+        let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+            return Ok(VirtToPhyOutput::NotPresent);
+        };
 
-    //     match addr {
-    //         ApiGatewayV2ResourceAddress::Secret(region, secret_name) => {
-    //             let secret_name = get_output_or_bail(&outputs, "secret_name")?;
-    //             Ok(Some(
-    //                 ApiGatewayV2ResourceAddress::Secret(region, secret_name).to_path_buf(),
-    //             ))
-    //         }
-    //         ApiGatewayV2ResourceAddress::SecretPolicy(region, secret_name) => {
-    //             let Some(secret_outputs) = get_outputs(
-    //                 &self.prefix,
-    //                 &ApiGatewayV2ResourceAddress::Secret(region.clone(), secret_name),
-    //             )?
-    //             else {
-    //                 return Ok(None);
-    //             };
+        match &addr {
+            ApiGatewayV2ResourceAddress::Api { region, .. } => {
+                let region = region.clone();
+                let api_id = get_output_or_bail(&outputs, "api_id")?;
 
-    //             let secret_name = get_output_or_bail(&secret_outputs, "secret_name")?;
-    //             Ok(Some(
-    //                 ApiGatewayV2ResourceAddress::Secret(region, secret_name).to_path_buf(),
-    //             ))
-    //         }
-    //         _ => Ok(Some(addr.to_path_buf())),
-    //     }
-    // }
+                Ok(VirtToPhyOutput::Present(
+                    ApiGatewayV2ResourceAddress::Api { region, api_id }.to_path_buf(),
+                ))
+            }
+            ApiGatewayV2ResourceAddress::Route { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
 
-    // async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
-    //     let Some(addr) = ApiGatewayV2ResourceAddress::from_path(addr)? else {
-    //         return Ok(None);
-    //     };
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
 
-    //     match &addr {
-    //         ApiGatewayV2ResourceAddress::Secret(_, _) => {
-    //             if let Some(secret_addr) = output_phy_to_virt(&self.prefix, &addr)? {
-    //                 return Ok(Some(secret_addr.to_path_buf()));
-    //             }
-    //         }
-    //         ApiGatewayV2ResourceAddress::SecretPolicy(_, _) => {
-    //             if let Some(secret_addr) = output_phy_to_virt(&self.prefix, &addr)? {
-    //                 return Ok(Some(secret_addr.to_path_buf()));
-    //             }
-    //         }
-    //         _ => {
-    //             return Ok(Some(addr.to_path_buf()));
-    //         }
-    //     }
-    //     Ok(Some(addr.to_path_buf()))
-    // }
+                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                        path: parent_api.to_path_buf(),
+                        key:  String::from("api_id"),
+                    }]));
+                };
+
+                let Some(route_id) = load_resource_output_key(&self.prefix, &addr, "route_id")? else {
+                    return Ok(VirtToPhyOutput::NotPresent);
+                };
+
+                Ok(VirtToPhyOutput::Present(
+                    ApiGatewayV2ResourceAddress::Route {
+                        region,
+                        api_id,
+                        route_id,
+                    }
+                    .to_path_buf(),
+                ))
+            }
+            ApiGatewayV2ResourceAddress::Integration { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                        path: parent_api.to_path_buf(),
+                        key:  String::from("api_id"),
+                    }]));
+                };
+
+                let Some(integration_id) = load_resource_output_key(&self.prefix, &addr, "integration_id")? else {
+                    return Ok(VirtToPhyOutput::NotPresent);
+                };
+
+                Ok(VirtToPhyOutput::Present(
+                    ApiGatewayV2ResourceAddress::Integration {
+                        region,
+                        api_id,
+                        integration_id,
+                    }
+                    .to_path_buf(),
+                ))
+            }
+            ApiGatewayV2ResourceAddress::Stage {
+                region,
+                api_id,
+                stage_name,
+            } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                        path: parent_api.to_path_buf(),
+                        key:  String::from("api_id"),
+                    }]));
+                };
+
+                Ok(VirtToPhyOutput::Present(
+                    ApiGatewayV2ResourceAddress::Stage {
+                        region,
+                        api_id,
+                        stage_name: stage_name.clone(),
+                    }
+                    .to_path_buf(),
+                ))
+            }
+            ApiGatewayV2ResourceAddress::Authorizer { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                        path: parent_api.to_path_buf(),
+                        key:  String::from("api_id"),
+                    }]));
+                };
+
+                let Some(authorizer_id) = load_resource_output_key(&self.prefix, &addr, "authorizer_id")? else {
+                    return Ok(VirtToPhyOutput::NotPresent);
+                };
+
+                Ok(VirtToPhyOutput::Present(
+                    ApiGatewayV2ResourceAddress::Authorizer {
+                        region,
+                        api_id,
+                        authorizer_id,
+                    }
+                    .to_path_buf(),
+                ))
+            }
+        }
+    }
+
+    async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
+        let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
+
+        match &addr {
+            ApiGatewayV2ResourceAddress::Api { .. } => {
+                if let Some(virt_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                    return Ok(Some(virt_addr.to_path_buf()));
+                }
+            }
+            ApiGatewayV2ResourceAddress::Route { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                if let Some(ApiGatewayV2ResourceAddress::Api {
+                    region,
+                    api_id: virt_api_id,
+                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                {
+                    if let Some(ApiGatewayV2ResourceAddress::Route { route_id, .. }) = output_phy_to_virt(&self.prefix, &addr)?
+                    {
+                        return Ok(Some(
+                            ApiGatewayV2ResourceAddress::Route {
+                                region,
+                                api_id: virt_api_id,
+                                route_id,
+                            }
+                            .to_path_buf(),
+                        ));
+                    }
+                }
+            }
+            ApiGatewayV2ResourceAddress::Integration { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                if let Some(ApiGatewayV2ResourceAddress::Api {
+                    region,
+                    api_id: virt_api_id,
+                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                {
+                    if let Some(ApiGatewayV2ResourceAddress::Integration { integration_id, .. }) =
+                        output_phy_to_virt(&self.prefix, &addr)?
+                    {
+                        return Ok(Some(
+                            ApiGatewayV2ResourceAddress::Integration {
+                                region,
+                                api_id: virt_api_id,
+                                integration_id,
+                            }
+                            .to_path_buf(),
+                        ));
+                    }
+                }
+            }
+            ApiGatewayV2ResourceAddress::Authorizer { region, api_id, .. } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                if let Some(ApiGatewayV2ResourceAddress::Api {
+                    region,
+                    api_id: virt_api_id,
+                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                {
+                    if let Some(ApiGatewayV2ResourceAddress::Authorizer { authorizer_id, .. }) =
+                        output_phy_to_virt(&self.prefix, &addr)?
+                    {
+                        return Ok(Some(
+                            ApiGatewayV2ResourceAddress::Authorizer {
+                                region,
+                                api_id: virt_api_id,
+                                authorizer_id,
+                            }
+                            .to_path_buf(),
+                        ));
+                    }
+                }
+            }
+            ApiGatewayV2ResourceAddress::Stage {
+                region,
+                api_id,
+                stage_name,
+            } => {
+                let region = region.clone();
+                let api_id = api_id.clone();
+                let stage_name = stage_name.clone();
+
+                let parent_api = ApiGatewayV2ResourceAddress::Api {
+                    region: region.clone(),
+                    api_id,
+                };
+
+                if let Some(ApiGatewayV2ResourceAddress::Api {
+                    region,
+                    api_id: virt_api_id,
+                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                {
+                    return Ok(Some(
+                        ApiGatewayV2ResourceAddress::Stage {
+                            region,
+                            api_id: virt_api_id,
+                            stage_name,
+                        }
+                        .to_path_buf(),
+                    ));
+                }
+            }
+        }
+        Ok(None)
+    }
 
     async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
-        let res = Vec::new();
+        let mut res = Vec::new();
+
+        let region = String::from("[region]");
+        let api_id = String::from("[api_id]");
+
+        // API Gateway V2 API
+        res.push(skeleton!(
+            ApiGatewayV2ResourceAddress::Api {
+                region: region.clone(),
+                api_id: api_id.clone(),
+            },
+            ApiGatewayV2Resource::Api(Api {
+                name: String::from("[api_name]"),
+                protocol_type: String::from("HTTP"),
+                api_endpoint: None,
+                tags: None,
+            })
+        ));
+
+        // Route
+        let route_id = String::from("[route_id]");
+        res.push(skeleton!(
+            ApiGatewayV2ResourceAddress::Route {
+                region: region.clone(),
+                api_id: api_id.clone(),
+                route_id
+            },
+            ApiGatewayV2Resource::Route(Route {
+                route_key: String::from("GET /path"),
+                target:    Some(String::from("integrations/[integration_id]")),
+            })
+        ));
+
+        // Integration
+        let integration_id = String::from("[integration_id]");
+        res.push(skeleton!(
+            ApiGatewayV2ResourceAddress::Integration {
+                region: region.clone(),
+                api_id: api_id.clone(),
+                integration_id
+            },
+            ApiGatewayV2Resource::Integration(Integration {
+                integration_type: String::from("AWS_PROXY"),
+                integration_uri:  String::from("arn:aws:lambda:[region]:[account_id]:function:[function_name]"),
+            })
+        ));
+
+        // Stage
+        let stage_name = String::from("[stage_name]");
+        res.push(skeleton!(
+            ApiGatewayV2ResourceAddress::Stage {
+                region: region.clone(),
+                api_id: api_id.clone(),
+                stage_name
+            },
+            ApiGatewayV2Resource::Stage(Stage {
+                stage_name: String::from("[stage_name]"),
+                auto_deploy: true,
+                tags: None,
+            })
+        ));
+
+        // Authorizer
+        let authorizer_id = String::from("[authorizer_id]");
+        res.push(skeleton!(
+            ApiGatewayV2ResourceAddress::Authorizer {
+                region: region.clone(),
+                api_id: api_id.clone(),
+                authorizer_id
+            },
+            ApiGatewayV2Resource::Authorizer(Authorizer {
+                authorizer_type: String::from("JWT"),
+                authorizer_uri:  String::from("https://[issuer_url]/.well-known/jwks.json"),
+                identity_source: vec![String::from("$request.header.Authorization")],
+            })
+        ));
 
         Ok(res)
     }

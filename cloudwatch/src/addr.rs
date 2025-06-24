@@ -31,26 +31,23 @@ impl ResourceAddress for CloudWatchResourceAddress {
                 PathBuf::from(format!("aws/cloudwatch/{}/dashboards/{}.ron", region, name))
             }
             CloudWatchResourceAddress::LogGroup(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/logs/groups/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{}/log_groups/{}.ron", region, name))
             }
             CloudWatchResourceAddress::LogStream(region, group_name, stream_name) => PathBuf::from(format!(
-                "aws/cloudwatch/{}/logs/groups/{}/streams/{}.ron",
+                "aws/cloudwatch/{}/log_groups/{}/streams/{}.ron",
                 region, group_name, stream_name
             )),
             CloudWatchResourceAddress::Metric(region, namespace, name) => {
                 PathBuf::from(format!("aws/cloudwatch/{}/metrics/{}/{}.ron", region, namespace, name))
             }
             CloudWatchResourceAddress::EventRule(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/events/rules/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{}/event_rules/{}.ron", region, name))
             }
         }
     }
 
     fn from_path(path: &Path) -> Result<Self, anyhow::Error> {
-        let path_components: Vec<&str> = path
-            .components()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         match &path_components[..] {
             ["aws", "cloudwatch", region, "alarms", name] if name.ends_with(".ron") => {
@@ -61,20 +58,13 @@ impl ResourceAddress for CloudWatchResourceAddress {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 Ok(CloudWatchResourceAddress::Dashboard(region.to_string(), name))
             }
-            ["aws", "cloudwatch", region, "logs", "groups", name] if name.ends_with(".ron") => {
+            ["aws", "cloudwatch", region, "log_groups", name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 Ok(CloudWatchResourceAddress::LogGroup(region.to_string(), name))
             }
-            [
-                "aws",
-                "cloudwatch",
-                region,
-                "logs",
-                "groups",
-                group_name,
-                "streams",
-                stream_name,
-            ] if stream_name.ends_with(".ron") => {
+            ["aws", "cloudwatch", region, "log_groups", group_name, "streams", stream_name]
+                if stream_name.ends_with(".ron") =>
+            {
                 let stream_name = stream_name.strip_suffix(".ron").unwrap().to_string();
                 Ok(CloudWatchResourceAddress::LogStream(
                     region.to_string(),
@@ -90,7 +80,7 @@ impl ResourceAddress for CloudWatchResourceAddress {
                     name,
                 ))
             }
-            ["aws", "cloudwatch", region, "events", "rules", name] if name.ends_with(".ron") => {
+            ["aws", "cloudwatch", region, "event_rules", name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 Ok(CloudWatchResourceAddress::EventRule(region.to_string(), name))
             }

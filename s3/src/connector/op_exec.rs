@@ -2,6 +2,7 @@ use std::path::Path;
 
 use anyhow::Context;
 use autoschematic_core::connector::{ConnectorOp, OpExecOutput, ResourceAddress};
+use aws_sdk_s3::types::CreateBucketConfiguration;
 
 use crate::{addr::S3ResourceAddress, op::S3ConnectorOp};
 
@@ -19,7 +20,17 @@ impl S3Connector {
                         let client = self.get_or_init_client(&region).await?;
 
                         // Create the bucket
-                        match client.create_bucket().bucket(&name).send().await {
+                        match client
+                            .create_bucket()
+                            .create_bucket_configuration(
+                                CreateBucketConfiguration::builder()
+                                    .location_constraint(aws_sdk_s3::types::BucketLocationConstraint::try_parse(&region)?)
+                                    .build(),
+                            )
+                            .bucket(&name)
+                            .send()
+                            .await
+                        {
                             Ok(_) => {
                                 // Apply policy if specified
                                 if let Some(policy) = &bucket.policy {
@@ -55,38 +66,40 @@ impl S3Connector {
                                 }
 
                                 // Apply ACL
-                                let mut grants = Vec::new();
-                                for grant in &bucket.acl.grants {
-                                    let grantee = aws_sdk_s3::types::Grantee::builder()
-                                        .id(&grant.grantee_id)
-                                        .r#type(aws_sdk_s3::types::Type::CanonicalUser)
-                                        .build()
-                                        .context("Failed to build grantee")?;
+                                if let Some(acl) = bucket.acl {
+                                    let mut grants = Vec::new();
+                                    for grant in &acl.grants {
+                                        let grantee = aws_sdk_s3::types::Grantee::builder()
+                                            .id(&grant.grantee_id)
+                                            .r#type(aws_sdk_s3::types::Type::CanonicalUser)
+                                            .build()
+                                            .context("Failed to build grantee")?;
 
-                                    let permission = aws_sdk_s3::types::Permission::from(grant.permission.as_str());
+                                        let permission = aws_sdk_s3::types::Permission::from(grant.permission.as_str());
 
-                                    let grant_obj = aws_sdk_s3::types::Grant::builder()
-                                        .grantee(grantee)
-                                        .permission(permission)
+                                        let grant_obj = aws_sdk_s3::types::Grant::builder()
+                                            .grantee(grantee)
+                                            .permission(permission)
+                                            .build();
+
+                                        grants.push(grant_obj);
+                                    }
+
+                                    let owner = aws_sdk_s3::types::Owner::builder().id(&acl.owner_id).build();
+
+                                    let access_control_policy = aws_sdk_s3::types::AccessControlPolicy::builder()
+                                        .owner(owner)
+                                        .set_grants(Some(grants))
                                         .build();
 
-                                    grants.push(grant_obj);
+                                    client
+                                        .put_bucket_acl()
+                                        .bucket(&name)
+                                        .access_control_policy(access_control_policy)
+                                        .send()
+                                        .await
+                                        .context("Failed to set bucket ACL")?;
                                 }
-
-                                let owner = aws_sdk_s3::types::Owner::builder().id(&bucket.acl.owner_id).build();
-
-                                let access_control_policy = aws_sdk_s3::types::AccessControlPolicy::builder()
-                                    .owner(owner)
-                                    .set_grants(Some(grants))
-                                    .build();
-
-                                client
-                                    .put_bucket_acl()
-                                    .bucket(&name)
-                                    .access_control_policy(access_control_policy)
-                                    .send()
-                                    .await
-                                    .context("Failed to set bucket ACL")?;
 
                                 // Apply tags
                                 if bucket.tags.len() > 0 {
@@ -226,39 +239,41 @@ impl S3Connector {
                     S3ConnectorOp::UpdateBucketAcl(_old_acl, new_acl) => {
                         let client = self.get_or_init_client(&region).await?;
 
-                        // Create grants for new ACL
-                        let mut grants = Vec::new();
-                        for grant in &new_acl.grants {
-                            let grantee = aws_sdk_s3::types::Grantee::builder()
-                                .id(&grant.grantee_id)
-                                .r#type(aws_sdk_s3::types::Type::CanonicalUser)
-                                .build()
-                                .context("Failed to build grantee")?;
+                        if let Some(new_acl) = new_acl {
+                            // Create grants for new ACL
+                            let mut grants = Vec::new();
+                            for grant in &new_acl.grants {
+                                let grantee = aws_sdk_s3::types::Grantee::builder()
+                                    .id(&grant.grantee_id)
+                                    .r#type(aws_sdk_s3::types::Type::CanonicalUser)
+                                    .build()
+                                    .context("Failed to build grantee")?;
 
-                            let permission = aws_sdk_s3::types::Permission::from(grant.permission.as_str());
+                                let permission = aws_sdk_s3::types::Permission::from(grant.permission.as_str());
 
-                            let grant_obj = aws_sdk_s3::types::Grant::builder()
-                                .grantee(grantee)
-                                .permission(permission)
+                                let grant_obj = aws_sdk_s3::types::Grant::builder()
+                                    .grantee(grantee)
+                                    .permission(permission)
+                                    .build();
+
+                                grants.push(grant_obj);
+                            }
+
+                            let owner = aws_sdk_s3::types::Owner::builder().id(&new_acl.owner_id).build();
+
+                            let access_control_policy = aws_sdk_s3::types::AccessControlPolicy::builder()
+                                .owner(owner)
+                                .set_grants(Some(grants))
                                 .build();
 
-                            grants.push(grant_obj);
+                            client
+                                .put_bucket_acl()
+                                .bucket(&name)
+                                .access_control_policy(access_control_policy)
+                                .send()
+                                .await
+                                .context("Failed to update bucket ACL")?;
                         }
-
-                        let owner = aws_sdk_s3::types::Owner::builder().id(&new_acl.owner_id).build();
-
-                        let access_control_policy = aws_sdk_s3::types::AccessControlPolicy::builder()
-                            .owner(owner)
-                            .set_grants(Some(grants))
-                            .build();
-
-                        client
-                            .put_bucket_acl()
-                            .bucket(&name)
-                            .access_control_policy(access_control_policy)
-                            .send()
-                            .await
-                            .context("Failed to update bucket ACL")?;
 
                         Ok(OpExecOutput {
                             outputs: None,

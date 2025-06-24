@@ -227,7 +227,7 @@ impl Connector for VpcConnector {
                 }
             }
             VpcResourceAddress::Subnet { region, vpc_id, .. } => {
-                // First, get the
+                // First, get the parent vpc addr
                 if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = output_phy_to_virt(
                     &self.prefix,
                     &VpcResourceAddress::Vpc {
@@ -309,7 +309,6 @@ impl Connector for VpcConnector {
             }
         }
 
-        // Ok(Some(addr.to_path_buf()))
         Ok(None)
     }
 
