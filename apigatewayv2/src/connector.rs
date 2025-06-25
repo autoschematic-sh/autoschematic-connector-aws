@@ -12,7 +12,6 @@ use autoschematic_core::{
         Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
         ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
-    connector_util::{get_output_or_bail, load_resource_output_key, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
     read_outputs::ReadOutput,
 };
@@ -141,18 +140,16 @@ impl Connector for ApiGatewayV2Connector {
     async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
-        let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
-            return Ok(VirtToPhyOutput::NotPresent);
-        };
-
         match &addr {
             ApiGatewayV2ResourceAddress::Api { region, .. } => {
                 let region = region.clone();
-                let api_id = get_output_or_bail(&outputs, "api_id")?;
-
-                Ok(VirtToPhyOutput::Present(
-                    ApiGatewayV2ResourceAddress::Api { region, api_id }.to_path_buf(),
-                ))
+                if let Some(api_id) = addr.get_output(&self.prefix, "api_id")? {
+                    Ok(VirtToPhyOutput::Present(
+                        ApiGatewayV2ResourceAddress::Api { region, api_id }.to_path_buf(),
+                    ))
+                } else {
+                    Ok(VirtToPhyOutput::NotPresent)
+                }
             }
             ApiGatewayV2ResourceAddress::Route { region, api_id, .. } => {
                 let region = region.clone();
@@ -163,25 +160,25 @@ impl Connector for ApiGatewayV2Connector {
                     api_id,
                 };
 
-                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_api.to_path_buf(),
+                        addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
-                let Some(route_id) = load_resource_output_key(&self.prefix, &addr, "route_id")? else {
+                if let Some(route_id) = addr.get_output(&self.prefix, "route_id")? {
+                    return Ok(VirtToPhyOutput::Present(
+                        ApiGatewayV2ResourceAddress::Route {
+                            region,
+                            api_id,
+                            route_id,
+                        }
+                        .to_path_buf(),
+                    ));
+                } else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-
-                Ok(VirtToPhyOutput::Present(
-                    ApiGatewayV2ResourceAddress::Route {
-                        region,
-                        api_id,
-                        route_id,
-                    }
-                    .to_path_buf(),
-                ))
             }
             ApiGatewayV2ResourceAddress::Integration { region, api_id, .. } => {
                 let region = region.clone();
@@ -192,14 +189,14 @@ impl Connector for ApiGatewayV2Connector {
                     api_id,
                 };
 
-                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_api.to_path_buf(),
+                        addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
-                let Some(integration_id) = load_resource_output_key(&self.prefix, &addr, "integration_id")? else {
+                let Some(integration_id) = addr.get_output(&self.prefix, "integration_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
 
@@ -225,9 +222,9 @@ impl Connector for ApiGatewayV2Connector {
                     api_id,
                 };
 
-                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_api.to_path_buf(),
+                        addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
@@ -250,14 +247,14 @@ impl Connector for ApiGatewayV2Connector {
                     api_id,
                 };
 
-                let Some(api_id) = load_resource_output_key(&self.prefix, &parent_api, "api_id")? else {
+                let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_api.to_path_buf(),
+                        addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
-                let Some(authorizer_id) = load_resource_output_key(&self.prefix, &addr, "authorizer_id")? else {
+                let Some(authorizer_id) = addr.get_output(&self.prefix, "authorizer_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
 
@@ -278,7 +275,7 @@ impl Connector for ApiGatewayV2Connector {
 
         match &addr {
             ApiGatewayV2ResourceAddress::Api { .. } => {
-                if let Some(virt_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
                     return Ok(Some(virt_addr.to_path_buf()));
                 }
             }
@@ -294,10 +291,9 @@ impl Connector for ApiGatewayV2Connector {
                 if let Some(ApiGatewayV2ResourceAddress::Api {
                     region,
                     api_id: virt_api_id,
-                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                }) = parent_api.phy_to_virt(&self.prefix)?
                 {
-                    if let Some(ApiGatewayV2ResourceAddress::Route { route_id, .. }) = output_phy_to_virt(&self.prefix, &addr)?
-                    {
+                    if let Some(ApiGatewayV2ResourceAddress::Route { route_id, .. }) = addr.phy_to_virt(&self.prefix)? {
                         return Ok(Some(
                             ApiGatewayV2ResourceAddress::Route {
                                 region,
@@ -321,10 +317,10 @@ impl Connector for ApiGatewayV2Connector {
                 if let Some(ApiGatewayV2ResourceAddress::Api {
                     region,
                     api_id: virt_api_id,
-                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                }) = parent_api.phy_to_virt(&self.prefix)?
                 {
                     if let Some(ApiGatewayV2ResourceAddress::Integration { integration_id, .. }) =
-                        output_phy_to_virt(&self.prefix, &addr)?
+                        addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
                             ApiGatewayV2ResourceAddress::Integration {
@@ -349,10 +345,10 @@ impl Connector for ApiGatewayV2Connector {
                 if let Some(ApiGatewayV2ResourceAddress::Api {
                     region,
                     api_id: virt_api_id,
-                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                }) = parent_api.phy_to_virt(&self.prefix)?
                 {
                     if let Some(ApiGatewayV2ResourceAddress::Authorizer { authorizer_id, .. }) =
-                        output_phy_to_virt(&self.prefix, &addr)?
+                        addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
                             ApiGatewayV2ResourceAddress::Authorizer {
@@ -382,7 +378,7 @@ impl Connector for ApiGatewayV2Connector {
                 if let Some(ApiGatewayV2ResourceAddress::Api {
                     region,
                     api_id: virt_api_id,
-                }) = output_phy_to_virt(&self.prefix, &parent_api)?
+                }) = parent_api.phy_to_virt(&self.prefix)?
                 {
                     return Ok(Some(
                         ApiGatewayV2ResourceAddress::Stage {

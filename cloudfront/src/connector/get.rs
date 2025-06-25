@@ -134,7 +134,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::Distribution(dist),
-                            [(String::from("distribution_id"), Some(distribution_id.into()))]
+                            [(String::from("distribution_id"), distribution_id.into())]
                         )
                     }
                     Err(e) => {
@@ -171,7 +171,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::OriginAccessControl(origin_access_control),
-                            [(String::from("oac_id"), Some(oac_id.into()))]
+                            [(String::from("oac_id"), oac_id.into())]
                         )
                     }
                     Err(e) => {
@@ -209,7 +209,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::CachePolicy(cache_policy),
-                            [(String::from("policy_id"), Some(policy_id.into()))]
+                            [(String::from("policy_id"), policy_id.into())]
                         )
                     }
                     Err(e) => {
@@ -239,7 +239,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::Function(function),
-                            [(String::from("function_name"), Some(name.into()))]
+                            [(String::from("function_name"), name.into())]
                         )
                     }
                     Err(e) => {
@@ -276,7 +276,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::OriginRequestPolicy(origin_request_policy),
-                            [(String::from("policy_id"), Some(policy_id.into()))]
+                            [(String::from("policy_id"), policy_id.into())]
                         )
                     }
                     Err(e) => {
@@ -313,7 +313,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::ResponseHeadersPolicy(response_headers_policy),
-                            [(String::from("policy_id"), Some(policy_id.into()))]
+                            [(String::from("policy_id"), policy_id.into())]
                         )
                     }
                     Err(e) => {
@@ -345,7 +345,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::RealtimeLogConfig(realtime_log_config),
-                            [(String::from("name"), Some(name.into()))]
+                            [(String::from("name"), name.into())]
                         )
                     }
                     Err(e) => {
@@ -380,7 +380,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::KeyGroup(key_group),
-                            [(String::from("key_group_id"), Some(key_group_id.into()))]
+                            [(String::from("key_group_id"), key_group_id.into())]
                         )
                     }
                     Err(e) => {
@@ -413,7 +413,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::PublicKey(public_key),
-                            [(String::from("public_key_id"), Some(public_key_id.into()))]
+                            [(String::from("public_key_id"), public_key_id.into())]
                         )
                     }
                     Err(e) => {
@@ -445,7 +445,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::FieldLevelEncryptionConfig(field_level_encryption_config),
-                            [(String::from("config_id"), Some(config_id.into()))]
+                            [(String::from("config_id"), config_id.into())]
                         )
                     }
                     Err(e) => {
@@ -481,7 +481,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::FieldLevelEncryptionProfile(field_level_encryption_profile),
-                            [(String::from("profile_id"), Some(profile_id.into()))]
+                            [(String::from("profile_id"), profile_id.into())]
                         )
                     }
                     Err(e) => {
@@ -531,7 +531,7 @@ impl CloudFrontConnector {
 
                         get_resource_output!(
                             CloudFrontResource::StreamingDistribution(streaming_distribution),
-                            [(String::from("distribution_id"), Some(distribution_id.into()))]
+                            [(String::from("distribution_id"), distribution_id.into())]
                         )
                     }
                     Err(e) => {

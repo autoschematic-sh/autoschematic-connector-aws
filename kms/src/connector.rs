@@ -19,7 +19,6 @@ use autoschematic_core::{
         ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
     connector_op,
-    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
     get_resource_output, skeleton,
     util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
@@ -215,7 +214,7 @@ impl Connector for KmsConnector {
                     tags,
                 };
 
-                get_resource_output!(KmsResource::Key(kms_key), [(String::from("key_id"), Some(key_id))])
+                get_resource_output!(KmsResource::Key(kms_key), [(String::from("key_id"), key_id)])
             }
             KmsResourceAddress::KeyPolicy(region_name, key_id) => {
                 let client = self.get_or_init_client(&region_name).await?;
@@ -573,15 +572,15 @@ impl Connector for KmsConnector {
 
         match &addr {
             KmsResourceAddress::Key(region, _key_id) => {
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
-                };
-                let key_id = get_output_or_bail(&outputs, "key_id")?;
-                Ok(VirtToPhyOutput::Present(
-                    KmsResourceAddress::Key(region.into(), key_id).to_path_buf(),
-                ))
-            }
-            _ => Ok(VirtToPhyOutput::Present(addr.to_path_buf())),
+                if let Some(key_id) = addr.get_output(&self.prefix, "key_id")? {
+                    Ok(VirtToPhyOutput::Present(
+                        KmsResourceAddress::Key(region.into(), key_id).to_path_buf(),
+                    ))
+                } else {
+                    Ok(VirtToPhyOutput::NotPresent)
+                }
+            },
+            _ => Ok(VirtToPhyOutput::Null(addr.to_path_buf())),
         }
     }
 
@@ -592,7 +591,7 @@ impl Connector for KmsConnector {
 
         match &addr {
             KmsResourceAddress::Key(_, _) => {
-                if let Some(key_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                if let Some(key_addr) = addr.phy_to_virt(&self.prefix)? {
                     return Ok(Some(key_addr.to_path_buf()));
                 }
             }

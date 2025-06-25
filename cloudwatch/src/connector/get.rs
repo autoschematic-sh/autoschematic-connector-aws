@@ -67,7 +67,7 @@ impl CloudWatchConnector {
 
                         get_resource_output!(
                             CloudWatchResource::Alarm(alarm),
-                            [(String::from("alarm_name"), Some(alarm_name))]
+                            [(String::from("alarm_name"), alarm_name)]
                         )
                     } else {
                         Ok(None)
@@ -96,7 +96,7 @@ impl CloudWatchConnector {
 
                             get_resource_output!(
                                 CloudWatchResource::Dashboard(dashboard),
-                                [(String::from("dashboard_name"), Some(dashboard_name))]
+                                [(String::from("dashboard_name"), dashboard_name)]
                             )
                         } else {
                             Ok(None)
@@ -139,7 +139,7 @@ impl CloudWatchConnector {
 
                         get_resource_output!(
                             CloudWatchResource::LogGroup(log_group),
-                            [(String::from("log_group_name"), Some(log_group_name))]
+                            [(String::from("log_group_name"), log_group_name)]
                         )
                     } else {
                         Ok(None)
@@ -176,7 +176,7 @@ impl CloudWatchConnector {
 
                         get_resource_output!(
                             CloudWatchResource::LogStream(log_stream),
-                            [(String::from("log_stream_name"), Some(log_stream_name))]
+                            [(String::from("log_stream_name"), log_stream_name)]
                         )
                     } else {
                         Ok(None)
@@ -220,7 +220,7 @@ impl CloudWatchConnector {
 
                         get_resource_output!(
                             CloudWatchResource::Metric(metric),
-                            [(String::from("metric_name"), Some(metric_name))]
+                            [(String::from("metric_name"), metric_name)]
                         )
                     } else {
                         Ok(None)
@@ -264,7 +264,7 @@ impl CloudWatchConnector {
 
                         get_resource_output!(
                             CloudWatchResource::EventRule(rule),
-                            [(String::from("rule_name"), Some(rule_name))]
+                            [(String::from("rule_name"), rule_name)]
                         )
                     }
                     Err(_) => Ok(None),

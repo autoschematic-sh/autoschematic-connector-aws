@@ -24,7 +24,7 @@ impl VpcConnector {
                 let Some(vpc) = get_vpc(&client, &vpc_id).await? else {
                     return Ok(None);
                 };
-                get_resource_output!(VpcResource::Vpc(vpc), [(String::from("vpc_id"), Some(vpc_id))])
+                get_resource_output!(VpcResource::Vpc(vpc), [(String::from("vpc_id"), vpc_id)])
             }
             VpcResourceAddress::Subnet {
                 region,
@@ -35,7 +35,7 @@ impl VpcConnector {
                 let Some(subnet) = get_subnet(&client, &vpc_id, &subnet_id).await? else {
                     return Ok(None);
                 };
-                get_resource_output!(VpcResource::Subnet(subnet), [(String::from("subnet_id"), Some(subnet_id))])
+                get_resource_output!(VpcResource::Subnet(subnet), [(String::from("subnet_id"), subnet_id)])
             }
             VpcResourceAddress::InternetGateway { region, igw_id } => {
                 let client = self.get_or_init_client(&region).await?;
@@ -44,7 +44,7 @@ impl VpcConnector {
                 };
                 get_resource_output!(
                     VpcResource::InternetGateway(igw),
-                    [(String::from("internet_gateway_id"), Some(igw_id))]
+                    [(String::from("internet_gateway_id"), igw_id)]
                 )
             }
             VpcResourceAddress::RouteTable { region, vpc_id, rt_id } => {
@@ -54,7 +54,7 @@ impl VpcConnector {
                 };
                 get_resource_output!(
                     VpcResource::RouteTable(route_table),
-                    [(String::from("route_table_id"), Some(rt_id))]
+                    [(String::from("route_table_id"), rt_id)]
                 )
             }
             VpcResourceAddress::SecurityGroup { region, vpc_id, sg_id } => {
@@ -64,7 +64,7 @@ impl VpcConnector {
                 };
                 get_resource_output!(
                     VpcResource::SecurityGroup(security_group),
-                    [(String::from("security_group_id"), Some(sg_id))]
+                    [(String::from("security_group_id"), sg_id)]
                 )
             }
         }

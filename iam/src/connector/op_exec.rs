@@ -3,10 +3,11 @@ use std::{collections::HashMap, path::Path};
 use crate::addr::IamResourceAddress;
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecOutput, OutputMapExec, OutputValueExec, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
+
 use op::IamConnectorOp;
 
 use tags::tag_diff;

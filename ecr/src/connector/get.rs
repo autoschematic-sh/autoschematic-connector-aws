@@ -68,7 +68,7 @@ impl EcrConnector {
 
                                 return get_resource_output!(
                                     EcrResource::Repository(repository),
-                                    [(String::from("repository_url"), repo.repository_uri.clone()),]
+                                    [(String::from("repository_url"), repo.repository_uri.clone().unwrap_or_default()),]
                                 );
                             }
                         }

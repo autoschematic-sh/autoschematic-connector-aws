@@ -232,7 +232,7 @@ impl Connector for EfsConnector {
 
                     return get_resource_output!(
                         EfsResource::FileSystem(file_system),
-                        [(String::from("file_system_id"), Some(fs_id.clone()))]
+                        [(String::from("file_system_id"), fs_id.clone())]
                     );
                 }
 
@@ -268,8 +268,8 @@ impl Connector for EfsConnector {
                     return get_resource_output!(
                         EfsResource::MountTarget(mount_target),
                         [
-                            (String::from("file_system_id"), Some(fs_id.clone())),
-                            (String::from("mount_target_id"), Some(mt_id.clone()))
+                            (String::from("file_system_id"), fs_id.clone()),
+                            (String::from("mount_target_id"), mt_id.clone())
                         ]
                     );
                 }
@@ -308,8 +308,8 @@ impl Connector for EfsConnector {
                     return get_resource_output!(
                         EfsResource::AccessPoint(access_point),
                         [
-                            (String::from("file_system_id"), Some(fs_id.clone())),
-                            (String::from("access_point_id"), Some(ap_id.clone()))
+                            (String::from("file_system_id"), fs_id.clone()),
+                            (String::from("access_point_id"), ap_id.clone())
                         ]
                     );
                 }

@@ -157,7 +157,7 @@ impl Connector for SecretsManagerConnector {
                     Ok((secret, arn)) => {
                         return get_resource_output!(
                             SecretsManagerResource::Secret(secret),
-                            [(String::from("arn"), Some(arn))]
+                            [(String::from("arn"), arn)]
                         );
                     }
                     Err(_) => Ok(None),

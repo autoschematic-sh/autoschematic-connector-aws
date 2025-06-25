@@ -77,7 +77,7 @@ impl EcsConnector {
 
                     return get_resource_output!(
                         EcsResource::Cluster(our_cluster),
-                        [(String::from("cluster_name"), Some(cluster_name))]
+                        [(String::from("cluster_name"), cluster_name)]
                     );
                 }
 
@@ -183,8 +183,8 @@ impl EcsConnector {
                     return get_resource_output!(
                         EcsResource::Service(our_service),
                         [
-                            (String::from("cluster_name"), Some(cluster_name)),
-                            (String::from("service_name"), Some(service_name))
+                            (String::from("cluster_name"), cluster_name),
+                            (String::from("service_name"), service_name)
                         ]
                     );
                 }
@@ -500,7 +500,7 @@ impl EcsConnector {
 
                     return get_resource_output!(
                         EcsResource::TaskDefinition(our_task_def),
-                        [(String::from("task_definition_id"), Some(family))]
+                        [(String::from("task_definition_id"), family)]
                     );
                 }
 
@@ -608,8 +608,8 @@ impl EcsConnector {
                     return get_resource_output!(
                         EcsResource::Task(our_task),
                         [
-                            (String::from("cluster_name"), Some(cluster_name)),
-                            (String::from("task_id"), Some(task_id))
+                            (String::from("cluster_name"), cluster_name),
+                            (String::from("task_id"), task_id)
                         ]
                     );
                 }
@@ -706,8 +706,8 @@ impl EcsConnector {
                     return get_resource_output!(
                         EcsResource::ContainerInstance(our_container_instance),
                         [
-                            (String::from("cluster_name"), Some(cluster_name)),
-                            (String::from("container_instance_id"), Some(container_instance_id))
+                            (String::from("cluster_name"), cluster_name),
+                            (String::from("container_instance_id"), container_instance_id)
                         ]
                     );
                 }

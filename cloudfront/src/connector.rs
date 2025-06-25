@@ -22,7 +22,6 @@ use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::connector::VirtToPhyOutput;
-use autoschematic_core::connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt};
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
@@ -385,17 +384,15 @@ impl Connector for CloudFrontConnector {
     async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
-        let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
-            return Ok(VirtToPhyOutput::NotPresent);
-        };
-        
         match &addr {
             CloudFrontResourceAddress::Distribution { .. } => {
-                let distribution_id = get_output_or_bail(&outputs, "distribution_id")?;
-
-                Ok(VirtToPhyOutput::Present(
-                    CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf()
-                ))
+                if let Some(distribution_id) = addr.get_output(&self.prefix, "distribution_id")? {
+                    Ok(VirtToPhyOutput::Present(
+                        CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf(),
+                    ))
+                } else {
+                    Ok(VirtToPhyOutput::NotPresent)
+                }
             }
             CloudFrontResourceAddress::OriginAccessControl { oac_id } => todo!(),
             CloudFrontResourceAddress::CachePolicy { policy_id } => todo!(),
@@ -416,11 +413,11 @@ impl Connector for CloudFrontConnector {
 
         match &addr {
             CloudFrontResourceAddress::Distribution { .. } => {
-                if let Some(virt_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
                     return Ok(Some(virt_addr.to_path_buf()));
                 }
             }
-            _ => todo!()
+            _ => todo!(),
         }
         Ok(None)
     }

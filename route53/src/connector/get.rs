@@ -29,7 +29,7 @@ impl Route53Connector {
                 let hz_config = HostedZone {};
 
                 let mut outputs = HashMap::new();
-                outputs.insert(String::from("id"), Some(hz.id.clone()));
+                outputs.insert(String::from("id"), hz.id.clone());
 
                 Ok(Some(GetResourceOutput {
                     resource_definition: Route53Resource::HostedZone(hz_config).to_bytes()?,

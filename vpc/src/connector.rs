@@ -16,7 +16,6 @@ use autoschematic_core::{
         Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
         SkeletonOutput, VirtToPhyOutput,
     },
-    connector_util::{get_output_or_bail, load_resource_outputs, output_phy_to_virt},
     diag::DiagnosticOutput,
     read_outputs::ReadOutput,
     skeleton,
@@ -99,10 +98,9 @@ impl Connector for VpcConnector {
 
         match &addr {
             VpcResourceAddress::Vpc { region, .. } => {
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+                let Some(vpc_id) = addr.get_output(&self.prefix, "vpc_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-                let vpc_id = get_output_or_bail(&outputs, "vpc_id")?;
                 Ok(VirtToPhyOutput::Present(
                     VpcResourceAddress::Vpc {
                         region: region.into(),
@@ -117,20 +115,16 @@ impl Connector for VpcConnector {
                     vpc_id: vpc_id.into(),
                 };
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
+                let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_vpc_addr.to_path_buf(),
+                        addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
-                let vpc_id = get_output_or_bail(&vpc_outputs, "vpc_id")?;
-
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+                let Some(subnet_id) = addr.get_output(&self.prefix, "subnet_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-
-                let subnet_id = get_output_or_bail(&outputs, "subnet_id")?;
 
                 Ok(VirtToPhyOutput::Present(
                     VpcResourceAddress::Subnet {
@@ -142,10 +136,9 @@ impl Connector for VpcConnector {
                 ))
             }
             VpcResourceAddress::InternetGateway { region, .. } => {
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+                let Some(igw_id) = addr.get_output(&self.prefix, "internet_gateway_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-                let igw_id = get_output_or_bail(&outputs, "internet_gateway_id")?;
                 Ok(VirtToPhyOutput::Present(
                     VpcResourceAddress::InternetGateway {
                         region: region.into(),
@@ -160,20 +153,16 @@ impl Connector for VpcConnector {
                     vpc_id: vpc_id.into(),
                 };
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
+                let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_vpc_addr.to_path_buf(),
+                        addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
-                let vpc_id = get_output_or_bail(&vpc_outputs, "vpc_id")?;
-
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+                let Some(rt_id) = addr.get_output(&self.prefix, "route_table_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-
-                let rt_id = get_output_or_bail(&outputs, "route_table_id")?.to_string();
 
                 Ok(VirtToPhyOutput::Present(
                     VpcResourceAddress::RouteTable {
@@ -190,20 +179,16 @@ impl Connector for VpcConnector {
                     vpc_id: vpc_id.into(),
                 };
 
-                let Some(vpc_outputs) = load_resource_outputs(&self.prefix, &parent_vpc_addr)? else {
+                let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
                     return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
-                        path: parent_vpc_addr.to_path_buf(),
+                        addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
-                let vpc_id = get_output_or_bail(&vpc_outputs, "vpc_id")?;
-
-                let Some(outputs) = load_resource_outputs(&self.prefix, &addr)? else {
+                let Some(sg_id) = addr.get_output(&self.prefix, "security_group_id")? else {
                     return Ok(VirtToPhyOutput::NotPresent);
                 };
-
-                let sg_id = get_output_or_bail(&outputs, "security_group_id")?;
 
                 Ok(VirtToPhyOutput::Present(
                     VpcResourceAddress::SecurityGroup {
@@ -222,23 +207,21 @@ impl Connector for VpcConnector {
 
         match &addr {
             VpcResourceAddress::Vpc { .. } => {
-                if let Some(vpc_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                if let Some(vpc_addr) = addr.phy_to_virt(&self.prefix)? {
                     return Ok(Some(vpc_addr.to_path_buf()));
                 }
             }
             VpcResourceAddress::Subnet { region, vpc_id, .. } => {
-                // First, get the parent vpc addr
-                if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc {
-                        region: region.into(),
-                        vpc_id: vpc_id.into(),
-                    },
-                )? {
+                let parent_vpc_addr = VpcResourceAddress::Vpc {
+                    region: region.into(),
+                    vpc_id: vpc_id.into(),
+                };
+
+                if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = parent_vpc_addr.phy_to_virt(&self.prefix)? {
                     if let Some(VpcResourceAddress::Subnet {
                         subnet_id: virt_subnet_id,
                         ..
-                    }) = output_phy_to_virt(&self.prefix, &addr)?
+                    }) = addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
                             VpcResourceAddress::Subnet {
@@ -252,23 +235,22 @@ impl Connector for VpcConnector {
                 }
             }
             VpcResourceAddress::InternetGateway { region, igw_id } => {
-                if let Some(igw_addr) = output_phy_to_virt(&self.prefix, &addr)? {
+                if let Some(igw_addr) = addr.phy_to_virt(&self.prefix)? {
                     return Ok(Some(igw_addr.to_path_buf()));
                 }
             }
             VpcResourceAddress::RouteTable { region, vpc_id, .. } => {
-                if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc {
-                        region: region.to_string(),
-                        vpc_id: vpc_id.to_string(),
-                    },
-                )? {
+                let parent_vpc_addr = VpcResourceAddress::Vpc {
+                    region: region.into(),
+                    vpc_id: vpc_id.into(),
+                };
+
+                if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = parent_vpc_addr.phy_to_virt(&self.prefix)? {
                     if let Some(VpcResourceAddress::RouteTable {
                         region,
                         vpc_id,
                         rt_id: virt_rt_id,
-                    }) = output_phy_to_virt(&self.prefix, &addr)?
+                    }) = addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
                             VpcResourceAddress::RouteTable {
@@ -283,19 +265,13 @@ impl Connector for VpcConnector {
             }
 
             VpcResourceAddress::SecurityGroup { region, vpc_id, .. } => {
-                if let Some(VpcResourceAddress::Vpc {
-                    region,
-                    vpc_id: virt_vpc_id,
-                }) = output_phy_to_virt(
-                    &self.prefix,
-                    &VpcResourceAddress::Vpc {
-                        region: region.to_string(),
-                        vpc_id: vpc_id.to_string(),
-                    },
-                )? {
-                    if let Some(VpcResourceAddress::SecurityGroup { sg_id: virt_sg_id, .. }) =
-                        output_phy_to_virt(&self.prefix, &addr)?
-                    {
+                let parent_vpc_addr = VpcResourceAddress::Vpc {
+                    region: region.into(),
+                    vpc_id: vpc_id.into(),
+                };
+
+                if let Some(VpcResourceAddress::Vpc { vpc_id: virt_vpc_id, .. }) = parent_vpc_addr.phy_to_virt(&self.prefix)? {
+                    if let Some(VpcResourceAddress::SecurityGroup { sg_id: virt_sg_id, .. }) = addr.phy_to_virt(&self.prefix)? {
                         return Ok(Some(
                             VpcResourceAddress::SecurityGroup {
                                 region: region.to_string(),

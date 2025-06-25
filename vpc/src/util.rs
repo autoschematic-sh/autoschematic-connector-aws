@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use autoschematic_core::connector_util::load_resource_output_key;
+use autoschematic_core::connector::ResourceAddress;
 use aws_sdk_ec2::types::{AttributeBooleanValue, Filter};
 
 use super::{
@@ -325,7 +325,7 @@ pub fn get_phy_vpc_id(prefix: &Path, region: &str, virt_vpc_id: &str) -> anyhow:
         vpc_id: virt_vpc_id.to_string(),
     };
 
-    load_resource_output_key(prefix, &addr, "vpc_id")
+    addr.get_output(prefix, "vpc_id")
 }
 
 pub fn get_phy_security_group_id(
@@ -340,7 +340,7 @@ pub fn get_phy_security_group_id(
         sg_id:  virt_sg_id.to_string(),
     };
 
-    load_resource_output_key(prefix, &addr, "security_group_id")
+    addr.get_output(prefix, "security_group_id")
 }
 
 pub fn get_phy_subnet_id(
@@ -355,7 +355,7 @@ pub fn get_phy_subnet_id(
         subnet_id: virt_subnet_id.to_string(),
     };
 
-    load_resource_output_key(prefix, &addr, "subnet_id")
+    addr.get_output(prefix, "subnet_id")
 }
 
 pub fn get_phy_route_table_id(
@@ -370,7 +370,7 @@ pub fn get_phy_route_table_id(
         rt_id:  virt_route_table_id.to_string(),
     };
 
-    load_resource_output_key(prefix, &addr, "route_table_id")
+    addr.get_output(prefix, "route_table_id")
 }
 
 pub fn get_phy_internet_gateway_id(prefix: &Path, region: &str, virt_igw_id: &str) -> anyhow::Result<Option<String>> {
@@ -379,5 +379,5 @@ pub fn get_phy_internet_gateway_id(prefix: &Path, region: &str, virt_igw_id: &st
         igw_id: virt_igw_id.to_string(),
     };
 
-    load_resource_output_key(prefix, &addr, "internet_gateway_id")
+    addr.get_output(prefix, "internet_gateway_id")
 }

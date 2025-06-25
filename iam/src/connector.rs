@@ -227,7 +227,7 @@ impl Connector for IamConnector {
         Ok(res)
     }
 
-    async fn get_docstring(&self, addr: &Path, ident: DocIdent) -> anyhow::Result<Option<GetDocOutput>> {
+    async fn get_docstring(&self, _addr: &Path, ident: DocIdent) -> anyhow::Result<Option<GetDocOutput>> {
         self.do_get_doc(ident).await
     }
 
@@ -235,10 +235,10 @@ impl Connector for IamConnector {
         let addr = IamResourceAddress::from_path(addr)?;
 
         match addr {
-            IamResourceAddress::User { path, name } => ron_check_eq::<IamUser>(a, b),
-            IamResourceAddress::Role { path, name } => ron_check_eq::<IamRole>(a, b),
-            IamResourceAddress::Group { path, name } => ron_check_eq::<IamGroup>(a, b),
-            IamResourceAddress::Policy { path, name } => ron_check_eq::<IamPolicy>(a, b),
+            IamResourceAddress::User { .. } => ron_check_eq::<IamUser>(a, b),
+            IamResourceAddress::Role { .. } => ron_check_eq::<IamRole>(a, b),
+            IamResourceAddress::Group { .. } => ron_check_eq::<IamGroup>(a, b),
+            IamResourceAddress::Policy { .. } => ron_check_eq::<IamPolicy>(a, b),
         }
     }
 
@@ -246,10 +246,10 @@ impl Connector for IamConnector {
         let addr = IamResourceAddress::from_path(addr)?;
 
         match addr {
-            IamResourceAddress::User { path, name } => ron_check_syntax::<IamUser>(a),
-            IamResourceAddress::Role { path, name } => ron_check_syntax::<IamRole>(a),
-            IamResourceAddress::Group { path, name } => ron_check_syntax::<IamGroup>(a),
-            IamResourceAddress::Policy { path, name } => ron_check_syntax::<IamPolicy>(a),
+            IamResourceAddress::User { .. } => ron_check_syntax::<IamUser>(a),
+            IamResourceAddress::Role { .. } => ron_check_syntax::<IamRole>(a),
+            IamResourceAddress::Group { .. } => ron_check_syntax::<IamGroup>(a),
+            IamResourceAddress::Policy { .. } => ron_check_syntax::<IamPolicy>(a),
         }
     }
 }
