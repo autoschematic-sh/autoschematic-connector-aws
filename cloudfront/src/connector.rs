@@ -1,9 +1,6 @@
 use crate::addr::CloudFrontResourceAddress;
 use crate::op::CloudFrontConnectorOp;
-use crate::resource::{
-    CacheBehavior, CachePolicy, CloudFrontResource, Distribution, Function, KeyGroup, OriginAccessControl, PublicKey,
-    StreamingDistribution, TtlSettings,
-};
+use crate::resource::{self, CloudFrontResource};
 
 mod get;
 mod list;
@@ -22,6 +19,8 @@ use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::connector::VirtToPhyOutput;
+use autoschematic_core::util::{ron_check_eq, ron_check_syntax};
+use autoschematic_core::virt_to_phy;
 use autoschematic_core::{
     connector::{
         Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
@@ -35,40 +34,39 @@ use tokio::sync::Mutex;
 
 #[derive(Default)]
 pub struct CloudFrontConnector {
-    client_cache: Mutex<HashMap<String, Arc<aws_sdk_cloudfront::Client>>>,
+    client:     Mutex<Option<Arc<aws_sdk_cloudfront::Client>>>,
     account_id: Mutex<String>,
-    config: Mutex<CloudFrontConnectorConfig>,
-    prefix: PathBuf,
+    config:     Mutex<CloudFrontConnectorConfig>,
+    prefix:     PathBuf,
 }
 
 impl CloudFrontConnector {
-    pub async fn get_or_init_client(&self, region_s: &str) -> anyhow::Result<Arc<aws_sdk_cloudfront::Client>> {
-        let mut cache = self.client_cache.lock().await;
+    pub async fn get_or_init_client(&self) -> anyhow::Result<Arc<aws_sdk_cloudfront::Client>> {
+        // let mut client = self.client.lock().await;
 
-        if !cache.contains_key(region_s) {
-            let region = RegionProviderChain::first_try(Region::new(region_s.to_owned()));
+        if let Some(client) = &*self.client.lock().await {
+            return Ok(client.clone());
+        }
 
-            let config = aws_config::defaults(BehaviorVersion::latest())
-                .region(region)
-                .timeout_config(
-                    TimeoutConfig::builder()
-                        .connect_timeout(Duration::from_secs(30))
-                        .operation_timeout(Duration::from_secs(30))
-                        .operation_attempt_timeout(Duration::from_secs(30))
-                        .read_timeout(Duration::from_secs(30))
-                        .build(),
-                )
-                .load()
-                .await;
-            let client = aws_sdk_cloudfront::Client::new(&config);
-            cache.insert(region_s.to_string(), Arc::new(client));
-        };
+        let region = RegionProviderChain::first_try(Region::new("us-east-1"));
 
-        let Some(client) = cache.get(region_s) else {
-            bail!("Failed to get client for region {}", region_s);
-        };
+        let config = aws_config::defaults(BehaviorVersion::latest())
+            .region(region)
+            .timeout_config(
+                TimeoutConfig::builder()
+                    .connect_timeout(Duration::from_secs(30))
+                    .operation_timeout(Duration::from_secs(30))
+                    .operation_attempt_timeout(Duration::from_secs(30))
+                    .read_timeout(Duration::from_secs(30))
+                    .build(),
+            )
+            .load()
+            .await;
+        let new_client = Arc::new(aws_sdk_cloudfront::Client::new(&config));
+        *self.client.lock().await = Some(new_client.clone());
+        Ok(new_client)
 
-        Ok(client.clone())
+        // Ok(*self.client.clone())
     }
 
     pub async fn get_resource_arn(&self, addr: &CloudFrontResourceAddress) -> anyhow::Result<String> {
@@ -184,9 +182,10 @@ impl Connector for CloudFrontConnector {
 
         let account_id = config.verify_sts().await?;
 
-        *self.client_cache.lock().await = HashMap::new();
+        // *self.client_cache.lock().await = HashMap::new();
         *self.config.lock().await = config;
         *self.account_id.lock().await = account_id;
+        // self.get_or_init_client();
         Ok(())
     }
 
@@ -275,22 +274,23 @@ impl Connector for CloudFrontConnector {
         let distribution_id = String::from("[distribution_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::Distribution { distribution_id },
-            CloudFrontResource::Distribution(Distribution {
-                domain_name: String::from("[domain_name]"),
+            CloudFrontResource::Distribution(resource::Distribution {
                 enabled: true,
                 default_root_object: Some(String::from("index.html")),
+                aliases: Some(vec!["example.com".into()]),
                 origins: vec![],
-                default_cache_behavior: CacheBehavior {
+                default_cache_behavior: resource::CacheBehavior {
+                    id: String::from("default"),
                     path_pattern: None,
                     target_origin_id: String::from("[origin_id]"),
                     viewer_protocol_policy: String::from("redirect-to-https"),
                     allowed_methods: vec![String::from("GET"), String::from("HEAD")],
                     cached_methods: vec![String::from("GET"), String::from("HEAD")],
                     compress: true,
-                    ttl_settings: TtlSettings {
+                    ttl_settings: resource::TtlSettings {
                         default_ttl: Some(86400),
                         max_ttl:     Some(31536000),
-                        min_ttl:     0,
+                        min_ttl:     None,
                     },
                 },
                 cache_behaviors: vec![],
@@ -304,7 +304,7 @@ impl Connector for CloudFrontConnector {
         let oac_id = String::from("[oac_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::OriginAccessControl { oac_id },
-            CloudFrontResource::OriginAccessControl(OriginAccessControl {
+            CloudFrontResource::OriginAccessControl(resource::OriginAccessControl {
                 name: String::from("[oac_name]"),
                 description: Some(String::from("[description]")),
                 origin_access_control_origin_type: String::from("s3"),
@@ -317,12 +317,12 @@ impl Connector for CloudFrontConnector {
         let policy_id = String::from("[cache_policy_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::CachePolicy { policy_id },
-            CloudFrontResource::CachePolicy(CachePolicy {
+            CloudFrontResource::CachePolicy(resource::CachePolicy {
                 name: String::from("[cache_policy_name]"),
                 comment: Some(String::from("[comment]")),
                 default_ttl: Some(86400),
                 max_ttl: Some(31536000),
-                min_ttl: 0,
+                min_ttl: None,
                 parameters_in_cache_key_and_forwarded_to_origin: None,
             })
         ));
@@ -331,7 +331,7 @@ impl Connector for CloudFrontConnector {
         let name = String::from("[function_name]");
         res.push(skeleton!(
             CloudFrontResourceAddress::Function { name },
-            CloudFrontResource::Function(Function {
+            CloudFrontResource::Function(resource::Function {
                 name: String::from("[function_name]"),
                 function_code: String::from("function handler(event) { return event.request; }"),
                 runtime: String::from("cloudfront-js-1.0"),
@@ -342,7 +342,7 @@ impl Connector for CloudFrontConnector {
         let key_group_id = String::from("[key_group_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::KeyGroup { key_group_id },
-            CloudFrontResource::KeyGroup(KeyGroup {
+            CloudFrontResource::KeyGroup(resource::KeyGroup {
                 name:    String::from("[key_group_name]"),
                 comment: Some(String::from("[comment]")),
                 items:   vec![String::from("[public_key_id]")],
@@ -353,7 +353,7 @@ impl Connector for CloudFrontConnector {
         let public_key_id = String::from("[public_key_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::PublicKey { public_key_id },
-            CloudFrontResource::PublicKey(PublicKey {
+            CloudFrontResource::PublicKey(resource::PublicKey {
                 name: String::from("[public_key_name]"),
                 comment: Some(String::from("[comment]")),
                 encoded_key: String::from("[base64_encoded_public_key]"),
@@ -364,7 +364,7 @@ impl Connector for CloudFrontConnector {
         let distribution_id = String::from("[streaming_distribution_id]");
         res.push(skeleton!(
             CloudFrontResourceAddress::StreamingDistribution { distribution_id },
-            CloudFrontResource::StreamingDistribution(StreamingDistribution {
+            CloudFrontResource::StreamingDistribution(resource::StreamingDistribution {
                 domain_name: String::from("[domain_name]"),
                 enabled: true,
                 comment: Some(String::from("[comment]")),
@@ -384,41 +384,66 @@ impl Connector for CloudFrontConnector {
     async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
-        match &addr {
-            CloudFrontResourceAddress::Distribution { .. } => {
-                if let Some(distribution_id) = addr.get_output(&self.prefix, "distribution_id")? {
-                    Ok(VirtToPhyOutput::Present(
-                        CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf(),
-                    ))
-                } else {
-                    Ok(VirtToPhyOutput::NotPresent)
-                }
-            }
-            CloudFrontResourceAddress::OriginAccessControl { oac_id } => todo!(),
-            CloudFrontResourceAddress::CachePolicy { policy_id } => todo!(),
-            CloudFrontResourceAddress::OriginRequestPolicy { policy_id } => todo!(),
-            CloudFrontResourceAddress::ResponseHeadersPolicy { policy_id } => todo!(),
-            CloudFrontResourceAddress::RealtimeLogConfig { name } => todo!(),
-            CloudFrontResourceAddress::Function { name } => todo!(),
-            CloudFrontResourceAddress::KeyGroup { key_group_id } => todo!(),
-            CloudFrontResourceAddress::PublicKey { public_key_id } => todo!(),
-            CloudFrontResourceAddress::FieldLevelEncryptionConfig { config_id } => todo!(),
-            CloudFrontResourceAddress::FieldLevelEncryptionProfile { profile_id } => todo!(),
-            CloudFrontResourceAddress::StreamingDistribution { distribution_id } => todo!(),
-        }
+        virt_to_phy!(
+            CloudFrontResourceAddress, addr, &self.prefix,
+            trivial => [
+                Distribution { distribution_id },
+                OriginAccessControl { oac_id },
+                CachePolicy { policy_id },
+                OriginRequestPolicy { policy_id },
+                ResponseHeadersPolicy { policy_id },
+                KeyGroup { key_group_id },
+                PublicKey { public_key_id },
+                FieldLevelEncryptionConfig { config_id },
+                FieldLevelEncryptionProfile { profile_id },
+                StreamingDistribution { distribution_id }
+            ],
+            null => [
+                RealtimeLogConfig { name },
+                Function { name }
+            ],
+            todo => [
+            ]
+        )
+        // match &addr {
+        //     CloudFrontResourceAddress::Distribution { .. } => {
+        //         if let Some(distribution_id) = addr.get_output(&self.prefix, "distribution_id")? {
+        //             Ok(VirtToPhyOutput::Present(
+        //                 CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf(),
+        //             ))
+        //         } else {
+        //             Ok(VirtToPhyOutput::NotPresent)
+        //         }
+        //     }
+        //     CloudFrontResourceAddress::OriginAccessControl { oac_id } => todo!(),
+        //     CloudFrontResourceAddress::CachePolicy { policy_id } => todo!(),
+        //     CloudFrontResourceAddress::OriginRequestPolicy { policy_id } => todo!(),
+        //     CloudFrontResourceAddress::ResponseHeadersPolicy { policy_id } => todo!(),
+        //     CloudFrontResourceAddress::RealtimeLogConfig { name } => {
+        //         Ok(VirtToPhyOutput::Null(CloudFrontResourceAddress::RealtimeLogConfig { name }))
+        //     }
+        //     CloudFrontResourceAddress::Function { name } => {
+        //         Ok(VirtToPhyOutput::Null(CloudFrontResourceAddress::Function { name }))
+        //     }
+        //     CloudFrontResourceAddress::KeyGroup { key_group_id } => todo!(),
+        //     CloudFrontResourceAddress::PublicKey { public_key_id } => todo!(),
+        //     CloudFrontResourceAddress::FieldLevelEncryptionConfig { config_id } => todo!(),
+        //     CloudFrontResourceAddress::FieldLevelEncryptionProfile { profile_id } => todo!(),
+        //     CloudFrontResourceAddress::StreamingDistribution { distribution_id } => todo!(),
+        // }
     }
 
     async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
-        match &addr {
-            CloudFrontResourceAddress::Distribution { .. } => {
-                if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
-                    return Ok(Some(virt_addr.to_path_buf()));
-                }
-            }
-            _ => todo!(),
+        // match &addr {
+        //     CloudFrontResourceAddress::Distribution { .. } => {
+        if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
+            return Ok(Some(virt_addr.to_path_buf()));
         }
+        // }
+        // _ => todo!(),
+        // }
         Ok(None)
     }
 
@@ -426,36 +451,44 @@ impl Connector for CloudFrontConnector {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
         match addr {
-            CloudFrontResourceAddress::Distribution { .. } => Ok(a == b),
-            CloudFrontResourceAddress::OriginAccessControl { .. } => Ok(a == b),
-            CloudFrontResourceAddress::CachePolicy { .. } => Ok(a == b),
-            CloudFrontResourceAddress::OriginRequestPolicy { .. } => Ok(a == b),
-            CloudFrontResourceAddress::ResponseHeadersPolicy { .. } => Ok(a == b),
-            CloudFrontResourceAddress::RealtimeLogConfig { .. } => Ok(a == b),
-            CloudFrontResourceAddress::Function { .. } => Ok(a == b),
-            CloudFrontResourceAddress::KeyGroup { .. } => Ok(a == b),
-            CloudFrontResourceAddress::PublicKey { .. } => Ok(a == b),
-            CloudFrontResourceAddress::FieldLevelEncryptionConfig { .. } => Ok(a == b),
-            CloudFrontResourceAddress::FieldLevelEncryptionProfile { .. } => Ok(a == b),
-            CloudFrontResourceAddress::StreamingDistribution { .. } => Ok(a == b),
+            CloudFrontResourceAddress::Distribution { .. } => ron_check_eq::<resource::Distribution>(a, b),
+            CloudFrontResourceAddress::OriginAccessControl { .. } => ron_check_eq::<resource::OriginAccessControl>(a, b),
+            CloudFrontResourceAddress::CachePolicy { .. } => ron_check_eq::<resource::CachePolicy>(a, b),
+            CloudFrontResourceAddress::OriginRequestPolicy { .. } => ron_check_eq::<resource::OriginRequestPolicy>(a, b),
+            CloudFrontResourceAddress::ResponseHeadersPolicy { .. } => ron_check_eq::<resource::ResponseHeadersPolicy>(a, b),
+            CloudFrontResourceAddress::RealtimeLogConfig { .. } => ron_check_eq::<resource::RealtimeLogConfig>(a, b),
+            CloudFrontResourceAddress::Function { .. } => ron_check_eq::<resource::Function>(a, b),
+            CloudFrontResourceAddress::KeyGroup { .. } => ron_check_eq::<resource::KeyGroup>(a, b),
+            CloudFrontResourceAddress::PublicKey { .. } => ron_check_eq::<resource::PublicKey>(a, b),
+            CloudFrontResourceAddress::FieldLevelEncryptionConfig { .. } => {
+                ron_check_eq::<resource::FieldLevelEncryptionConfig>(a, b)
+            }
+            CloudFrontResourceAddress::FieldLevelEncryptionProfile { .. } => {
+                ron_check_eq::<resource::FieldLevelEncryptionProfile>(a, b)
+            }
+            CloudFrontResourceAddress::StreamingDistribution { .. } => ron_check_eq::<resource::StreamingDistribution>(a, b),
         }
     }
 
     async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
         match addr {
-            CloudFrontResourceAddress::Distribution { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::OriginAccessControl { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::CachePolicy { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::OriginRequestPolicy { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::ResponseHeadersPolicy { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::RealtimeLogConfig { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::Function { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::KeyGroup { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::PublicKey { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::FieldLevelEncryptionConfig { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::FieldLevelEncryptionProfile { .. } => Ok(DiagnosticOutput::default()),
-            CloudFrontResourceAddress::StreamingDistribution { .. } => Ok(DiagnosticOutput::default()),
+            CloudFrontResourceAddress::Distribution { .. } => ron_check_syntax::<resource::Distribution>(a),
+            CloudFrontResourceAddress::OriginAccessControl { .. } => ron_check_syntax::<resource::OriginAccessControl>(a),
+            CloudFrontResourceAddress::CachePolicy { .. } => ron_check_syntax::<resource::CachePolicy>(a),
+            CloudFrontResourceAddress::OriginRequestPolicy { .. } => ron_check_syntax::<resource::OriginRequestPolicy>(a),
+            CloudFrontResourceAddress::ResponseHeadersPolicy { .. } => ron_check_syntax::<resource::ResponseHeadersPolicy>(a),
+            CloudFrontResourceAddress::RealtimeLogConfig { .. } => ron_check_syntax::<resource::RealtimeLogConfig>(a),
+            CloudFrontResourceAddress::Function { .. } => ron_check_syntax::<resource::Function>(a),
+            CloudFrontResourceAddress::KeyGroup { .. } => ron_check_syntax::<resource::KeyGroup>(a),
+            CloudFrontResourceAddress::PublicKey { .. } => ron_check_syntax::<resource::PublicKey>(a),
+            CloudFrontResourceAddress::FieldLevelEncryptionConfig { .. } => {
+                ron_check_syntax::<resource::FieldLevelEncryptionConfig>(a)
+            }
+            CloudFrontResourceAddress::FieldLevelEncryptionProfile { .. } => {
+                ron_check_syntax::<resource::FieldLevelEncryptionProfile>(a)
+            }
+            CloudFrontResourceAddress::StreamingDistribution { .. } => ron_check_syntax::<resource::StreamingDistribution>(a),
         }
     }
 }

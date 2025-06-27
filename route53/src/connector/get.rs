@@ -6,7 +6,7 @@ use aws_sdk_route53::types::RrType;
 
 use crate::{
     addr::Route53ResourceAddress,
-    resource::{HostedZone, RecordSet, Route53Resource},
+    resource::{AliasTarget, HostedZone, RecordSet, Route53Resource},
 };
 
 use super::Route53Connector;
@@ -64,7 +64,12 @@ impl Route53Connector {
                                     alias_target: rec
                                         .alias_target
                                         .as_ref()
-                                        .map(|alias_target| alias_target.dns_name.to_string()),
+                                        .map(|alias_target| AliasTarget {
+                                            dns_name: alias_target.dns_name.clone(),
+                                            hosted_zone_id: alias_target.hosted_zone_id.clone(),
+                                            evaluate_target_health: alias_target.evaluate_target_health
+                                        }
+                                        ),
                                     resource_records: rec
                                         .resource_records
                                         .as_ref()

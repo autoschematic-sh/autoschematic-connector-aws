@@ -15,13 +15,15 @@ pub enum CloudFrontConnectorOp {
     // Distribution operations
     CreateDistribution(Distribution),
     UpdateDistribution {
-        enabled: Option<bool>,
         default_root_object: Option<String>,
         comment: Option<String>,
         price_class: Option<String>,
     },
     UpdateDistributionOrigins {
         origins: Vec<Origin>,
+    },
+    UpdateDistributionAliases {
+        aliases: Option<Vec<String>>,
     },
     UpdateDistributionDefaultCacheBehavior {
         default_cache_behavior: CacheBehavior,

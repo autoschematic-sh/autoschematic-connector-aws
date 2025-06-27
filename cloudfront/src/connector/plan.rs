@@ -61,29 +61,38 @@ impl CloudFrontConnector {
                         }
 
                         // Check for basic distribution property changes
+                        let mut message = String::new();
                         let mut distribution_changed = false;
-                        if old_distribution.enabled != new_distribution.enabled {
-                            distribution_changed = true;
-                        }
                         if old_distribution.default_root_object != new_distribution.default_root_object {
                             distribution_changed = true;
+                            message.push_str(&format!(" default_root_object={:?}", new_distribution.default_root_object));
                         }
                         if old_distribution.comment != new_distribution.comment {
                             distribution_changed = true;
+                            message.push_str(&format!(" comment={:?}", new_distribution.comment));
                         }
                         if old_distribution.price_class != new_distribution.price_class {
                             distribution_changed = true;
+                            message.push_str(&format!(" price_class={:?}", new_distribution.price_class));
                         }
 
                         if distribution_changed {
                             ops.push(connector_op!(
                                 CloudFrontConnectorOp::UpdateDistribution {
-                                    enabled: Some(new_distribution.enabled),
                                     default_root_object: new_distribution.default_root_object.clone(),
                                     comment: new_distribution.comment.clone(),
                                     price_class: new_distribution.price_class.clone(),
                                 },
-                                format!("Update CloudFront distribution `{}`", distribution_id)
+                                format!("Update CloudFront distribution `{}`: {}", distribution_id, message)
+                            ));
+                        }
+
+                        if old_distribution.aliases != new_distribution.aliases {
+                            ops.push(connector_op!(
+                                CloudFrontConnectorOp::UpdateDistributionAliases {
+                                    aliases: new_distribution.aliases.clone(),
+                                },
+                                format!("Update aliases for CloudFront distribution `{}`", distribution_id)
                             ));
                         }
 
@@ -242,7 +251,7 @@ impl CloudFrontConnector {
                                     comment: new_policy.comment.clone(),
                                     default_ttl: new_policy.default_ttl,
                                     max_ttl: new_policy.max_ttl,
-                                    min_ttl: Some(new_policy.min_ttl),
+                                    min_ttl: new_policy.min_ttl,
                                     parameters_in_cache_key_and_forwarded_to_origin: new_policy
                                         .parameters_in_cache_key_and_forwarded_to_origin
                                         .clone(),

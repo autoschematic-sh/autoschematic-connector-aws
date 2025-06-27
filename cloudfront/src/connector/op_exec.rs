@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, str::FromStr};
 
 use anyhow::{Context, bail};
 use autoschematic_core::{
@@ -6,9 +6,9 @@ use autoschematic_core::{
     error_util::invalid_op,
     op_exec_output,
 };
-use aws_sdk_cloudfront::types::{Tag, TagKeys, Tags};
+use aws_sdk_cloudfront::types::{builders::AliasesBuilder, Aliases, PriceClass, Tag, TagKeys, Tags};
 
-use crate::{addr::CloudFrontResourceAddress, op::CloudFrontConnectorOp, tags::tag_diff};
+use crate::{addr::CloudFrontResourceAddress, op::CloudFrontConnectorOp, tags::tag_diff, util::get_distribution_config};
 
 use super::CloudFrontConnector;
 
@@ -19,7 +19,7 @@ impl CloudFrontConnector {
         let account_id = self.account_id.lock().await.clone();
 
         // CloudFront is a global service, but we'll use us-east-1 as the default region
-        let client = self.get_or_init_client("us-east-1").await?;
+        let client = self.get_or_init_client().await?;
 
         if let CloudFrontConnectorOp::UpdateTags { old_tags, new_tags } = op {
             let (untag, newtag) = tag_diff(&old_tags, &new_tags)?;
@@ -51,6 +51,8 @@ impl CloudFrontConnector {
                         let mut distribution_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
                             .caller_reference(&format!("autoschematic-{}", uuid::Uuid::new_v4()))
                             .enabled(distribution.enabled);
+
+                        eprintln!("Create Distribution");
 
                         if let Some(comment) = &distribution.comment {
                             distribution_config = distribution_config.comment(comment);
@@ -112,8 +114,9 @@ impl CloudFrontConnector {
                             .viewer_protocol_policy(aws_sdk_cloudfront::types::ViewerProtocolPolicy::from(
                                 distribution.default_cache_behavior.viewer_protocol_policy.as_str(),
                             ))
+                            .cache_policy_id(distribution.default_cache_behavior.id)
                             .compress(distribution.default_cache_behavior.compress)
-                            .min_ttl(distribution.default_cache_behavior.ttl_settings.min_ttl)
+                            .set_min_ttl(distribution.default_cache_behavior.ttl_settings.min_ttl)
                             .build()
                             .map_err(|e| anyhow::anyhow!("Failed to build default cache behavior: {}", e))?;
 
@@ -121,6 +124,7 @@ impl CloudFrontConnector {
                             .origins(origins)
                             .default_cache_behavior(default_cache_behavior);
 
+                        eprintln!("Creating Distribution...");
                         let response = client
                             .create_distribution()
                             .distribution_config(
@@ -130,6 +134,7 @@ impl CloudFrontConnector {
                             )
                             .send()
                             .await?;
+                        eprintln!("Created Distribution");
 
                         let distribution_result = response.distribution().context("No distribution in response")?;
                         let distribution_id = distribution_result.id();
@@ -241,6 +246,133 @@ impl CloudFrontConnector {
                         )
                     }
 
+                    CloudFrontConnectorOp::UpdateDistribution {
+                        default_root_object,
+                        comment,
+                        price_class,
+                    } => {
+                        let (etag, mut config) = get_distribution_config(distribution_id, &client).await?;
+
+                        if let Some(comment) = comment {
+                            config.comment = comment;
+                        }
+
+                        config.default_root_object = default_root_object;
+
+                        if let Some(price_class) = price_class {
+                            config.price_class = Some(PriceClass::from_str(&price_class)?);
+                        }
+
+                        client
+                            .update_distribution()
+                            .id(distribution_id)
+                            .distribution_config(config)
+                            .if_match(etag)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!("Updated aliases for CloudFront distribution `{}`", distribution_id))
+                    }
+
+                    CloudFrontConnectorOp::UpdateDistributionAliases { aliases } => {
+                        let (etag, mut config) = get_distribution_config(distribution_id, &client).await?;
+
+                        if let Some(aliases) = aliases {
+                            let aliases_len = Some(aliases.len() as i32);
+                            config.aliases = Some(Aliases::builder().set_items(Some(aliases)).set_quantity(aliases_len).build()?);
+                        } else {
+                            config.aliases = None
+                        }
+
+                        client
+                            .update_distribution()
+                            .id(distribution_id)
+                            .distribution_config(config)
+                            .if_match(etag)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!("Updated aliases for CloudFront distribution `{}`", distribution_id))
+                    }
+                    CloudFrontConnectorOp::UpdateDistributionOrigins { origins } => {
+                        let (etag, mut config) = get_distribution_config(distribution_id, &client).await?;
+
+                        // Build new origins
+                        let mut origins_builder = aws_sdk_cloudfront::types::Origins::builder();
+                        for origin in origins {
+                            let mut origin_builder = aws_sdk_cloudfront::types::Origin::builder()
+                                .id(&origin.id)
+                                .domain_name(&origin.domain_name);
+
+                            if let Some(origin_path) = &origin.origin_path {
+                                origin_builder = origin_builder.origin_path(origin_path);
+                            }
+
+                            if let Some(custom_config) = &origin.custom_origin_config {
+                                let custom_origin_config = aws_sdk_cloudfront::types::CustomOriginConfig::builder()
+                                    .http_port(custom_config.http_port)
+                                    .https_port(custom_config.https_port)
+                                    .origin_protocol_policy(aws_sdk_cloudfront::types::OriginProtocolPolicy::from(
+                                        custom_config.origin_protocol_policy.as_str(),
+                                    ))
+                                    .build()
+                                    .map_err(|e| anyhow::anyhow!("Failed to build custom origin config: {}", e))?;
+                                origin_builder = origin_builder.custom_origin_config(custom_origin_config);
+                            }
+
+                            if let Some(s3_config) = &origin.s3_origin_config {
+                                let s3_origin_config = aws_sdk_cloudfront::types::S3OriginConfig::builder()
+                                    .origin_access_identity(&s3_config.origin_access_identity)
+                                    .build();
+                                origin_builder = origin_builder.s3_origin_config(s3_origin_config);
+                            }
+
+                            origins_builder = origins_builder.items(
+                                origin_builder
+                                    .build()
+                                    .map_err(|e| anyhow::anyhow!("Failed to build origin: {}", e))?,
+                            );
+                        }
+
+                        config.origins = Some(origins_builder.build()?);
+
+                        // let new_origins = origins_builder
+                        //     .quantity(origins.len() as i32)
+                        //     .build()
+                        //     .map_err(|e| anyhow::anyhow!("Failed to build origins: {}", e))?;
+
+                        // let updated_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
+                        //     .set_aliases(config.aliases().cloned())
+                        //     .caller_reference(config.caller_reference().to_string())
+                        //     .comment(config.comment().to_string())
+                        //     .set_default_cache_behavior(config.default_cache_behavior().cloned())
+                        //     .set_cache_behaviors(config.cache_behaviors().cloned())
+                        //     .set_custom_error_responses(config.custom_error_responses().cloned())
+                        //     .set_default_root_object(config.default_root_object().map(|s| s.to_string()))
+                        //     .enabled(config.enabled())
+                        //     .set_http_version(config.http_version().cloned())
+                        //     .set_is_ipv6_enabled(config.is_ipv6_enabled())
+                        //     .set_logging(config.logging().cloned())
+                        //     .origins(new_origins)
+                        //     .set_price_class(config.price_class().cloned())
+                        //     .set_restrictions(config.restrictions().cloned())
+                        //     .set_staging(config.staging())
+                        //     .set_viewer_certificate(config.viewer_certificate().cloned())
+                        //     .set_web_acl_id(config.web_acl_id().map(|s| s.to_string()))
+                        //     .build()
+                        //     .map_err(|e| anyhow::anyhow!("Failed to build updated distribution config: {}", e))?;
+
+                        client
+                            .update_distribution()
+                            .id(distribution_id)
+                            .distribution_config(config)
+                            .if_match(etag)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!("Updated origins for CloudFront distribution `{}`", distribution_id))
+                    }
+
                     _ => Err(invalid_op(&addr, &op)),
                 }
             }
@@ -301,9 +433,7 @@ impl CloudFrontConnector {
 
             CloudFrontResourceAddress::CachePolicy { policy_id } => match op {
                 CloudFrontConnectorOp::CreateCachePolicy(policy) => {
-                    let cache_policy_config = aws_sdk_cloudfront::types::CachePolicyConfig::builder()
-                        .name(&policy.name)
-                        .min_ttl(policy.min_ttl);
+                    let cache_policy_config = aws_sdk_cloudfront::types::CachePolicyConfig::builder().name(&policy.name);
 
                     let cache_policy_config = if let Some(comment) = &policy.comment {
                         cache_policy_config.comment(comment)
@@ -313,6 +443,12 @@ impl CloudFrontConnector {
 
                     let cache_policy_config = if let Some(default_ttl) = policy.default_ttl {
                         cache_policy_config.default_ttl(default_ttl)
+                    } else {
+                        cache_policy_config
+                    };
+
+                    let cache_policy_config = if let Some(min_ttl) = policy.min_ttl {
+                        cache_policy_config.min_ttl(min_ttl)
                     } else {
                         cache_policy_config
                     };

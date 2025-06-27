@@ -11,7 +11,7 @@ use super::CloudFrontConnector;
 
 impl CloudFrontConnector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
-        let client = self.get_or_init_client("us-east-1").await?;
+        let client = self.get_or_init_client().await?;
 
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
@@ -44,7 +44,8 @@ impl CloudFrontConnector {
                                             https_port: c.https_port,
                                             origin_protocol_policy: c.origin_protocol_policy.as_str().to_string(),
                                         }),
-                                        s3_origin_config: origin.s3_origin_config.map(|c| S3OriginConfig { origin_access_identity: c.origin_access_identity })
+                                        s3_origin_config: origin.s3_origin_config.map(|c| S3OriginConfig { origin_access_identity: c.origin_access_identity }),
+                                        origin_access_control_id: origin.origin_access_control_id,
                                     })
                                     .collect()
                             })
@@ -53,6 +54,7 @@ impl CloudFrontConnector {
                         let default_cache_behavior = config
                             .default_cache_behavior
                             .map(|dcb| CacheBehavior {
+                                id: dcb.cache_policy_id.unwrap_or_default(),
                                 path_pattern: None,
                                 target_origin_id: dcb.target_origin_id,
                                 viewer_protocol_policy: dcb.viewer_protocol_policy.as_str().to_string(),
@@ -70,10 +72,11 @@ impl CloudFrontConnector {
                                 ttl_settings: TtlSettings {
                                     default_ttl: dcb.default_ttl,
                                     max_ttl:     dcb.max_ttl,
-                                    min_ttl:     dcb.min_ttl.unwrap_or(0),
+                                    min_ttl:     dcb.min_ttl,
                                 },
                             })
                             .unwrap_or_else(|| CacheBehavior {
+                                id: String::new(),
                                 path_pattern: None,
                                 target_origin_id: String::new(),
                                 viewer_protocol_policy: String::new(),
@@ -83,7 +86,7 @@ impl CloudFrontConnector {
                                 ttl_settings: TtlSettings {
                                     default_ttl: None,
                                     max_ttl:     None,
-                                    min_ttl:     0,
+                                    min_ttl:     None,
                                 },
                             });
 
@@ -94,6 +97,7 @@ impl CloudFrontConnector {
                                     .unwrap_or_default()
                                     .into_iter()
                                     .map(|behavior| CacheBehavior {
+                                        id: behavior.cache_policy_id.unwrap_or_default(),
                                         path_pattern: Some(behavior.path_pattern),
                                         target_origin_id: behavior.target_origin_id,
                                         viewer_protocol_policy: behavior.viewer_protocol_policy.as_str().to_string(),
@@ -111,7 +115,7 @@ impl CloudFrontConnector {
                                         ttl_settings: TtlSettings {
                                             default_ttl: behavior.default_ttl,
                                             max_ttl:     behavior.max_ttl,
-                                            min_ttl:     behavior.min_ttl.unwrap_or(0),
+                                            min_ttl:     behavior.min_ttl
                                         },
                                     })
                                     .collect()
@@ -121,8 +125,8 @@ impl CloudFrontConnector {
                         let tags = self.get_tags_for_resource(&addr, client).await?;
 
                         let dist = Distribution {
-                            domain_name: distribution.domain_name,
                             enabled: config.enabled,
+                            aliases: config.aliases.map(|a| a.items().to_owned()),
                             default_root_object: config.default_root_object,
                             origins,
                             default_cache_behavior,
@@ -203,7 +207,7 @@ impl CloudFrontConnector {
                             comment: config.comment,
                             default_ttl: config.default_ttl,
                             max_ttl: config.max_ttl,
-                            min_ttl: config.min_ttl,
+                            min_ttl: Some(config.min_ttl),
                             parameters_in_cache_key_and_forwarded_to_origin: None, // Simplified for now
                         };
 

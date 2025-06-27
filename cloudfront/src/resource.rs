@@ -10,10 +10,10 @@ type Tags = HashMap<String, String>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Distribution {
-    pub domain_name: String,
     pub enabled: bool,
     pub default_root_object: Option<String>,
     pub origins: Vec<Origin>,
+    pub aliases: Option<Vec<String>>,
     pub default_cache_behavior: CacheBehavior,
     pub cache_behaviors: Vec<CacheBehavior>,
     pub comment: Option<String>,
@@ -29,6 +29,7 @@ pub struct Origin {
     pub origin_path: Option<String>,
     pub custom_origin_config: Option<CustomOriginConfig>,
     pub s3_origin_config: Option<S3OriginConfig>,
+    pub origin_access_control_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -48,6 +49,7 @@ pub struct S3OriginConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct CacheBehavior {
+    pub id: String,
     pub path_pattern: Option<String>,
     pub target_origin_id: String,
     pub viewer_protocol_policy: String,
@@ -62,7 +64,7 @@ pub struct CacheBehavior {
 pub struct TtlSettings {
     pub default_ttl: Option<i64>,
     pub max_ttl:     Option<i64>,
-    pub min_ttl:     i64,
+    pub min_ttl:     Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -82,7 +84,7 @@ pub struct CachePolicy {
     pub comment: Option<String>,
     pub default_ttl: Option<i64>,
     pub max_ttl: Option<i64>,
-    pub min_ttl: i64,
+    pub min_ttl: Option<i64>,
     pub parameters_in_cache_key_and_forwarded_to_origin: Option<HashMap<String, serde_json::Value>>,
 }
 

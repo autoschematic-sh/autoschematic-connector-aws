@@ -46,7 +46,10 @@ impl Route53Connector {
                         }
 
                         if let Some(alias_target) = record_set.alias_target {
-                            let alias_target_builder = AliasTarget::builder().dns_name(alias_target);
+                            let alias_target_builder = AliasTarget::builder()
+                                .dns_name(alias_target.dns_name)
+                                .hosted_zone_id(alias_target.hosted_zone_id)
+                                .evaluate_target_health(alias_target.evaluate_target_health);
                             record_set_builder = record_set_builder.alias_target(alias_target_builder.build()?);
                         }
 
@@ -104,7 +107,10 @@ impl Route53Connector {
                         }
 
                         if let Some(alias_target) = record_set.alias_target {
-                            let alias_target_builder = AliasTarget::builder().dns_name(alias_target);
+                            let alias_target_builder = AliasTarget::builder()
+                                .dns_name(alias_target.dns_name)
+                                .hosted_zone_id(alias_target.hosted_zone_id)
+                                .evaluate_target_health(alias_target.evaluate_target_health);
                             record_set_builder = record_set_builder.alias_target(alias_target_builder.build()?);
                         }
 

@@ -17,9 +17,17 @@ pub struct HostedZone {
 pub struct HealthCheck {}
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
+pub struct AliasTarget {
+    pub hosted_zone_id: String,
+    pub dns_name: String,
+    pub evaluate_target_health: bool,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct RecordSet {
     pub ttl: Option<i64>,
-    pub alias_target: Option<String>,
+    pub alias_target: Option<AliasTarget>,
     pub resource_records: Option<Vec<String>>,
 }
 
