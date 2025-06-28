@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::Path};
+use std::path::Path;
 
 use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
 

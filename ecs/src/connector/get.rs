@@ -33,44 +33,36 @@ impl EcsConnector {
                         default_capacity_provider_strategy: cluster
                             .default_capacity_provider_strategy()
                             .iter()
-                            .map(|s| {
-                                resource::CapacityProviderStrategyItem {
-                                    capacity_provider: s.capacity_provider().to_string(),
-                                    weight: Some(s.weight),
-                                    base: Some(s.base),
-                                }
+                            .map(|s| resource::CapacityProviderStrategyItem {
+                                capacity_provider: s.capacity_provider().to_string(),
+                                weight: Some(s.weight),
+                                base: Some(s.base),
                             })
                             .collect(),
                         settings: cluster
                             .settings()
                             .iter()
-                            .map(|s| {
-                                resource::ClusterSetting {
-                                    name: s.name().map(|n| n.as_str().to_string()).unwrap_or_default(),
-                                    value: s.value().unwrap_or_default().to_string(),
-                                }
+                            .map(|s| resource::ClusterSetting {
+                                name:  s.name().map(|n| n.as_str().to_string()).unwrap_or_default(),
+                                value: s.value().unwrap_or_default().to_string(),
                             })
                             .collect(),
-                        configuration: cluster.configuration().map(|c| {
-                            resource::ClusterConfiguration {
-                                execute_command_configuration: c.execute_command_configuration().map(|e| {
-                                    resource::ExecuteCommandConfiguration {
-                                        kms_key_id: e.kms_key_id().map(|k| k.to_string()),
-                                        logging: e.logging().map(|l| l.as_str().to_string()),
-                                        log_configuration: e.log_configuration().map(|lc| {
-                                            resource::ExecuteCommandLogConfiguration {
-                                                cloud_watch_log_group_name: lc
-                                                    .cloud_watch_log_group_name()
-                                                    .map(|c| c.to_string()),
-                                                cloud_watch_encryption_enabled: Some(lc.cloud_watch_encryption_enabled),
-                                                s3_bucket_name: lc.s3_bucket_name().map(|s| s.to_string()),
-                                                s3_encryption_enabled: Some(lc.s3_encryption_enabled),
-                                                s3_key_prefix: lc.s3_key_prefix().map(|s| s.to_string()),
-                                            }
-                                        }),
-                                    }
-                                }),
-                            }
+                        configuration: cluster.configuration().map(|c| resource::ClusterConfiguration {
+                            execute_command_configuration: c.execute_command_configuration().map(|e| {
+                                resource::ExecuteCommandConfiguration {
+                                    kms_key_id: e.kms_key_id().map(|k| k.to_string()),
+                                    logging: e.logging().map(|l| l.as_str().to_string()),
+                                    log_configuration: e.log_configuration().map(|lc| {
+                                        resource::ExecuteCommandLogConfiguration {
+                                            cloud_watch_log_group_name: lc.cloud_watch_log_group_name().map(|c| c.to_string()),
+                                            cloud_watch_encryption_enabled: Some(lc.cloud_watch_encryption_enabled),
+                                            s3_bucket_name: lc.s3_bucket_name().map(|s| s.to_string()),
+                                            s3_encryption_enabled: Some(lc.s3_encryption_enabled),
+                                            s3_key_prefix: lc.s3_key_prefix().map(|s| s.to_string()),
+                                        }
+                                    }),
+                                }
+                            }),
                         }),
                         tags: tags::Tags::from(cluster.tags()),
                     };
@@ -96,12 +88,10 @@ impl EcsConnector {
                         capacity_provider_strategy: service
                             .capacity_provider_strategy()
                             .iter()
-                            .map(|s| {
-                                resource::CapacityProviderStrategyItem {
-                                    capacity_provider: s.capacity_provider().to_string(),
-                                    weight: Some(s.weight),
-                                    base: Some(s.base),
-                                }
+                            .map(|s| resource::CapacityProviderStrategyItem {
+                                capacity_provider: s.capacity_provider().to_string(),
+                                weight: Some(s.weight),
+                                base: Some(s.base),
                             })
                             .collect(),
                         platform_version: service.platform_version().map(|p| p.to_string()),
@@ -110,7 +100,7 @@ impl EcsConnector {
                             resource::DeploymentConfiguration {
                                 deployment_circuit_breaker: dc.deployment_circuit_breaker().map(|cb| {
                                     resource::DeploymentCircuitBreaker {
-                                        enable: cb.enable,
+                                        enable:   cb.enable,
                                         rollback: cb.rollback,
                                     }
                                 }),
@@ -118,59 +108,47 @@ impl EcsConnector {
                                 minimum_healthy_percent: dc.minimum_healthy_percent,
                             }
                         }),
-                        network_configuration: service.network_configuration().map(|nc| {
-                            resource::NetworkConfiguration {
-                                awsvpc_configuration: nc.awsvpc_configuration().map(|vpc| {
-                                    resource::AwsVpcConfiguration {
-                                        subnets: vpc.subnets().to_vec(),
-                                        security_groups: vpc.security_groups().to_vec(),
-                                        assign_public_ip: vpc.assign_public_ip().map(|p| p.as_str().to_string()),
-                                    }
-                                }),
-                            }
+                        network_configuration: service.network_configuration().map(|nc| resource::NetworkConfiguration {
+                            awsvpc_configuration: nc.awsvpc_configuration().map(|vpc| resource::AwsVpcConfiguration {
+                                subnets: vpc.subnets().to_vec(),
+                                security_groups: vpc.security_groups().to_vec(),
+                                assign_public_ip: vpc.assign_public_ip().map(|p| p.as_str().to_string()),
+                            }),
                         }),
                         placement_constraints: service
                             .placement_constraints()
                             .iter()
-                            .map(|pc| {
-                                resource::PlacementConstraint {
-                                    r#type: pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
-                                    expression: pc.expression().map(|e| e.to_string()),
-                                }
+                            .map(|pc| resource::PlacementConstraint {
+                                r#type:     pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
+                                expression: pc.expression().map(|e| e.to_string()),
                             })
                             .collect(),
                         placement_strategy: service
                             .placement_strategy()
                             .iter()
-                            .map(|ps| {
-                                resource::PlacementStrategy {
-                                    r#type: ps.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
-                                    field: ps.field().map(|f| f.to_string()),
-                                }
+                            .map(|ps| resource::PlacementStrategy {
+                                r#type: ps.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
+                                field:  ps.field().map(|f| f.to_string()),
                             })
                             .collect(),
                         load_balancers: service
                             .load_balancers()
                             .iter()
-                            .map(|lb| {
-                                resource::LoadBalancer {
-                                    target_group_arn: lb.target_group_arn().map(|tg| tg.to_string()),
-                                    load_balancer_name: lb.load_balancer_name().map(|ln| ln.to_string()),
-                                    container_name: lb.container_name().map(|cn| cn.to_string()),
-                                    container_port: lb.container_port,
-                                }
+                            .map(|lb| resource::LoadBalancer {
+                                target_group_arn:   lb.target_group_arn().map(|tg| tg.to_string()),
+                                load_balancer_name: lb.load_balancer_name().map(|ln| ln.to_string()),
+                                container_name:     lb.container_name().map(|cn| cn.to_string()),
+                                container_port:     lb.container_port,
                             })
                             .collect(),
                         service_registries: service
                             .service_registries()
                             .iter()
-                            .map(|sr| {
-                                resource::ServiceRegistry {
-                                    registry_arn: sr.registry_arn().map(|ra| ra.to_string()),
-                                    port: sr.port,
-                                    container_name: sr.container_name().map(|cn| cn.to_string()),
-                                    container_port: sr.container_port,
-                                }
+                            .map(|sr| resource::ServiceRegistry {
+                                registry_arn: sr.registry_arn().map(|ra| ra.to_string()),
+                                port: sr.port,
+                                container_name: sr.container_name().map(|cn| cn.to_string()),
+                                container_port: sr.container_port,
                             })
                             .collect(),
                         scheduling_strategy: service.scheduling_strategy().map(|ss| ss.as_str().to_string()),
@@ -216,12 +194,10 @@ impl EcsConnector {
                                     port_mappings: cd
                                         .port_mappings()
                                         .iter()
-                                        .map(|pm| {
-                                            resource::PortMapping {
-                                                container_port: pm.container_port,
-                                                host_port: pm.host_port,
-                                                protocol: pm.protocol().map(|p| p.as_str().to_string()),
-                                            }
+                                        .map(|pm| resource::PortMapping {
+                                            container_port: pm.container_port,
+                                            host_port: pm.host_port,
+                                            protocol: pm.protocol().map(|p| p.as_str().to_string()),
                                         })
                                         .collect(),
                                     essential: cd.essential,
@@ -230,103 +206,83 @@ impl EcsConnector {
                                     environment: cd
                                         .environment()
                                         .iter()
-                                        .map(|e| {
-                                            resource::KeyValuePair {
-                                                name: e.name().map(|n| n.to_string()),
-                                                value: e.value().map(|v| v.to_string()),
-                                            }
+                                        .map(|e| resource::KeyValuePair {
+                                            name:  e.name().map(|n| n.to_string()),
+                                            value: e.value().map(|v| v.to_string()),
                                         })
                                         .collect(),
                                     environment_files: cd
                                         .environment_files()
                                         .iter()
-                                        .map(|ef| {
-                                            resource::EnvironmentFile {
-                                                value: ef.value().to_string(),
-                                                r#type: ef.r#type().to_string(),
-                                            }
+                                        .map(|ef| resource::EnvironmentFile {
+                                            value:  ef.value().to_string(),
+                                            r#type: ef.r#type().to_string(),
                                         })
                                         .collect(),
                                     mount_points: cd
                                         .mount_points()
                                         .iter()
-                                        .map(|mp| {
-                                            resource::MountPoint {
-                                                source_volume: mp.source_volume().map(|sv| sv.to_string()),
-                                                container_path: mp.container_path().map(|cp| cp.to_string()),
-                                                read_only: mp.read_only,
-                                            }
+                                        .map(|mp| resource::MountPoint {
+                                            source_volume:  mp.source_volume().map(|sv| sv.to_string()),
+                                            container_path: mp.container_path().map(|cp| cp.to_string()),
+                                            read_only:      mp.read_only,
                                         })
                                         .collect(),
                                     volumes_from: cd
                                         .volumes_from()
                                         .iter()
-                                        .map(|vf| {
-                                            resource::VolumeFrom {
-                                                source_container: vf.source_container().map(|sc| sc.to_string()),
-                                                read_only: vf.read_only,
-                                            }
+                                        .map(|vf| resource::VolumeFrom {
+                                            source_container: vf.source_container().map(|sc| sc.to_string()),
+                                            read_only: vf.read_only,
                                         })
                                         .collect(),
                                     // Other fields omitted for brevity
-                                    linux_parameters: cd.linux_parameters().map(|lp| {
-                                        resource::LinuxParameters {
-                                            capabilities: lp.capabilities().map(|c| {
-                                                resource::KernelCapabilities {
-                                                    add: c.add().to_vec(),
-                                                    drop: c.drop().to_vec(),
-                                                }
-                                            }),
-                                            devices: lp
-                                                .devices()
-                                                .iter()
-                                                .map(|d| {
-                                                    resource::Device {
-                                                        host_path: d.host_path().to_string(),
-                                                        container_path: d.container_path().map(|cp| cp.to_string()),
-                                                        permissions: d
-                                                            .permissions()
-                                                            .iter()
-                                                            .map(|p| p.as_str().to_string())
-                                                            .collect(),
-                                                    }
-                                                })
-                                                .collect(),
-                                            init_process_enabled: lp.init_process_enabled,
-                                            shared_memory_size: lp.shared_memory_size,
-                                            tmpfs: lp
-                                                .tmpfs()
-                                                .iter()
-                                                .map(|t| {
-                                                    resource::Tmpfs {
-                                                        container_path: t.container_path().to_string(),
-                                                        size: t.size,
-                                                        mount_options: t.mount_options().to_vec(),
-                                                    }
-                                                })
-                                                .collect(),
-                                            max_swap: lp.max_swap,
-                                            swappiness: lp.swappiness,
-                                        }
+                                    linux_parameters: cd.linux_parameters().map(|lp| resource::LinuxParameters {
+                                        capabilities: lp.capabilities().map(|c| resource::KernelCapabilities {
+                                            add:  c.add().to_vec(),
+                                            drop: c.drop().to_vec(),
+                                        }),
+                                        devices: lp
+                                            .devices()
+                                            .iter()
+                                            .map(|d| resource::Device {
+                                                host_path:      d.host_path().to_string(),
+                                                container_path: d.container_path().map(|cp| cp.to_string()),
+                                                permissions:    d
+                                                    .permissions()
+                                                    .iter()
+                                                    .map(|p| p.as_str().to_string())
+                                                    .collect(),
+                                            })
+                                            .collect(),
+                                        init_process_enabled: lp.init_process_enabled,
+                                        shared_memory_size: lp.shared_memory_size,
+                                        tmpfs: lp
+                                            .tmpfs()
+                                            .iter()
+                                            .map(|t| resource::Tmpfs {
+                                                container_path: t.container_path().to_string(),
+                                                size: t.size,
+                                                mount_options: t.mount_options().to_vec(),
+                                            })
+                                            .collect(),
+                                        max_swap: lp.max_swap,
+                                        swappiness: lp.swappiness,
                                     }),
                                     secrets: cd
                                         .secrets()
                                         .iter()
-                                        .map(|s| {
-                                            resource::Secret {
-                                                name: s.name().to_string(),
-                                                value_from: s.value_from().to_string(),
-                                            }
+                                        .map(|s| resource::Secret {
+                                            name: s.name().to_string(),
+                                            value_from: s.value_from().to_string(),
                                         })
                                         .collect(),
                                     depends_on: cd
                                         .depends_on()
                                         .iter()
-                                        .map(|d| {
-                                            resource::ContainerDependency {
-                                                container_name: d.container_name().to_string(),
-                                                condition: d.condition().to_string(),
-                                            }
+                                        .map(|d| resource::ContainerDependency {
+                                            container_name: d.container_name().to_string(),
+                                            condition:      d.condition().to_string(),
                                         })
                                         .collect(),
                                     start_timeout: cd.start_timeout,
@@ -342,11 +298,9 @@ impl EcsConnector {
                                     extra_hosts: cd
                                         .extra_hosts()
                                         .iter()
-                                        .map(|eh| {
-                                            resource::HostEntry {
-                                                hostname: eh.hostname().to_string(),
-                                                ip_address: eh.ip_address().to_string(),
-                                            }
+                                        .map(|eh| resource::HostEntry {
+                                            hostname:   eh.hostname().to_string(),
+                                            ip_address: eh.ip_address().to_string(),
                                         })
                                         .collect(),
                                     docker_security_options: cd.docker_security_options().to_vec(),
@@ -356,62 +310,50 @@ impl EcsConnector {
                                     ulimits: cd
                                         .ulimits()
                                         .iter()
-                                        .map(|u| {
-                                            resource::Ulimit {
-                                                name: u.name().to_string(),
-                                                soft_limit: u.soft_limit,
-                                                hard_limit: u.hard_limit,
-                                            }
+                                        .map(|u| resource::Ulimit {
+                                            name: u.name().to_string(),
+                                            soft_limit: u.soft_limit,
+                                            hard_limit: u.hard_limit,
                                         })
                                         .collect(),
-                                    log_configuration: cd.log_configuration().map(|lc| {
-                                        resource::LogConfiguration {
-                                            log_driver: lc.log_driver().to_string(),
-                                            options: lc.options().unwrap_or(&HashMap::default()).clone(),
-                                            secret_options: lc
-                                                .secret_options()
-                                                .iter()
-                                                .map(|so| {
-                                                    resource::Secret {
-                                                        name: so.name().to_string(),
-                                                        value_from: so.value_from().to_string(),
-                                                    }
-                                                })
-                                                .collect(),
-                                        }
+                                    log_configuration: cd.log_configuration().map(|lc| resource::LogConfiguration {
+                                        log_driver: lc.log_driver().to_string(),
+                                        options: lc.options().unwrap_or(&HashMap::default()).clone(),
+                                        secret_options: lc
+                                            .secret_options()
+                                            .iter()
+                                            .map(|so| resource::Secret {
+                                                name: so.name().to_string(),
+                                                value_from: so.value_from().to_string(),
+                                            })
+                                            .collect(),
                                     }),
-                                    health_check: cd.health_check().map(|hc| {
-                                        resource::HealthCheck {
-                                            command: hc.command().to_vec(),
-                                            interval: hc.interval,
-                                            timeout: hc.timeout,
-                                            retries: hc.retries,
-                                            start_period: hc.start_period,
-                                        }
+                                    health_check: cd.health_check().map(|hc| resource::HealthCheck {
+                                        command:      hc.command().to_vec(),
+                                        interval:     hc.interval,
+                                        timeout:      hc.timeout,
+                                        retries:      hc.retries,
+                                        start_period: hc.start_period,
                                     }),
                                     system_controls: cd
                                         .system_controls()
                                         .iter()
-                                        .map(|sc| {
-                                            resource::SystemControl {
-                                                namespace: sc.namespace().map(|n| n.to_string()),
-                                                value: sc.value().map(|v| v.to_string()),
-                                            }
+                                        .map(|sc| resource::SystemControl {
+                                            namespace: sc.namespace().map(|n| n.to_string()),
+                                            value:     sc.value().map(|v| v.to_string()),
                                         })
                                         .collect(),
                                     resource_requirements: cd
                                         .resource_requirements()
                                         .iter()
-                                        .map(|rr| {
-                                            resource::ResourceRequirement {
-                                                value: rr.value().to_string(),
-                                                r#type: rr.r#type().to_string(),
-                                            }
+                                        .map(|rr| resource::ResourceRequirement {
+                                            value:  rr.value().to_string(),
+                                            r#type: rr.r#type().to_string(),
                                         })
                                         .collect(),
                                     firelens_configuration: cd.firelens_configuration().map(|fc| {
                                         resource::FirelensConfiguration {
-                                            r#type: fc.r#type().to_string(),
+                                            r#type:  fc.r#type().to_string(),
                                             options: fc.options().unwrap_or(&HashMap::default()).clone(),
                                         }
                                     }),
@@ -425,10 +367,8 @@ impl EcsConnector {
                                 // Volume conversion simplified
                                 resource::Volume {
                                     name: v.name().unwrap_or_default().to_string(),
-                                    host: v.host().map(|h| {
-                                        resource::HostVolumeProperties {
-                                            source_path: h.source_path().map(|sp| sp.to_string()),
-                                        }
+                                    host: v.host().map(|h| resource::HostVolumeProperties {
+                                        source_path: h.source_path().map(|sp| sp.to_string()),
                                     }),
                                     docker_volume_configuration: v.docker_volume_configuration().map(|dvc| {
                                         resource::DockerVolumeConfiguration {
@@ -473,11 +413,9 @@ impl EcsConnector {
                         placement_constraints: task_def
                             .placement_constraints()
                             .iter()
-                            .map(|pc| {
-                                resource::PlacementConstraint {
-                                    r#type: pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
-                                    expression: pc.expression().map(|e| e.to_string()),
-                                }
+                            .map(|pc| resource::PlacementConstraint {
+                                r#type:     pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
+                                expression: pc.expression().map(|e| e.to_string()),
                             })
                             .collect(),
                         requires_compatibilities: task_def
@@ -490,11 +428,9 @@ impl EcsConnector {
                         pid_mode: task_def.pid_mode().map(|p| p.as_str().to_string()),
                         ipc_mode: task_def.ipc_mode().map(|i| i.as_str().to_string()),
                         proxy_configuration: None, // Simplified
-                        runtime_platform: task_def.runtime_platform().map(|rp| {
-                            resource::RuntimePlatform {
-                                cpu_architecture: rp.cpu_architecture().map(|ca| ca.as_str().to_string()),
-                                operating_system_family: rp.operating_system_family().map(|osf| osf.to_string()),
-                            }
+                        runtime_platform: task_def.runtime_platform().map(|rp| resource::RuntimePlatform {
+                            cpu_architecture: rp.cpu_architecture().map(|ca| ca.as_str().to_string()),
+                            operating_system_family: rp.operating_system_family().map(|osf| osf.to_string()),
                         }),
                     };
 
@@ -520,42 +456,38 @@ impl EcsConnector {
                             .map(|c| {
                                 // Container conversion simplified
                                 resource::Container {
-                                    container_arn: c.container_arn().map(|ca| ca.to_string()),
-                                    task_arn: c.task_arn().map(|ta| ta.to_string()),
-                                    name: c.name().map(|n| n.to_string()),
-                                    image: c.image().map(|i| i.to_string()),
-                                    image_digest: c.image_digest().map(|id| id.to_string()),
-                                    runtime_id: c.runtime_id().map(|ri| ri.to_string()),
-                                    last_status: c.last_status().map(|ls| ls.to_string()),
+                                    container_arn: c.container_arn.clone(),
+                                    task_arn: c.task_arn.clone(),
+                                    name: c.name.clone(),
+                                    image: c.image.clone(),
+                                    image_digest: c.image_digest.clone(),
+                                    runtime_id: c.runtime_id.clone(),
+                                    last_status: c.last_status.clone(),
                                     exit_code: c.exit_code,
-                                    reason: c.reason().map(|r| r.to_string()),
+                                    reason: c.reason.clone(),
                                     network_bindings: c
                                         .network_bindings()
                                         .iter()
-                                        .map(|nb| {
-                                            resource::NetworkBinding {
-                                                bind_ip: nb.bind_ip().map(|bi| bi.to_string()),
-                                                container_port: nb.container_port,
-                                                host_port: nb.host_port,
-                                                protocol: nb.protocol().map(|p| p.as_str().to_string()),
-                                            }
+                                        .map(|nb| resource::NetworkBinding {
+                                            bind_ip: nb.bind_ip.clone(),
+                                            container_port: nb.container_port,
+                                            host_port: nb.host_port,
+                                            protocol: nb.protocol().map(|p| p.as_str().to_string()),
                                         })
                                         .collect(),
                                     network_interfaces: c
                                         .network_interfaces()
                                         .iter()
-                                        .map(|ni| {
-                                            resource::NetworkInterface {
-                                                attachment_id: ni.attachment_id().map(|ai| ai.to_string()),
-                                                private_ipv4_address: ni.private_ipv4_address().map(|pa| pa.to_string()),
-                                                ipv6_address: ni.ipv6_address().map(|ia| ia.to_string()),
-                                            }
+                                        .map(|ni| resource::NetworkInterface {
+                                            attachment_id: ni.attachment_id.clone(),
+                                            private_ipv4_address: ni.private_ipv4_address.clone(),
+                                            ipv6_address: ni.ipv6_address.clone(),
                                         })
                                         .collect(),
                                     health_status: c.health_status().map(|hs| hs.as_str().to_string()),
-                                    cpu: c.cpu().map(|c| c.to_string()),
-                                    memory: c.memory().map(|m| m.to_string()),
-                                    memory_reservation: c.memory_reservation().map(|mr| mr.to_string()),
+                                    cpu: c.cpu.clone(),
+                                    memory: c.memory.clone(),
+                                    memory_reservation: c.memory_reservation.clone(),
                                     gpu_ids: c.gpu_ids().to_vec(),
                                 }
                             })
@@ -584,22 +516,18 @@ impl EcsConnector {
                         attachments: task
                             .attachments()
                             .iter()
-                            .map(|a| {
-                                resource::Attachment {
-                                    id: a.id().unwrap_or_default().to_string(),
-                                    r#type: a.r#type().unwrap_or_default().to_string(),
-                                    status: a.status().unwrap_or_default().to_string(),
-                                    details: a
-                                        .details()
-                                        .iter()
-                                        .map(|d| {
-                                            resource::KeyValuePair {
-                                                name: d.name().map(|n| n.to_string()),
-                                                value: d.value().map(|v| v.to_string()),
-                                            }
-                                        })
-                                        .collect(),
-                                }
+                            .map(|a| resource::Attachment {
+                                id:      a.id().unwrap_or_default().to_string(),
+                                r#type:  a.r#type().unwrap_or_default().to_string(),
+                                status:  a.status().unwrap_or_default().to_string(),
+                                details: a
+                                    .details()
+                                    .iter()
+                                    .map(|d| resource::KeyValuePair {
+                                        name:  d.name().map(|n| n.to_string()),
+                                        value: d.value().map(|v| v.to_string()),
+                                    })
+                                    .collect(),
                             })
                             .collect(),
                         tags: tags::Tags::from(task.tags()),
@@ -623,84 +551,72 @@ impl EcsConnector {
                 if let Some(container_instance) = container_instance {
                     // Convert AWS SDK container instance to our internal representation
                     let our_container_instance = resource::ContainerInstance {
-                        ec2_instance_id: container_instance.ec2_instance_id().map(|eid| eid.to_string()),
-                        capacity_provider_name: container_instance.capacity_provider_name().map(|cpn| cpn.to_string()),
-                        version: Some(container_instance.version),
-                        version_info: container_instance.version_info().map(|vi| {
-                            resource::VersionInfo {
-                                agent_version: vi.agent_version().map(|av| av.to_string()),
-                                agent_hash: vi.agent_hash().map(|ah| ah.to_string()),
-                                docker_version: vi.docker_version().map(|dv| dv.to_string()),
-                            }
-                        }),
+                        ec2_instance_id: container_instance.ec2_instance_id.clone(),
+                        capacity_provider_name: container_instance.capacity_provider_name.clone(),
+                        version: container_instance.version,
                         remaining_resources: container_instance
                             .remaining_resources()
                             .iter()
-                            .map(|rr| {
-                                resource::EcsContainerResource {
-                                    name: rr.name().unwrap_or_default().to_string(),
-                                    r#type: rr.r#type().map(|t| t.to_string()),
-                                    double_value: rr.double_value,
-                                    long_value: rr.long_value,
-                                    integer_value: rr.integer_value,
-                                    string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
-                                }
+                            .map(|rr| resource::EcsContainerResource {
+                                name: rr.name().unwrap_or_default().to_string(),
+                                r#type: rr.r#type().map(|t| t.to_string()),
+                                double_value: rr.double_value,
+                                long_value: rr.long_value,
+                                integer_value: rr.integer_value,
+                                string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
                             })
                             .collect(),
+                        agent_update_status: container_instance.agent_update_status().map(|aus| aus.as_str().to_string()),
                         registered_resources: container_instance
                             .registered_resources()
                             .iter()
-                            .map(|rr| {
-                                resource::EcsContainerResource {
-                                    name: rr.name().unwrap_or_default().to_string(),
-                                    r#type: rr.r#type().map(|t| t.to_string()),
-                                    double_value: rr.double_value,
-                                    long_value: rr.long_value,
-                                    integer_value: rr.integer_value,
-                                    string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
-                                }
+                            .map(|rr| resource::EcsContainerResource {
+                                name: rr.name().unwrap_or_default().to_string(),
+                                r#type: rr.r#type().map(|t| t.to_string()),
+                                double_value: rr.double_value,
+                                long_value: rr.long_value,
+                                integer_value: rr.integer_value,
+                                string_value: rr.string_set_value().iter().map(|sv| sv.to_string()).collect(),
                             })
                             .collect(),
-                        status: container_instance.status().map(|s| s.to_string()).unwrap_or_default(),
-                        status_reason: container_instance.status_reason().map(|sr| sr.to_string()),
-                        agent_connected: container_instance.agent_connected,
-                        running_tasks_count: container_instance.running_tasks_count,
-                        pending_tasks_count: container_instance.pending_tasks_count,
-                        agent_update_status: container_instance.agent_update_status().map(|aus| aus.as_str().to_string()),
                         attributes: container_instance
                             .attributes()
                             .iter()
-                            .map(|a| {
-                                resource::Attribute {
-                                    name: a.name().to_string(),
-                                    value: a.value().map(|v| v.to_string()),
-                                    target_type: a.target_type().map(|tt| tt.as_str().to_string()),
-                                    target_id: a.target_id().map(|ti| ti.to_string()),
-                                }
+                            .map(|a| resource::Attribute {
+                                name: a.name().to_string(),
+                                value: a.value().map(|v| v.to_string()),
+                                target_type: a.target_type().map(|tt| tt.as_str().to_string()),
+                                target_id: a.target_id().map(|ti| ti.to_string()),
                             })
                             .collect(),
                         attachments: container_instance
                             .attachments()
                             .iter()
-                            .map(|a| {
-                                resource::Attachment {
-                                    id: a.id().unwrap_or_default().to_string(),
-                                    r#type: a.r#type().unwrap_or_default().to_string(),
-                                    status: a.status().unwrap_or_default().to_string(),
-                                    details: a
-                                        .details()
-                                        .iter()
-                                        .map(|d| {
-                                            resource::KeyValuePair {
-                                                name: d.name().map(|n| n.to_string()),
-                                                value: d.value().map(|v| v.to_string()),
-                                            }
-                                        })
-                                        .collect(),
-                                }
+                            .map(|a| resource::Attachment {
+                                id:      a.id().unwrap_or_default().to_string(),
+                                r#type:  a.r#type().unwrap_or_default().to_string(),
+                                status:  a.status.clone().unwrap_or_default(),
+                                details: a
+                                    .details()
+                                    .iter()
+                                    .map(|d| resource::KeyValuePair {
+                                        name:  d.name().map(|n| n.to_string()),
+                                        value: d.value().map(|v| v.to_string()),
+                                    })
+                                    .collect(),
                             })
                             .collect(),
                         tags: tags::Tags::from(container_instance.tags()),
+                        version_info: container_instance.version_info.map(|vi| resource::VersionInfo {
+                            agent_version:  vi.agent_version,
+                            agent_hash:     vi.agent_hash,
+                            docker_version: vi.docker_version,
+                        }),
+                        status: container_instance.status,
+                        status_reason: container_instance.status_reason,
+                        agent_connected: container_instance.agent_connected,
+                        running_tasks_count: container_instance.running_tasks_count,
+                        pending_tasks_count: container_instance.pending_tasks_count,
                     };
 
                     return get_resource_output!(

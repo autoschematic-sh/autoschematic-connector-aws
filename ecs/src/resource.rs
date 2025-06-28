@@ -442,11 +442,11 @@ pub struct Attachment {
 pub struct ContainerInstance {
     pub ec2_instance_id: Option<String>,
     pub capacity_provider_name: Option<String>,
-    pub version: Option<i64>,
+    pub version: i64,
     pub version_info: Option<VersionInfo>,
     pub remaining_resources: Vec<EcsContainerResource>,
     pub registered_resources: Vec<EcsContainerResource>,
-    pub status: String,
+    pub status: Option<String>,
     pub status_reason: Option<String>,
     pub agent_connected: bool,
     pub running_tasks_count: i32,

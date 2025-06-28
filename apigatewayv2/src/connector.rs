@@ -84,39 +84,37 @@ impl Connector for ApiGatewayV2Connector {
     }
 
     async fn list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
-        let region = _subpath
-            .components()
-            .nth(2)
-            .and_then(|s| s.as_os_str().to_str())
-            .ok_or_else(|| anyhow::anyhow!("Invalid subpath: {:?}", _subpath))?;
+        let enabled_regions = self.config.lock().await.enabled_regions.clone();
 
         let mut results = Vec::new();
 
-        let apis = self.list_apis(region).await?;
-        results.extend(apis);
+        for region in enabled_regions {
+            let apis = self.list_apis(&region).await?;
+            results.extend(apis);
 
-        let mut api_resource_addresses = Vec::new();
-        for api in &results {
-            if let Ok(ApiGatewayV2ResourceAddress::Api { region: r, api_id: id }) = ApiGatewayV2ResourceAddress::from_path(api)
-            {
-                api_resource_addresses.push((r, id));
+            let mut api_resource_addresses = Vec::new();
+            for api in &results {
+                if let Ok(ApiGatewayV2ResourceAddress::Api { region: r, api_id: id }) =
+                    ApiGatewayV2ResourceAddress::from_path(api)
+                {
+                    api_resource_addresses.push((r, id));
+                }
+            }
+
+            for (region, api_id) in api_resource_addresses {
+                let routes = self.list_routes(&region, &api_id).await?;
+                results.extend(routes);
+
+                let integrations = self.list_integrations(&region, &api_id).await?;
+                results.extend(integrations);
+
+                let stages = self.list_stages(&region, &api_id).await?;
+                results.extend(stages);
+
+                let authorizers = self.list_authorizers(&region, &api_id).await?;
+                results.extend(authorizers);
             }
         }
-
-        for (region, api_id) in api_resource_addresses {
-            let routes = self.list_routes(&region, &api_id).await?;
-            results.extend(routes);
-
-            let integrations = self.list_integrations(&region, &api_id).await?;
-            results.extend(integrations);
-
-            let stages = self.list_stages(&region, &api_id).await?;
-            results.extend(stages);
-
-            let authorizers = self.list_authorizers(&region, &api_id).await?;
-            results.extend(authorizers);
-        }
-
         Ok(results)
     }
 

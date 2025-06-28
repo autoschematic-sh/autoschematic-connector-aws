@@ -110,11 +110,9 @@ pub async fn get_subnet(client: &aws_sdk_ec2::Client, vpc_id: &str, subnet_id: &
 }
 
 pub async fn get_igw(client: &aws_sdk_ec2::Client, igw_id: &str) -> anyhow::Result<Option<InternetGateway>> {
-    let igw_resp = client
-        .describe_internet_gateways()
-        .internet_gateway_ids(igw_id)
-        .send()
-        .await?;
+    let Ok(igw_resp) = client.describe_internet_gateways().internet_gateway_ids(igw_id).send().await else {
+        return Ok(None)
+    };
 
     if let Some(igws) = igw_resp.internet_gateways {
         if let Some(igw) = igws.first() {

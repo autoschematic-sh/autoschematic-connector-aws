@@ -372,7 +372,7 @@ impl Connector for EcsConnector {
             EcsResource::ContainerInstance(ContainerInstance {
                 ec2_instance_id: Some(String::from("i-0123456789abcdef0")),
                 capacity_provider_name: Some(String::from("capacity-provider-name")),
-                version: Some(8),
+                version: 8,
                 version_info: Some(resource::VersionInfo {
                     agent_version:  Some(String::from("1.57.1")),
                     agent_hash:     Some(String::from("12345678abc")),
@@ -414,7 +414,7 @@ impl Connector for EcsConnector {
                         string_value: String::new(),
                     },
                 ],
-                status: String::from("ACTIVE"),
+                status: Some(String::from("ACTIVE")),
                 status_reason: None,
                 agent_connected: true,
                 running_tasks_count: 2,
