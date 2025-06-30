@@ -1,6 +1,5 @@
 use std::{
-    path::{Path, PathBuf},
-    time::Duration,
+    path::{Path, PathBuf}, sync::Arc, time::Duration
 };
 
 use addr::Route53ResourceAddress;
@@ -43,11 +42,11 @@ impl Connector for Route53Connector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(Route53Connector {
+        Ok(Arc::new(Route53Connector {
             prefix: prefix.into(),
             ..Default::default()
         }))

@@ -22,7 +22,7 @@ use autoschematic_core::{
     util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::config::VpcConnectorConfig;
 
@@ -35,17 +35,17 @@ pub mod plan;
 pub struct VpcConnector {
     pub client_cache: Mutex<HashMap<String, Arc<aws_sdk_ec2::Client>>>,
     pub account_id: Mutex<String>,
-    pub config: Mutex<VpcConnectorConfig>,
+    pub config: RwLock<VpcConnectorConfig>,
     pub prefix: PathBuf,
 }
 
 #[async_trait]
 impl Connector for VpcConnector {
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(VpcConnector {
+        Ok(Arc::new(VpcConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))
@@ -57,7 +57,7 @@ impl Connector for VpcConnector {
         let account_id = vpc_config.verify_sts().await?;
 
         *self.client_cache.lock().await = HashMap::new();
-        *self.config.lock().await = vpc_config;
+        *self.config.write().await = vpc_config;
         *self.account_id.lock().await = account_id;
 
         Ok(())
@@ -65,14 +65,26 @@ impl Connector for VpcConnector {
 
     async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
+            eprintln!("VpcConnector::filter({}) = true", addr.display());
             Ok(FilterOutput::Resource)
         } else {
+            eprintln!("VpcConnector::filter({}) = false", addr.display());
             Ok(FilterOutput::None)
         }
     }
 
     async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         self.do_list(subpath).await
+    }
+
+    async fn subpaths(&self) -> anyhow::Result<Vec<PathBuf>> {
+        let mut res = Vec::new();
+
+        for region in &self.config.read().await.enabled_regions {
+            res.push(PathBuf::from(format!("aws/vpc/{}", region)));
+        }
+
+        Ok(res)
     }
 
     async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {

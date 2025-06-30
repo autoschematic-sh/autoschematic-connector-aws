@@ -74,11 +74,11 @@ impl Connector for CloudWatchConnector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(CloudWatchConnector {
+        Ok(Arc::new(CloudWatchConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))

@@ -1,6 +1,6 @@
 use std::{
     collections::HashSet,
-    path::{Path, PathBuf},
+    path::{Path, PathBuf}, sync::{Arc},
 };
 
 use crate::{addr::IamResourceAddress, resource::IamGroup};
@@ -21,7 +21,7 @@ use resource::{IamPolicy, IamResource, IamRole, IamUser};
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain};
 use aws_sdk_iam::config::Region;
 use tags::Tags;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::{resource, tags};
 
@@ -34,8 +34,8 @@ mod plan;
 #[derive(Default)]
 pub struct IamConnector {
     prefix:     PathBuf,
-    client:     Mutex<Option<aws_sdk_iam::Client>>,
-    account_id: Mutex<Option<String>>,
+    client:     RwLock<Option<Arc<aws_sdk_iam::Client>>>,
+    account_id: RwLock<Option<String>>,
 }
 
 #[async_trait]
@@ -48,11 +48,11 @@ impl Connector for IamConnector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(IamConnector {
+        Ok(Arc::new(IamConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))
@@ -92,8 +92,8 @@ impl Connector for IamConnector {
                     }
                 }
 
-                *self.client.lock().await = Some(client);
-                *self.account_id.lock().await = Some(account_id);
+                *self.client.write().await = Some(Arc::new(client));
+                *self.account_id.write().await = Some(account_id);
 
                 Ok(())
             }
@@ -106,6 +106,15 @@ impl Connector for IamConnector {
 
     async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         self.do_list(subpath).await
+    }
+
+    async fn subpaths(&self) -> Result<Vec<PathBuf>, anyhow::Error> {
+        Ok(vec![
+            PathBuf::from("aws/iam/users"),
+            PathBuf::from("aws/iam/roles"),
+            PathBuf::from("aws/iam/groups"),
+            PathBuf::from("aws/iam/policies"),
+        ])
     }
 
     async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {

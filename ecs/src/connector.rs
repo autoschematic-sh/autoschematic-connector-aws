@@ -69,11 +69,11 @@ impl EcsConnector {
 
 #[async_trait]
 impl Connector for EcsConnector {
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> anyhow::Result<Box<dyn Connector>>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> anyhow::Result<Arc<dyn Connector>>
     where
         Self: Sized,
     {
-        Ok(Box::new(EcsConnector {
+        Ok(Arc::new(EcsConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))

@@ -14,6 +14,7 @@ use autoschematic_core::{
     },
     diag::DiagnosticOutput,
     read_outputs::ReadOutput,
+    util::{ron_check_eq, ron_check_syntax},
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use aws_sdk_apigatewayv2::{
@@ -30,7 +31,7 @@ use crate::{
     addr,
     config::{self},
     op,
-    resource::{Api, ApiGatewayV2Resource, Authorizer, Integration, Route, Stage},
+    resource::{self, Api, ApiGatewayV2Resource, Authorizer, Integration, Route, Stage},
 };
 
 pub use addr::ApiGatewayV2ResourceAddress;
@@ -62,11 +63,11 @@ impl Connector for ApiGatewayV2Connector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(ApiGatewayV2Connector {
+        Ok(Arc::new(ApiGatewayV2Connector {
             prefix: prefix.into(),
             ..Default::default()
         }))
@@ -475,19 +476,24 @@ impl Connector for ApiGatewayV2Connector {
 
     async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
-
-        // match addr {
-        //     // ApiGatewayV2ResourceAddress:: { .. } => ron_check_eq::<resource::S3Bucket>(a, b),
-        // }
-        Ok(true)
+        match addr {
+            ApiGatewayV2ResourceAddress::Api { .. } => ron_check_eq::<resource::Api>(a, b),
+            ApiGatewayV2ResourceAddress::Route { .. } => ron_check_eq::<resource::Route>(a, b),
+            ApiGatewayV2ResourceAddress::Integration { .. } => ron_check_eq::<resource::Integration>(a, b),
+            ApiGatewayV2ResourceAddress::Stage { .. } => ron_check_eq::<resource::Stage>(a, b),
+            ApiGatewayV2ResourceAddress::Authorizer { .. } => ron_check_eq::<resource::Authorizer>(a, b),
+        }
     }
 
     async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
-        // match addr {
-        //     // S3ResourceAddress::Bucket { .. } => ron_check_syntax::<resource::S3Bucket>(a),
-        // }
-        Ok(DiagnosticOutput { diagnostics: Vec::new() })
+        match addr {
+            ApiGatewayV2ResourceAddress::Api { .. } => ron_check_syntax::<resource::Api>(a),
+            ApiGatewayV2ResourceAddress::Route { .. } => ron_check_syntax::<resource::Route>(a),
+            ApiGatewayV2ResourceAddress::Integration { .. } => ron_check_syntax::<resource::Integration>(a),
+            ApiGatewayV2ResourceAddress::Stage { .. } => ron_check_syntax::<resource::Stage>(a),
+            ApiGatewayV2ResourceAddress::Authorizer { .. } => ron_check_syntax::<resource::Authorizer>(a),
+        }
     }
 }

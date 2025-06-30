@@ -26,7 +26,7 @@ use autoschematic_core::{
 use autoschematic_core::{get_resource_output, skeleton};
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use serde_json;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::resource;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
@@ -77,7 +77,7 @@ async fn get_secret(client: &aws_sdk_secretsmanager::Client, secret_name: &str) 
 pub struct SecretsManagerConnector {
     client_cache: Mutex<HashMap<String, Arc<aws_sdk_secretsmanager::Client>>>,
     account_id: Mutex<String>,
-    config: Mutex<SecretsManagerConnectorConfig>,
+    config: RwLock<SecretsManagerConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -114,11 +114,11 @@ impl SecretsManagerConnector {
 
 #[async_trait]
 impl Connector for SecretsManagerConnector {
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(SecretsManagerConnector {
+        Ok(Arc::new(SecretsManagerConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))
@@ -130,7 +130,7 @@ impl Connector for SecretsManagerConnector {
         let account_id = secrets_config.verify_sts().await?;
 
         *self.client_cache.lock().await = HashMap::new();
-        *self.config.lock().await = secrets_config;
+        *self.config.write().await = secrets_config;
         *self.account_id.lock().await = account_id;
         Ok(())
     }
@@ -147,6 +147,16 @@ impl Connector for SecretsManagerConnector {
         self.do_list(subpath).await
     }
 
+    async fn subpaths(&self) -> anyhow::Result<Vec<PathBuf>> {
+        let mut res = Vec::new();
+
+        for region in &self.config.read().await.enabled_regions {
+            res.push(PathBuf::from(format!("aws/secretsmanager/{}", region)));
+        }
+
+        Ok(res)
+    }
+
     async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
@@ -155,10 +165,7 @@ impl Connector for SecretsManagerConnector {
                 let client = self.get_or_init_client(&region).await?;
                 match get_secret(&client, &name).await {
                     Ok((secret, arn)) => {
-                        return get_resource_output!(
-                            SecretsManagerResource::Secret(secret),
-                            [(String::from("arn"), arn)]
-                        );
+                        return get_resource_output!(SecretsManagerResource::Secret(secret), [(String::from("arn"), arn)]);
                     }
                     Err(_) => Ok(None),
                 }

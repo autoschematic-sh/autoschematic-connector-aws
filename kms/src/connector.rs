@@ -115,11 +115,11 @@ impl Connector for KmsConnector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(KmsConnector {
+        Ok(Arc::new(KmsConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))

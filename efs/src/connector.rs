@@ -82,11 +82,11 @@ impl Connector for EfsConnector {
         }
     }
 
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> anyhow::Result<Box<dyn Connector>>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> anyhow::Result<Arc<dyn Connector>>
     where
         Self: Sized,
     {
-        Ok(Box::new(EfsConnector {
+        Ok(Arc::new(EfsConnector {
             prefix: prefix.into(),
             ..Default::default()
         }))

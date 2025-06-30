@@ -20,10 +20,10 @@ impl IamConnector {
     pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
         let op = IamConnectorOp::from_str(op)?;
-        let Some(ref client) = *self.client.lock().await else {
+        let Some(ref client) = *self.client.read().await else {
             bail!("No client")
         };
-        let Some(account_id) = self.account_id.lock().await.clone() else {
+        let Some(account_id) = self.account_id.read().await.clone() else {
             bail!("No account ID")
         };
 
@@ -124,6 +124,30 @@ impl IamConnector {
                             format!("Deleted IAM role `{}`", name)
                         )
                     }
+                    IamConnectorOp::AttachRolePolicy(policy_arn) => {
+                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
+
+                        client
+                            .attach_role_policy()
+                            .role_name(name)
+                            .policy_arn(&policy_arn)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!("Attached policy `{}` to role `{}{}`", &policy_arn, path, &name))
+                    }
+                    IamConnectorOp::DetachRolePolicy(policy_arn) => {
+                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
+
+                        client
+                            .detach_role_policy()
+                            .role_name(name)
+                            .policy_arn(&policy_arn)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!("Detached policy `{}` from role `{}{}`", &policy_arn, path, &name))
+                    }
                     IamConnectorOp::UpdateAssumeRolePolicy(_old_policy, new_policy) => {
                         // self.client.update_assume_role_policy()
                         let policy_json = match new_policy {
@@ -191,8 +215,8 @@ impl IamConnector {
                             .await?;
                         op_exec_output!(format!("Added user `{}` to group `{}{}`", &user_name, path, &name))
                     }
-                    IamConnectorOp::AttachGroupPolicy(policy) => {
-                        let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
+                    IamConnectorOp::AttachGroupPolicy(policy_arn) => {
+                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
 
                         client
                             .attach_group_policy()
@@ -203,8 +227,8 @@ impl IamConnector {
 
                         op_exec_output!(format!("Attached policy `{}` to group `{}{}`", &policy_arn, path, &name))
                     }
-                    IamConnectorOp::DetachGroupPolicy(policy) => {
-                        let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
+                    IamConnectorOp::DetachGroupPolicy(policy_arn) => {
+                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
 
                         client
                             .detach_group_policy()
@@ -213,7 +237,7 @@ impl IamConnector {
                             .send()
                             .await?;
 
-                        op_exec_output!(format!("Attached policy `{}` to group `{}{}`", &policy_arn, path, &name))
+                        op_exec_output!(format!("Detached policy `{}` from group `{}{}`", &policy_arn, path, &name))
                     }
                     IamConnectorOp::RemoveUserFromGroup(user_name) => {
                         client

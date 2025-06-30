@@ -69,11 +69,11 @@ impl S3Connector {
 
 #[async_trait]
 impl Connector for S3Connector {
-    async fn new(name: &str, prefix: &Path, outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(name: &str, prefix: &Path, outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
-        Ok(Box::new(S3Connector {
+        Ok(Arc::new(S3Connector {
             prefix: prefix.into(),
             ..Default::default()
         }))

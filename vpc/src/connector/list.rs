@@ -4,16 +4,19 @@ use super::VpcConnector;
 
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::connector::ResourceAddress;
+use autoschematic_core::{connector::ResourceAddress, glob::addr_matches_filter};
 
 use aws_sdk_ec2::types::Filter;
 
 impl VpcConnector {
     pub async fn do_list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
-        let config = self.config.lock().await;
+        let config = self.config.read().await;
 
         for region_name in &config.enabled_regions {
+            if !addr_matches_filter(&PathBuf::from(format!("aws/vpc/{}", region_name)), subpath) {
+                continue;
+            }
             let client = self.get_or_init_client(region_name).await.unwrap();
 
             let vpcs_resp = client.describe_vpcs().send().await?;

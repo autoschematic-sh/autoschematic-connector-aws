@@ -21,10 +21,10 @@ use super::IamConnector;
 impl IamConnector {
     pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
-        let Some(ref client) = *self.client.lock().await else {
+        let Some(client) = self.client.read().await.clone() else {
             bail!("No client");
         };
-        let Some(account_id) = self.account_id.lock().await.clone() else {
+        let Some(account_id) = self.account_id.read().await.clone() else {
             bail!("No account ID");
         };
 
@@ -38,7 +38,7 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_user_policies(client, &name).await?;
+                        let attached_policies = list_attached_user_policies(&client, &name).await?;
 
                         let iam_user = IamUser {
                             attached_policies,
@@ -65,7 +65,7 @@ impl IamConnector {
                             return Ok(None);
                         };
 
-                        let attached_policies = list_attached_role_policies(client, &name).await?;
+                        let attached_policies = list_attached_role_policies(&client, &name).await?;
 
                         let iam_role = if let Some(assume_role_policy) = role.assume_role_policy_document {
                             let json_s = urlencoding::decode(&assume_role_policy)?;
@@ -108,7 +108,7 @@ impl IamConnector {
 
                         let group_user_names = group_output.users().iter().map(|user| user.user_name.clone()).collect();
 
-                        let attached_policies = list_attached_group_policies(client, &name).await?;
+                        let attached_policies = list_attached_group_policies(&client, &name).await?;
 
                         let iam_group = IamGroup {
                             users: group_user_names,

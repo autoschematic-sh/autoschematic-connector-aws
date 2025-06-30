@@ -141,6 +141,7 @@ impl VpcConnector {
                 }
             }
             VpcResourceAddress::InternetGateway { region, igw_id } => {
+                eprintln!("{:?}, {:?}", current, desired);
                 match (current, desired) {
                     (None, None) => Ok(vec![]),
                     (None, Some(new_igw)) => {

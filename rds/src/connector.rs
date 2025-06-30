@@ -35,7 +35,7 @@ pub struct RdsConnector {
 
 #[async_trait]
 impl Connector for RdsConnector {
-    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Box<dyn Connector>, anyhow::Error>
+    async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
     {
@@ -43,7 +43,7 @@ impl Connector for RdsConnector {
 
         conn.prefix = prefix.into();
 
-        Ok(Box::new(conn))
+        Ok(Arc::new(conn))
     }
 
     async fn init(&self) -> anyhow::Result<()> {
