@@ -18,7 +18,9 @@ impl ElbConnector {
                 let client = self.get_or_init_client(&region).await?;
 
                 // Find the specific load balancer
-                let load_balancers_resp = client.describe_load_balancers().names(&load_balancer_name).send().await?;
+                let Ok(load_balancers_resp) = client.describe_load_balancers().names(&load_balancer_name).send().await else {
+                    return Ok(None);
+                };
 
                 let Some(load_balancers) = load_balancers_resp.load_balancers else {
                     return Ok(None);
@@ -49,7 +51,6 @@ impl ElbConnector {
 
                 // Construct the LoadBalancer resource
                 let lb_resource = resource::LoadBalancer {
-                    name: load_balancer_name,
                     load_balancer_type: lb
                         .r#type
                         .as_ref()
@@ -80,17 +81,18 @@ impl ElbConnector {
                 let client = self.get_or_init_client(&region).await?;
 
                 // Find the specific target group
-                let target_groups_resp = client.describe_target_groups().names(&target_group_name).send().await?;
+                //
+                let Ok(target_groups_resp) = client.describe_target_groups().names(&target_group_name).send().await else {
+                    return Ok(None);
+                };
 
                 let Some(target_groups) = target_groups_resp.target_groups else {
                     return Ok(None);
                 };
 
-                if target_groups.is_empty() {
+                let Some(tg) = target_groups.first() else {
                     return Ok(None);
-                }
-
-                let tg = &target_groups[0];
+                };
 
                 // Get tags for this target group
                 let tags = if let Some(tg_arn) = &tg.target_group_arn {
@@ -135,27 +137,14 @@ impl ElbConnector {
                         healthy_threshold_count: tg.healthy_threshold_count.unwrap_or(5),
                         unhealthy_threshold_count: tg.unhealthy_threshold_count.unwrap_or(2),
                     }),
-                    None => {
-                        // Default health check
-                        None
-                        // resource::HealthCheck {
-                        //     protocol: "HTTP".to_string(),
-                        //     port: "traffic-port".to_string(),
-                        //     path: "/".to_string(),
-                        //     interval_seconds: 30,
-                        //     timeout_seconds: 5,
-                        //     healthy_threshold_count: 5,
-                        //     unhealthy_threshold_count: 2,
-                        // }
-                    }
+                    None => None,
                 };
 
                 // Construct the TargetGroup resource
                 let tg_resource = resource::TargetGroup {
-                    name: target_group_name,
                     protocol: tg.protocol().map_or_else(|| "HTTP".to_string(), |p| p.as_str().to_string()),
-                    port: tg.port.unwrap_or(80),
-                    vpc_id: tg.vpc_id.clone().unwrap_or_default(),
+                    port: tg.port,
+                    vpc_id: tg.vpc_id.clone(),
                     target_type: tg
                         .target_type()
                         .map_or_else(|| "instance".to_string(), |t| t.as_str().to_string()),
@@ -173,7 +162,9 @@ impl ElbConnector {
                 let client = self.get_or_init_client(&region).await?;
 
                 // First, get the load balancer ARN
-                let load_balancers_resp = client.describe_load_balancers().names(&load_balancer_name).send().await?;
+                let Ok(load_balancers_resp) = client.describe_load_balancers().names(&load_balancer_name).send().await else {
+                    return Ok(None);
+                };
 
                 let Some(load_balancers) = load_balancers_resp.load_balancers else {
                     return Ok(None);
@@ -191,7 +182,9 @@ impl ElbConnector {
                 let listener_arn = format!("{}/listener/{}", lb_arn, listener_id);
 
                 // Find the specific listener
-                let listeners_resp = client.describe_listeners().listener_arns(&listener_arn).send().await?;
+                let Ok(listeners_resp) = client.describe_listeners().listener_arns(&listener_arn).send().await else {
+                    return Ok(None);
+                };
 
                 let Some(listeners) = listeners_resp.listeners else {
                     return Ok(None);
@@ -201,7 +194,9 @@ impl ElbConnector {
                     return Ok(None);
                 }
 
-                let listener = &listeners[0];
+                let Some(listener) = listeners.first() else {
+                    return Ok(None);
+                };
 
                 // Get tags for this listener
                 let tags = if let Some(listener_arn) = &listener.listener_arn {

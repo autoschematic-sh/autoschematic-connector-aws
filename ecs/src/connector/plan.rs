@@ -52,7 +52,7 @@ impl EcsConnector {
                                 format!("Modify tags for ECS cluster `{}`\n{}", cluster_name, diff)
                             ));
                         }
-
+                        
                         // Check for settings changes
                         if old_cluster.settings != new_cluster.settings {
                             let mut new_settings = Vec::new();
@@ -168,20 +168,6 @@ impl EcsConnector {
                         let old_deployment_config = old_service.deployment_configuration.as_ref();
                         let new_deployment_config = new_service.deployment_configuration.as_ref();
 
-                        // let _deployment_config_changed = match (old_deployment_config, new_deployment_config) {
-                        //     (Some(old_config), Some(new_config)) => {
-                        //         old_config.maximum_percent != new_config.maximum_percent
-                        //             || old_config.minimum_healthy_percent != new_config.minimum_healthy_percent
-                        //             || old_config.deployment_circuit_breaker.is_some() != new_config.deployment_circuit_breaker.is_some()
-                        //             || (old_config.deployment_circuit_breaker.is_some() && new_config.deployment_circuit_breaker.is_some()
-                        //                 && (old_config.deployment_circuit_breaker.as_ref().unwrap().enable
-                        //                     != new_config.deployment_circuit_breaker.as_ref().unwrap().enable
-                        //                     || old_config.deployment_circuit_breaker.as_ref().unwrap().rollback
-                        //                     != new_config.deployment_circuit_breaker.as_ref().unwrap().rollback))
-                        //     }
-                        //     (None, Some(_)) | (Some(_), None) => true,
-                        //     (None, None) => false,
-                        // };
 
                         if old_deployment_config != new_deployment_config {
                             let circuit_breaker_enable = new_deployment_config
@@ -215,6 +201,21 @@ impl EcsConnector {
                                     )
                                 ));
                             }
+                        }
+                        
+                        // Check for load balancer changes
+                        if old_service.load_balancers != new_service.load_balancers {
+                            let diff = diff_ron_values(&old_service.load_balancers, &new_service.load_balancers).unwrap_or_default();
+                            ops.push(connector_op!(
+                                EcsConnectorOp::UpdateServiceLoadBalancers {
+                                    old_load_balancers: old_service.load_balancers,
+                                    new_load_balancers: new_service.load_balancers,
+                                },
+                                format!(
+                                    "Update load balancers for ECS service `{}` in cluster `{}`\n{}",
+                                    service_name, cluster_name, diff
+                                )
+                            ));
                         }
 
                         Ok(ops)

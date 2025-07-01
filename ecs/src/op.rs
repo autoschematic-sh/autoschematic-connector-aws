@@ -32,6 +32,10 @@ pub enum EcsConnectorOp {
         enable_circuit_breaker: Option<bool>,
         enable_rollback: Option<bool>,
     },
+    UpdateServiceLoadBalancers {
+        old_load_balancers: Vec<super::resource::LoadBalancer>,
+        new_load_balancers: Vec<super::resource::LoadBalancer>,
+    },
     EnableExecuteCommand(bool),
     DeleteService,
 

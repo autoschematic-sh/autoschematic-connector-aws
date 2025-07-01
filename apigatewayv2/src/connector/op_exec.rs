@@ -24,7 +24,7 @@ impl ApiGatewayV2Connector {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
         let op = ApiGatewayV2ConnectorOp::from_str(op)?;
 
-        let account_id = self.account_id.lock().await.clone();
+        let account_id = self.account_id.read().await.clone();
 
         match &addr {
             ApiGatewayV2ResourceAddress::Api { region, api_id } => {

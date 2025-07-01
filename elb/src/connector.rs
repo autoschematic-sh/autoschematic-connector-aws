@@ -133,7 +133,6 @@ impl Connector for ElbConnector {
         res.push(skeleton!(
             ElbResourceAddress::LoadBalancer(region.clone(), lb_name.clone()),
             ElbResource::LoadBalancer(LoadBalancer {
-                name: String::from("[load_balancer_name]"),
                 load_balancer_type: String::from("application"),
                 scheme: String::from("internet-facing"),
                 vpc_id: String::from("[vpc_id]"),
@@ -149,10 +148,9 @@ impl Connector for ElbConnector {
         res.push(skeleton!(
             ElbResourceAddress::TargetGroup(region.clone(), tg_name),
             ElbResource::TargetGroup(TargetGroup {
-                name: String::from("[target_group_name]"),
                 protocol: String::from("HTTP"),
-                port: 80,
-                vpc_id: String::from("[vpc_id]"),
+                port: Some(80),
+                vpc_id: Some(String::from("[vpc_id]")),
                 target_type: String::from("instance"),
                 health_check: Some(HealthCheck {
                     enabled: true,
@@ -197,7 +195,6 @@ impl Connector for ElbConnector {
         res.push(skeleton!(
             ElbResourceAddress::LoadBalancer(region.clone(), nlb_name.clone()),
             ElbResource::LoadBalancer(LoadBalancer {
-                name: String::from("[network_load_balancer_name]"),
                 load_balancer_type: String::from("network"),
                 scheme: String::from("internal"),
                 vpc_id: String::from("[vpc_id]"),
@@ -213,10 +210,9 @@ impl Connector for ElbConnector {
         res.push(skeleton!(
             ElbResourceAddress::TargetGroup(region.clone(), tcp_tg_name),
             ElbResource::TargetGroup(TargetGroup {
-                name: String::from("[tcp_target_group_name]"),
                 protocol: String::from("TCP"),
-                port: 80,
-                vpc_id: String::from("[vpc_id]"),
+                port: Some(80),
+                vpc_id: Some(String::from("[vpc_id]")),
                 target_type: String::from("ip"),
                 health_check: Some(HealthCheck {
                     enabled: true,

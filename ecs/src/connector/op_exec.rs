@@ -85,6 +85,10 @@ impl EcsConnector {
                     )
                     .await
                 }
+                EcsConnectorOp::UpdateServiceLoadBalancers { old_load_balancers, new_load_balancers } => {
+                    let client = self.get_or_init_client(region).await?;
+                    op_impl::update_service_load_balancers(&client, cluster_name, service_name, old_load_balancers, new_load_balancers).await
+                }
                 EcsConnectorOp::EnableExecuteCommand(enable) => {
                     let client = self.get_or_init_client(region).await?;
                     op_impl::enable_execute_command(&client, cluster_name, service_name, enable).await

@@ -21,9 +21,12 @@ impl ElbConnector {
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+        eprintln!("elb plan {:?} {:?} ", current, desired);
         let addr = ElbResourceAddress::from_path(addr)?;
         let current = optional_string_from_utf8(current)?;
         let desired = optional_string_from_utf8(desired)?;
+        
+        eprintln!("elb plan {:?} {:?} ", current, desired);
 
         match addr {
             ElbResourceAddress::LoadBalancer(region, lb_name) => {

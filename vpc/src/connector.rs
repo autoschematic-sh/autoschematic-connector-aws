@@ -17,7 +17,7 @@ use autoschematic_core::{
         SkeletonOutput, VirtToPhyOutput,
     },
     diag::DiagnosticOutput,
-    read_outputs::ReadOutput,
+    template::ReadOutput,
     skeleton,
     util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };

@@ -13,7 +13,8 @@ use autoschematic_core::{
         ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
     diag::DiagnosticOutput,
-    read_outputs::ReadOutput,
+    glob::addr_matches_filter,
+    template::ReadOutput,
     util::{ron_check_eq, ron_check_syntax},
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
@@ -25,7 +26,7 @@ use aws_sdk_apigatewayv2::{
     },
 };
 use config::ApiGatewayV2ConnectorConfig;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::{
     addr,
@@ -48,8 +49,8 @@ pub mod util;
 #[derive(Default)]
 pub struct ApiGatewayV2Connector {
     client_cache: tokio::sync::Mutex<HashMap<String, Arc<aws_sdk_apigatewayv2::Client>>>,
-    account_id: Mutex<String>,
-    config: Mutex<ApiGatewayV2ConnectorConfig>,
+    account_id: RwLock<String>,
+    config: RwLock<ApiGatewayV2ConnectorConfig>,
     prefix: PathBuf,
 }
 
@@ -79,17 +80,21 @@ impl Connector for ApiGatewayV2Connector {
         let account_id = secrets_config.verify_sts().await?;
 
         *self.client_cache.lock().await = HashMap::new();
-        *self.config.lock().await = secrets_config;
-        *self.account_id.lock().await = account_id;
+        *self.config.write().await = secrets_config;
+        *self.account_id.write().await = account_id;
         Ok(())
     }
 
-    async fn list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
-        let enabled_regions = self.config.lock().await.enabled_regions.clone();
+    async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
+        let enabled_regions = self.config.read().await.enabled_regions.clone();
 
         let mut results = Vec::new();
 
         for region in enabled_regions {
+            if !addr_matches_filter(&PathBuf::from(format!("aws/apigatewayv2/{}", region)), subpath) {
+                continue;
+            }
+
             let apis = self.list_apis(&region).await?;
             results.extend(apis);
 
@@ -117,6 +122,16 @@ impl Connector for ApiGatewayV2Connector {
             }
         }
         Ok(results)
+    }
+
+    async fn subpaths(&self) -> anyhow::Result<Vec<PathBuf>> {
+        let mut res = Vec::new();
+
+        for region in &self.config.read().await.enabled_regions {
+            res.push(PathBuf::from(format!("aws/apigatewayv2/{}", region)));
+        }
+
+        Ok(res)
     }
 
     async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {

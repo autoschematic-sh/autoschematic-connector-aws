@@ -20,7 +20,6 @@ pub struct HealthCheck {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LoadBalancer {
-    pub name: String,
     pub load_balancer_type: String, // application, network, or gateway
     pub scheme: String,             // internet-facing or internal
     pub vpc_id: String,
@@ -32,10 +31,9 @@ pub struct LoadBalancer {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct TargetGroup {
-    pub name: String,
     pub protocol: String,
-    pub port: i32,
-    pub vpc_id: String,
+    pub port: Option<i32>,
+    pub vpc_id: Option<String>,
     pub target_type: String, // instance, ip, lambda
     pub health_check: Option<HealthCheck>,
     pub targets: Vec<String>,

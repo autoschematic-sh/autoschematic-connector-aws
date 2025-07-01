@@ -5,6 +5,7 @@ use autoschematic_core::{
     connector::{ConnectorOp, OpExecOutput, OutputMapExec, OutputValueExec, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
+    workflow::list,
 };
 use aws_sdk_elasticloadbalancingv2::types::{
     Action as AwsAction, ActionTypeEnum, Certificate as AwsCertificate, FixedResponseActionConfig, ForwardActionConfig,
@@ -41,7 +42,9 @@ impl ElbConnector {
                             .r#type(LoadBalancerTypeEnum::from_str(&lb.load_balancer_type)?)
                             .ip_address_type(IpAddressType::from_str(&lb.ip_address_type)?);
 
-                        request = request.set_tags(lb.tags.into());
+                        if lb.tags.len() > 0 {
+                            request = request.set_tags(lb.tags.into());
+                        }
 
                         let response = request.send().await?;
 
@@ -123,8 +126,8 @@ impl ElbConnector {
                             .create_target_group()
                             .name(tg_name)
                             .protocol(ProtocolEnum::from_str(&tg.protocol)?)
-                            .port(tg.port)
-                            .vpc_id(tg.vpc_id.clone())
+                            .set_port(tg.port)
+                            .set_vpc_id(tg.vpc_id.clone())
                             .target_type(TargetTypeEnum::from_str(&tg.target_type)?);
 
                         if let Some(ref health_check) = tg.health_check {
@@ -139,7 +142,9 @@ impl ElbConnector {
                                 .unhealthy_threshold_count(health_check.unhealthy_threshold_count);
                         }
 
-                        request = request.set_tags(tg.tags.into());
+                        if tg.tags.len() > 0 {
+                            request = request.set_tags(tg.tags.into());
+                        }
 
                         let response = request.send().await?;
 
@@ -217,7 +222,23 @@ impl ElbConnector {
                             request = request.set_default_actions(Some(aws_actions));
                         }
 
-                        request = request.set_tags(listener.tags.into());
+                        if listener.tags.len() > 0 {
+                            request = request.set_tags(listener.tags.into());
+                        }
+
+                        if let Some(certificates) = listener.certificates {
+                            request = request.set_certificates(Some(
+                                certificates
+                                    .iter()
+                                    .map(|c| {
+                                        aws_sdk_elasticloadbalancingv2::types::Certificate::builder()
+                                            .certificate_arn(c.certificate_arn.clone())
+                                            // .is_default(c.is_default)
+                                            .build()
+                                    })
+                                    .collect(),
+                            ))
+                        }
 
                         let response = request.send().await?;
 

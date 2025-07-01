@@ -650,6 +650,57 @@ pub async fn update_service_deployment_configuration(
     })
 }
 
+/// Updates load balancers for a service
+pub async fn update_service_load_balancers(
+    client: &Client,
+    cluster_name: &str,
+    service_name: &str,
+    _old_load_balancers: Vec<super::resource::LoadBalancer>,
+    new_load_balancers: Vec<super::resource::LoadBalancer>,
+) -> Result<OpExecOutput, anyhow::Error> {
+    // Convert our LoadBalancer structs to AWS SDK LoadBalancer structs
+    let mut aws_load_balancers = Vec::new();
+
+    for lb in &new_load_balancers {
+        let mut builder = LoadBalancer::builder();
+
+        if let Some(target_group_arn) = &lb.target_group_arn {
+            builder = builder.target_group_arn(target_group_arn);
+        }
+
+        if let Some(lb_name) = &lb.load_balancer_name {
+            builder = builder.load_balancer_name(lb_name);
+        }
+
+        if let Some(container_name) = &lb.container_name {
+            builder = builder.container_name(container_name);
+        }
+
+        if let Some(container_port) = lb.container_port {
+            builder = builder.container_port(container_port);
+        }
+
+        aws_load_balancers.push(builder.build());
+    }
+
+    // Update the service with the new load balancers
+    client
+        .update_service()
+        .cluster(cluster_name)
+        .service(service_name)
+        .set_load_balancers(Some(aws_load_balancers))
+        .send()
+        .await?;
+
+    Ok(OpExecOutput {
+        outputs: None,
+        friendly_message: Some(format!(
+            "Updated load balancers for ECS service {} in cluster {}",
+            service_name, cluster_name
+        )),
+    })
+}
+
 /// Enables or disables execute command for a service
 pub async fn enable_execute_command(
     client: &Client,
