@@ -81,6 +81,36 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
+name = "autoschematic-connector-aws-acm"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "arbitrary",
+ "async-trait",
+ "autoschematic-connector-aws-core",
+ "autoschematic-core",
+ "aws-config",
+ "aws-sdk-acm",
+ "aws-sdk-sts",
+ "aws-smithy-types",
+ "documented",
+ "indexmap",
+ "lazy_static",
+ "ron",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "similar",
+ "thiserror 2.0.11",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+ "uuid",
+ "walkdir",
+]
+
+[[package]]
 name = "autoschematic-connector-aws-apigatewayv2"
 version = "0.5.0"
 dependencies = [
@@ -515,6 +545,7 @@ dependencies = [
  "sha2",
  "signature 2.2.0",
  "similar",
+ "strsim",
  "tarpc",
  "tokio",
  "tracing",
@@ -611,6 +642,28 @@ dependencies = [
  "pin-project-lite",
  "tracing",
  "uuid",
+]
+
+[[package]]
+name = "aws-sdk-acm"
+version = "1.77.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c5fd1085a3b4bc821cd72fa48bb0df53daa963e9380a90dbd81a4e5681662fe"
+dependencies = [
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http 0.62.1",
+ "aws-smithy-json",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "regex-lite",
+ "tracing",
 ]
 
 [[package]]
@@ -3864,6 +3917,12 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
+
+[[package]]
+name = "strsim"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 
 [[package]]
 name = "strum"

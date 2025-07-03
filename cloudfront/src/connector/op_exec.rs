@@ -20,6 +20,7 @@ impl CloudFrontConnector {
 
         // CloudFront is a global service, but we'll use us-east-1 as the default region
         let client = self.get_or_init_client().await?;
+        
 
         if let CloudFrontConnectorOp::UpdateTags { old_tags, new_tags } = op {
             let (untag, newtag) = tag_diff(&old_tags, &new_tags)?;

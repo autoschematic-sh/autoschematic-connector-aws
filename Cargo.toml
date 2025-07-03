@@ -2,6 +2,7 @@
 
 members = [
     "core",
+    "acm",
     "apigatewayv2",
     "cloudfront",
     "cloudwatch",
