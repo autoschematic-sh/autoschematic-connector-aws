@@ -6,7 +6,7 @@ use autoschematic_core::{
     error_util::invalid_op,
     op_exec_output,
 };
-use aws_sdk_cloudfront::types::{builders::AliasesBuilder, Aliases, PriceClass, Tag, TagKeys, Tags};
+use aws_sdk_cloudfront::types::{builders::AliasesBuilder, Aliases, ParametersInCacheKeyAndForwardedToOrigin, PriceClass, Tag, TagKeys, Tags};
 
 use crate::{addr::CloudFrontResourceAddress, op::CloudFrontConnectorOp, tags::tag_diff, util::get_distribution_config};
 
@@ -20,7 +20,6 @@ impl CloudFrontConnector {
 
         // CloudFront is a global service, but we'll use us-east-1 as the default region
         let client = self.get_or_init_client().await?;
-        
 
         if let CloudFrontConnectorOp::UpdateTags { old_tags, new_tags } = op {
             let (untag, newtag) = tag_diff(&old_tags, &new_tags)?;
@@ -255,7 +254,7 @@ impl CloudFrontConnector {
                         let (etag, mut config) = get_distribution_config(distribution_id, &client).await?;
 
                         if let Some(comment) = comment {
-                            config.comment = comment;
+                            config.comment = comment.clone();
                         }
 
                         config.default_root_object = default_root_object;
@@ -272,7 +271,10 @@ impl CloudFrontConnector {
                             .send()
                             .await?;
 
-                        op_exec_output!(format!("Updated aliases for CloudFront distribution `{}`", distribution_id))
+                        op_exec_output!(format!(
+                            "Updated distribution for CloudFront distribution `{}`",
+                            distribution_id
+                        ))
                     }
 
                     CloudFrontConnectorOp::UpdateDistributionAliases { aliases } => {
@@ -280,7 +282,12 @@ impl CloudFrontConnector {
 
                         if let Some(aliases) = aliases {
                             let aliases_len = Some(aliases.len() as i32);
-                            config.aliases = Some(Aliases::builder().set_items(Some(aliases)).set_quantity(aliases_len).build()?);
+                            config.aliases = Some(
+                                Aliases::builder()
+                                    .set_items(Some(aliases))
+                                    .set_quantity(aliases_len)
+                                    .build()?,
+                            );
                         } else {
                             config.aliases = None
                         }
@@ -295,6 +302,7 @@ impl CloudFrontConnector {
 
                         op_exec_output!(format!("Updated aliases for CloudFront distribution `{}`", distribution_id))
                     }
+
                     CloudFrontConnectorOp::UpdateDistributionOrigins { origins } => {
                         let (etag, mut config) = get_distribution_config(distribution_id, &client).await?;
 
@@ -337,32 +345,6 @@ impl CloudFrontConnector {
 
                         config.origins = Some(origins_builder.build()?);
 
-                        // let new_origins = origins_builder
-                        //     .quantity(origins.len() as i32)
-                        //     .build()
-                        //     .map_err(|e| anyhow::anyhow!("Failed to build origins: {}", e))?;
-
-                        // let updated_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
-                        //     .set_aliases(config.aliases().cloned())
-                        //     .caller_reference(config.caller_reference().to_string())
-                        //     .comment(config.comment().to_string())
-                        //     .set_default_cache_behavior(config.default_cache_behavior().cloned())
-                        //     .set_cache_behaviors(config.cache_behaviors().cloned())
-                        //     .set_custom_error_responses(config.custom_error_responses().cloned())
-                        //     .set_default_root_object(config.default_root_object().map(|s| s.to_string()))
-                        //     .enabled(config.enabled())
-                        //     .set_http_version(config.http_version().cloned())
-                        //     .set_is_ipv6_enabled(config.is_ipv6_enabled())
-                        //     .set_logging(config.logging().cloned())
-                        //     .origins(new_origins)
-                        //     .set_price_class(config.price_class().cloned())
-                        //     .set_restrictions(config.restrictions().cloned())
-                        //     .set_staging(config.staging())
-                        //     .set_viewer_certificate(config.viewer_certificate().cloned())
-                        //     .set_web_acl_id(config.web_acl_id().map(|s| s.to_string()))
-                        //     .build()
-                        //     .map_err(|e| anyhow::anyhow!("Failed to build updated distribution config: {}", e))?;
-
                         client
                             .update_distribution()
                             .id(distribution_id)
@@ -372,6 +354,109 @@ impl CloudFrontConnector {
                             .await?;
 
                         op_exec_output!(format!("Updated origins for CloudFront distribution `{}`", distribution_id))
+                    }
+
+                    CloudFrontConnectorOp::UpdateDistributionDefaultCacheBehavior { default_cache_behavior } => {
+                        let (etag, config) = get_distribution_config(distribution_id, &client).await?;
+
+                        // Build new default cache behavior
+                        let mut default_cache_behavior_builder = aws_sdk_cloudfront::types::DefaultCacheBehavior::builder()
+                            .target_origin_id(&default_cache_behavior.target_origin_id)
+                            .viewer_protocol_policy(aws_sdk_cloudfront::types::ViewerProtocolPolicy::from(
+                                default_cache_behavior.viewer_protocol_policy.as_str(),
+                            ))
+                            .compress(default_cache_behavior.compress);
+
+                        default_cache_behavior_builder =
+                            default_cache_behavior_builder.cache_policy_id(default_cache_behavior.id);
+
+                        if let Some(min_ttl) = default_cache_behavior.ttl_settings.min_ttl {
+                            default_cache_behavior_builder = default_cache_behavior_builder.min_ttl(min_ttl);
+                        }
+
+                        let new_default_cache_behavior = default_cache_behavior_builder
+                            .build()
+                            .map_err(|e| anyhow::anyhow!("Failed to build default cache behavior: {}", e))?;
+
+                        let updated_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
+                            .set_aliases(config.aliases.clone())
+                            .caller_reference(&config.caller_reference)
+                            .comment(&config.comment)
+                            .default_cache_behavior(new_default_cache_behavior)
+                            .set_origins(config.origins.clone())
+                            .set_cache_behaviors(config.cache_behaviors.clone())
+                            .enabled(config.enabled)
+                            .set_price_class(config.price_class.clone())
+                            .build()
+                            .map_err(|e| anyhow::anyhow!("Failed to build distribution config: {}", e))?;
+
+                        client
+                            .update_distribution()
+                            .id(distribution_id)
+                            .distribution_config(updated_config)
+                            .if_match(etag)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!(
+                            "Updated default cache behavior for CloudFront distribution `{}`",
+                            distribution_id
+                        ))
+                    }
+
+                    CloudFrontConnectorOp::UpdateDistributionCacheBehaviors { cache_behaviors } => {
+                        let (etag, config) = get_distribution_config(distribution_id, &client).await?;
+
+                        // Build new cache behaviors
+                        let mut cache_behaviors_builder = aws_sdk_cloudfront::types::CacheBehaviors::builder();
+                        for cache_behavior in &cache_behaviors {
+                            let mut cache_behavior_builder = aws_sdk_cloudfront::types::CacheBehavior::builder()
+                                .set_path_pattern(cache_behavior.path_pattern.clone())
+                                .target_origin_id(&cache_behavior.target_origin_id)
+                                .viewer_protocol_policy(aws_sdk_cloudfront::types::ViewerProtocolPolicy::from(
+                                    cache_behavior.viewer_protocol_policy.as_str(),
+                                ))
+                                .compress(cache_behavior.compress);
+
+                            cache_behavior_builder = cache_behavior_builder.cache_policy_id(cache_behavior.id.clone());
+
+                            if let Some(min_ttl) = cache_behavior.ttl_settings.min_ttl {
+                                cache_behavior_builder = cache_behavior_builder.min_ttl(min_ttl);
+                            }
+
+                            cache_behaviors_builder = cache_behaviors_builder.items(
+                                cache_behavior_builder
+                                    .build()
+                                    .map_err(|e| anyhow::anyhow!("Failed to build cache behavior: {}", e))?,
+                            );
+                        }
+
+                        let new_cache_behaviors = cache_behaviors_builder.build()?;
+
+                        let updated_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
+                            .set_aliases(config.aliases.clone())
+                            .caller_reference(&config.caller_reference)
+                            .comment(&config.comment)
+                            .set_default_cache_behavior(config.default_cache_behavior.clone())
+                            .set_origins(config.origins.clone())
+                            .cache_behaviors(new_cache_behaviors)
+                            .enabled(config.enabled)
+                            .set_price_class(config.price_class.clone())
+                            .build()
+                            .map_err(|e| anyhow::anyhow!("Failed to build distribution config: {}", e))?;
+
+                        client
+                            .update_distribution()
+                            .id(distribution_id)
+                            .distribution_config(updated_config)
+                            .if_match(etag)
+                            .send()
+                            .await?;
+
+                        op_exec_output!(format!(
+                            "Updated cache behaviors for CloudFront distribution `{}`",
+                            distribution_id
+                        ))
                     }
 
                     _ => Err(invalid_op(&addr, &op)),
@@ -417,6 +502,54 @@ impl CloudFrontConnector {
                         Some([("origin_access_control_id", Some(oac_id.to_string()))]),
                         format!("Created CloudFront origin access control `{}`", oac_id)
                     )
+                }
+
+                CloudFrontConnectorOp::UpdateOriginAccessControl {
+                    name,
+                    description,
+                    origin_access_control_origin_type,
+                    signing_behavior,
+                    signing_protocol,
+                } => {
+                    let get_response = client.get_origin_access_control().id(oac_id).send().await?;
+                    let current_oac = get_response
+                        .origin_access_control()
+                        .context("No origin access control in response")?;
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+
+                    let Some(mut current_config) = current_oac.origin_access_control_config.clone() else {
+                        bail!("UpdateOriginAccessControl: origin_access_control_config is None ");
+                    };
+
+                    // Update fields based on operation parameters
+                    if let Some(name) = name {
+                        current_config.name = name;
+                    }
+                    if let Some(description) = description {
+                        current_config.description = Some(description);
+                    }
+                    if let Some(origin_type) = origin_access_control_origin_type {
+                        current_config.origin_access_control_origin_type =
+                            aws_sdk_cloudfront::types::OriginAccessControlOriginTypes::from(origin_type.as_str());
+                    }
+                    if let Some(behavior) = signing_behavior {
+                        current_config.signing_behavior =
+                            aws_sdk_cloudfront::types::OriginAccessControlSigningBehaviors::from(behavior.as_str());
+                    }
+                    if let Some(protocol) = signing_protocol {
+                        current_config.signing_protocol =
+                            aws_sdk_cloudfront::types::OriginAccessControlSigningProtocols::from(protocol.as_str());
+                    }
+
+                    client
+                        .update_origin_access_control()
+                        .id(oac_id)
+                        .origin_access_control_config(current_config)
+                        .if_match(etag)
+                        .send()
+                        .await?;
+
+                    op_exec_output!(format!("Updated CloudFront origin access control `{}`", oac_id))
                 }
 
                 CloudFrontConnectorOp::DeleteOriginAccessControl => {
@@ -475,6 +608,64 @@ impl CloudFrontConnector {
                     )
                 }
 
+                CloudFrontConnectorOp::UpdateCachePolicy {
+                    name,
+                    comment,
+                    default_ttl,
+                    max_ttl,
+                    min_ttl,
+                    parameters_in_cache_key_and_forwarded_to_origin,
+                } => {
+                    let get_response = client.get_cache_policy().id(policy_id).send().await?;
+                    let current_policy = get_response.cache_policy().context("No cache policy in response")?;
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+                    let current_config = current_policy.cache_policy_config();
+
+                    let Some(mut current_config) = current_policy.cache_policy_config.clone() else {
+                        bail!("UpdateCachePolicy: cache_policy_config is None");
+                    };
+
+                    if let Some(name) = name {
+                        current_config.name = name;
+                    }
+
+                    if let Some(comment) = comment {
+                        current_config.comment = Some(comment);
+                    }
+
+                    if let Some(default_ttl) = default_ttl {
+                        current_config.default_ttl = Some(default_ttl);
+                    }
+
+                    if let Some(min_ttl) = min_ttl {
+                        current_config.min_ttl = min_ttl;
+                    }
+
+                    if let Some(max_ttl) = max_ttl {
+                        current_config.max_ttl = Some(max_ttl);
+                    }
+
+                    if let Some(parameters_in_cache_key_and_forwarded_to_origin) =
+                        parameters_in_cache_key_and_forwarded_to_origin
+                    {
+                        // TODO this needs to be modelled in the resource/
+                        todo!();
+                        // let params = ParametersInCacheKeyAndForwardedToOrigin::builder();
+                        // current_config.parameters_in_cache_key_and_forwarded_to_origin =
+                        //     Some(parameters_in_cache_key_and_forwarded_to_origin);
+                    }
+
+                    client
+                        .update_cache_policy()
+                        .id(policy_id)
+                        .cache_policy_config(current_config)
+                        .if_match(etag)
+                        .send()
+                        .await?;
+
+                    op_exec_output!(format!("Updated CloudFront cache policy `{}`", policy_id))
+                }
+
                 CloudFrontConnectorOp::DeleteCachePolicy => {
                     let get_response = client.get_cache_policy().id(policy_id).send().await?;
 
@@ -516,6 +707,27 @@ impl CloudFrontConnector {
                         Some([("function_arn", Some(function_arn.to_string()))]),
                         format!("Created CloudFront function `{}`", function.name)
                     )
+                }
+
+                CloudFrontConnectorOp::UpdateFunction {
+                    name: new_name,
+                    function_code,
+                    runtime,
+                } => {
+                    let get_response = client.describe_function().name(name).send().await?;
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+
+                    if let Some(function_code) = function_code {
+                        client
+                            .update_function()
+                            .name(name)
+                            .function_code(aws_smithy_types::Blob::new(function_code.as_bytes()))
+                            .if_match(etag)
+                            .send()
+                            .await?;
+                    }
+
+                    op_exec_output!(format!("Updated CloudFront function `{}`", name))
                 }
 
                 CloudFrontConnectorOp::DeleteFunction => {
@@ -568,6 +780,34 @@ impl CloudFrontConnector {
                     )
                 }
 
+                CloudFrontConnectorOp::UpdateKeyGroup { name, comment, items } => {
+                    let get_response = client.get_key_group().id(key_group_id).send().await?;
+                    let current_key_group = get_response.key_group().context("No key group in response")?;
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+
+                    let Some(mut key_group_config) = current_key_group.key_group_config.clone() else {
+                        bail!("UpdateKeyGroup: key_group_config is None");
+                    };
+
+                    if let Some(comment) = comment {
+                        key_group_config.comment = Some(comment);
+                    }
+
+                    if let Some(items) = items {
+                        key_group_config.items = items.clone();
+                    }
+
+                    client
+                        .update_key_group()
+                        .id(key_group_id)
+                        .key_group_config(key_group_config)
+                        .if_match(etag)
+                        .send()
+                        .await?;
+
+                    op_exec_output!(format!("Updated CloudFront key group `{}`", key_group_id))
+                }
+
                 CloudFrontConnectorOp::DeleteKeyGroup => {
                     let get_response = client.get_key_group().id(key_group_id).send().await?;
 
@@ -611,6 +851,38 @@ impl CloudFrontConnector {
                         Some([("public_key_id", Some(public_key_id.to_string()))]),
                         format!("Created CloudFront public key `{}`", public_key_id)
                     )
+                }
+
+                CloudFrontConnectorOp::UpdatePublicKey {
+                    name,
+                    comment,
+                    encoded_key,
+                } => {
+                    let get_response = client.get_public_key().id(public_key_id).send().await?;
+                    let current_public_key = get_response.public_key().context("No public key in response")?;
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+
+                    let Some(mut public_key_config) = current_public_key.public_key_config.clone() else {
+                        bail!("UpdatePublicKey: public_key_config is None");
+                    };
+
+                    if let Some(name) = name {
+                        public_key_config.name = name;
+                    };
+
+                    if let Some(comment) = comment {
+                        public_key_config.comment = Some(comment)
+                    }
+
+                    client
+                        .update_public_key()
+                        .id(public_key_id)
+                        .public_key_config(public_key_config)
+                        .if_match(etag)
+                        .send()
+                        .await?;
+
+                    op_exec_output!(format!("Updated CloudFront public key `{}`", public_key_id))
                 }
 
                 CloudFrontConnectorOp::DeletePublicKey => {
@@ -671,6 +943,47 @@ impl CloudFrontConnector {
                         ]),
                         format!("Created CloudFront streaming distribution `{}`", distribution_id)
                     )
+                }
+
+                CloudFrontConnectorOp::UpdateStreamingDistribution {
+                    enabled,
+                    comment,
+                    price_class,
+                } => {
+                    let get_response = client.get_streaming_distribution_config().id(distribution_id).send().await?;
+                    let current_config = get_response
+                        .streaming_distribution_config()
+                        .context("No streaming distribution config")?
+                        .clone();
+                    let etag = get_response.e_tag().context("No ETag in response")?;
+
+                    let mut streaming_config = aws_sdk_cloudfront::types::StreamingDistributionConfig::builder()
+                        .caller_reference(current_config.caller_reference().to_string())
+                        .set_s3_origin(current_config.s3_origin().cloned())
+                        .enabled(enabled.unwrap_or(current_config.enabled()));
+
+                    if let Some(comment) = comment {
+                        streaming_config = streaming_config.comment(comment);
+                    } else {
+                        streaming_config = streaming_config.comment(current_config.comment.clone());
+                    }
+
+                    if let Some(price_class) = price_class {
+                        streaming_config =
+                            streaming_config.price_class(aws_sdk_cloudfront::types::PriceClass::from(price_class.as_str()));
+                    } else if let Some(current_price_class) = current_config.price_class() {
+                        streaming_config = streaming_config.price_class(current_price_class.clone());
+                    }
+
+                    client
+                        .update_streaming_distribution()
+                        .id(distribution_id)
+                        .streaming_distribution_config(streaming_config.build()?)
+                        .if_match(etag)
+                        .send()
+                        .await?;
+
+                    op_exec_output!(format!("Updated CloudFront streaming distribution `{}`", distribution_id))
                 }
 
                 CloudFrontConnectorOp::DeleteStreamingDistribution => {

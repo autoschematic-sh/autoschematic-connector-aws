@@ -11,7 +11,6 @@ impl CloudFrontConnector {
     pub async fn do_list(&self, _subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
         let mut results = Vec::<PathBuf>::new();
 
-        // CloudFront is a global service, so we use us-east-1 as the default region
         let client = self.get_or_init_client().await?;
 
         let mut next_marker: Option<String> = None;
