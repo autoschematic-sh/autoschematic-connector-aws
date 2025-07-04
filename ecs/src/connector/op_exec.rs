@@ -85,9 +85,19 @@ impl EcsConnector {
                     )
                     .await
                 }
-                EcsConnectorOp::UpdateServiceLoadBalancers { old_load_balancers, new_load_balancers } => {
+                EcsConnectorOp::UpdateServiceLoadBalancers {
+                    old_load_balancers,
+                    new_load_balancers,
+                } => {
                     let client = self.get_or_init_client(region).await?;
-                    op_impl::update_service_load_balancers(&client, cluster_name, service_name, old_load_balancers, new_load_balancers).await
+                    op_impl::update_service_load_balancers(
+                        &client,
+                        cluster_name,
+                        service_name,
+                        old_load_balancers,
+                        new_load_balancers,
+                    )
+                    .await
                 }
                 EcsConnectorOp::EnableExecuteCommand(enable) => {
                     let client = self.get_or_init_client(region).await?;
@@ -114,92 +124,6 @@ impl EcsConnector {
                 }
                 _ => Err(invalid_op(&addr, &op)),
             },
-            EcsResourceAddress::Task(region, cluster_name, task_id) => {
-                match op {
-                    EcsConnectorOp::RunTask {
-                        cluster: _, // We acknowledge the field but don't need it for the function call
-                        task_definition,
-                        count,
-                        launch_type,
-                        platform_version,
-                        network_configuration,
-                        overrides,
-                        tags,
-                    } => {
-                        let client = self.get_or_init_client(region).await?;
-                        op_impl::run_task(
-                            &client,
-                            cluster_name, // Use the address cluster_name instead of the op param
-                            &task_definition,
-                            count,
-                            launch_type,
-                            platform_version,
-                            network_configuration,
-                            overrides,
-                            &tags,
-                        )
-                        .await
-                    }
-                    EcsConnectorOp::StopTask { reason } => {
-                        let client = self.get_or_init_client(region).await?;
-                        op_impl::stop_task(&client, cluster_name, task_id, reason).await
-                    }
-                    EcsConnectorOp::UpdateTaskTags(old_tags, new_tags) => {
-                        let client = self.get_or_init_client(region).await?;
-                        // We need the full ARN for task tags
-                        let task_arn = format!("arn:aws:ecs:{region}:{account_id}:task/{cluster_name}/{task_id}");
-                        op_impl::update_task_tags(&client, &task_arn, &old_tags, &new_tags).await
-                    }
-                    _ => Err(invalid_op(&addr, &op)),
-                }
-            }
-            EcsResourceAddress::ContainerInstance(region, cluster_name, container_instance_id) => {
-                match op {
-                    EcsConnectorOp::RegisterContainerInstance {
-                        cluster: _, // We acknowledge the field but don't need it for the function call
-                        instance_identity_document,
-                        attributes,
-                        tags,
-                    } => {
-                        let client = self.get_or_init_client(region).await?;
-                        op_impl::register_container_instance(
-                            &client,
-                            cluster_name,
-                            &instance_identity_document,
-                            attributes,
-                            &tags,
-                        )
-                        .await
-                    }
-                    EcsConnectorOp::UpdateContainerInstanceAttributes {
-                        attributes,
-                        remove_attributes,
-                    } => {
-                        let client = self.get_or_init_client(region).await?;
-                        op_impl::update_container_instance_attributes(
-                            &client,
-                            cluster_name,
-                            container_instance_id,
-                            attributes,
-                            remove_attributes,
-                        )
-                        .await
-                    }
-                    EcsConnectorOp::UpdateContainerInstanceTags(old_tags, new_tags) => {
-                        let client = self.get_or_init_client(region).await?;
-                        // We need the full ARN for container instance tags
-                        let container_instance_arn = format!(
-                            "arn:aws:ecs:{region}:{account_id}:container-instance/{cluster_name}/{container_instance_id}"
-                        );
-                        op_impl::update_container_instance_tags(&client, &container_instance_arn, &old_tags, &new_tags).await
-                    }
-                    EcsConnectorOp::DeregisterContainerInstance { force } => {
-                        let client = self.get_or_init_client(region).await?;
-                        op_impl::deregister_container_instance(&client, cluster_name, container_instance_id, force).await
-                    }
-                    _ => Err(invalid_op(&addr, &op)),
-                }
-            }
         }
     }
 }

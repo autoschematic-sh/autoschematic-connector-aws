@@ -437,26 +437,6 @@ pub struct Attachment {
     pub details: Vec<KeyValuePair>,
 }
 
-// ContainerInstance resource definition
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct ContainerInstance {
-    pub ec2_instance_id: Option<String>,
-    pub capacity_provider_name: Option<String>,
-    pub version: i64,
-    pub version_info: Option<VersionInfo>,
-    pub remaining_resources: Vec<EcsContainerResource>,
-    pub registered_resources: Vec<EcsContainerResource>,
-    pub status: Option<String>,
-    pub status_reason: Option<String>,
-    pub agent_connected: bool,
-    pub running_tasks_count: i32,
-    pub pending_tasks_count: i32,
-    pub agent_update_status: Option<String>,
-    pub attributes: Vec<Attribute>,
-    pub attachments: Vec<Attachment>,
-    pub tags: Tags,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct VersionInfo {
     pub agent_version:  Option<String>,
@@ -472,23 +452,12 @@ pub struct Attribute {
     pub target_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub struct EcsContainerResource {
-    pub name: String,
-    pub r#type: Option<String>,
-    pub double_value: f64,
-    pub long_value: i64,
-    pub integer_value: i32,
-    pub string_value: String,
-}
 
 // Enum for ECS resources
 pub enum EcsResource {
     Cluster(Cluster),
     Service(Service),
     TaskDefinition(TaskDefinition),
-    Task(Task),
-    ContainerInstance(ContainerInstance),
 }
 
 // Implementation of Resource trait for EcsResource
@@ -499,10 +468,6 @@ impl Resource for EcsResource {
             EcsResource::Cluster(cluster) => Ok(RON.to_string_pretty(&cluster, pretty_config)?.into()),
             EcsResource::Service(service) => Ok(RON.to_string_pretty(&service, pretty_config)?.into()),
             EcsResource::TaskDefinition(task_definition) => Ok(RON.to_string_pretty(&task_definition, pretty_config)?.into()),
-            EcsResource::Task(task) => Ok(RON.to_string_pretty(&task, pretty_config)?.into()),
-            EcsResource::ContainerInstance(container_instance) => {
-                Ok(RON.to_string_pretty(&container_instance, pretty_config)?.into())
-            }
         }
     }
 
@@ -518,10 +483,6 @@ impl Resource for EcsResource {
             EcsResourceAddress::Cluster(region, _name) => Ok(EcsResource::Cluster(RON.from_str(s)?)),
             EcsResourceAddress::Service(region, _cluster_name, _service_name) => Ok(EcsResource::Service(RON.from_str(s)?)),
             EcsResourceAddress::TaskDefinition(region, _task_def_id) => Ok(EcsResource::TaskDefinition(RON.from_str(s)?)),
-            EcsResourceAddress::Task(region, _cluster_name, _task_id) => Ok(EcsResource::Task(RON.from_str(s)?)),
-            EcsResourceAddress::ContainerInstance(region, _cluster_name, _container_instance_id) => {
-                Ok(EcsResource::ContainerInstance(RON.from_str(s)?))
-            }
         }
     }
 }

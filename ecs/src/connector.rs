@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::config::EcsConnectorConfig;
-use crate::resource::{Cluster, ContainerInstance, EcsResource, Service, Task, TaskDefinition};
+use crate::resource::{Cluster, EcsResource, Service, TaskDefinition};
 use crate::{addr::EcsResourceAddress, resource, tags};
 use anyhow::bail;
 use async_trait::async_trait;
@@ -291,159 +291,6 @@ impl Connector for EcsConnector {
             })
         ));
 
-        // Task skeleton
-        res.push(skeleton!(
-            EcsResourceAddress::Task(
-                String::from("[region]"),
-                String::from("[cluster_name]"),
-                String::from("[task_id]")
-            ),
-            EcsResource::Task(Task {
-                task_definition_arn: String::from(
-                    "arn:aws:ecs:[region]:[account_id]:task-definition/[task_definition_family]:[revision]"
-                ),
-                containers: vec![resource::Container {
-                    container_arn: Some(String::from("arn:aws:ecs:[region]:[account_id]:container/[container_id]")),
-                    task_arn: Some(String::from("arn:aws:ecs:[region]:[account_id]:task/[task_id]")),
-                    name: Some(String::from("web")),
-                    image: Some(String::from("nginx:latest")),
-                    image_digest: Some(String::from(
-                        "sha256:abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890"
-                    )),
-                    runtime_id: Some(String::from("12345678901234567890123456789012-1234567890")),
-                    last_status: Some(String::from("RUNNING")),
-                    exit_code: None,
-                    reason: None,
-                    network_bindings: Vec::new(),
-                    network_interfaces: vec![resource::NetworkInterface {
-                        attachment_id: Some(String::from("attachment-1234567890abcdef0")),
-                        private_ipv4_address: Some(String::from("10.0.1.100")),
-                        ipv6_address: None,
-                    },],
-                    health_status: Some(String::from("HEALTHY")),
-                    cpu: Some(String::from("256")),
-                    memory: Some(String::from("512")),
-                    memory_reservation: None,
-                    gpu_ids: Vec::new(),
-                },],
-                cpu: Some(String::from("256")),
-                memory: Some(String::from("512")),
-                last_status: String::from("RUNNING"),
-                desired_status: String::from("RUNNING"),
-                connectivity: Some(String::from("CONNECTED")),
-                connectivity_at: Some(String::from("2023-01-01T00:00:00Z")),
-                pull_started_at: Some(String::from("2023-01-01T00:00:00Z")),
-                pull_stopped_at: Some(String::from("2023-01-01T00:00:10Z")),
-                execution_stopped_at: None,
-                launch_type: Some(String::from("FARGATE")),
-                capacity_provider_name: Some(String::from("FARGATE")),
-                platform_version: Some(String::from("1.4.0")),
-                platform_family: None,
-                attachments: vec![resource::Attachment {
-                    id:      String::from("attachment-1234567890abcdef0"),
-                    r#type:  String::from("ElasticNetworkInterface"),
-                    status:  String::from("ATTACHED"),
-                    details: vec![
-                        resource::KeyValuePair {
-                            name:  Some(String::from("subnetId")),
-                            value: Some(String::from("subnet-0123456789abcdef0")),
-                        },
-                        resource::KeyValuePair {
-                            name:  Some(String::from("networkInterfaceId")),
-                            value: Some(String::from("eni-0123456789abcdef0")),
-                        },
-                        resource::KeyValuePair {
-                            name:  Some(String::from("privateIPv4Address")),
-                            value: Some(String::from("10.0.1.100")),
-                        },
-                    ],
-                },],
-                tags: tags::Tags::default(),
-            })
-        ));
-
-        // Container Instance skeleton
-        res.push(skeleton!(
-            EcsResourceAddress::ContainerInstance(
-                String::from("[region]"),
-                String::from("[cluster_name]"),
-                String::from("[container_instance_id]")
-            ),
-            EcsResource::ContainerInstance(ContainerInstance {
-                ec2_instance_id: Some(String::from("i-0123456789abcdef0")),
-                capacity_provider_name: Some(String::from("capacity-provider-name")),
-                version: 8,
-                version_info: Some(resource::VersionInfo {
-                    agent_version:  Some(String::from("1.57.1")),
-                    agent_hash:     Some(String::from("12345678abc")),
-                    docker_version: Some(String::from("20.10.13")),
-                }),
-                remaining_resources: vec![
-                    resource::EcsContainerResource {
-                        name: String::from("CPU"),
-                        r#type: Some(String::from("INTEGER")),
-                        double_value: 0.0,
-                        long_value: 0,
-                        integer_value: 2048,
-                        string_value: String::new(),
-                    },
-                    resource::EcsContainerResource {
-                        name: String::from("MEMORY"),
-                        r#type: Some(String::from("INTEGER")),
-                        double_value: 0.0,
-                        long_value: 0,
-                        integer_value: 3968,
-                        string_value: String::new(),
-                    },
-                ],
-                registered_resources: vec![
-                    resource::EcsContainerResource {
-                        name: String::from("CPU"),
-                        r#type: Some(String::from("INTEGER")),
-                        double_value: 0.0,
-                        long_value: 0,
-                        integer_value: 4096,
-                        string_value: String::new(),
-                    },
-                    resource::EcsContainerResource {
-                        name: String::from("MEMORY"),
-                        r#type: Some(String::from("INTEGER")),
-                        double_value: 0.0,
-                        long_value: 0,
-                        integer_value: 8192,
-                        string_value: String::new(),
-                    },
-                ],
-                status: Some(String::from("ACTIVE")),
-                status_reason: None,
-                agent_connected: true,
-                running_tasks_count: 2,
-                pending_tasks_count: 0,
-                agent_update_status: None,
-                attributes: vec![
-                    resource::Attribute {
-                        name: String::from("ecs.availability-zone"),
-                        value: Some(String::from("us-east-1a")),
-                        target_type: None,
-                        target_id: None,
-                    },
-                    resource::Attribute {
-                        name: String::from("ecs.ami-id"),
-                        value: Some(String::from("ami-0123456789abcdef0")),
-                        target_type: None,
-                        target_id: None,
-                    },
-                    resource::Attribute {
-                        name: String::from("ecs.instance-type"),
-                        value: Some(String::from("t3.xlarge")),
-                        target_type: None,
-                        target_id: None,
-                    },
-                ],
-                attachments: Vec::new(),
-                tags: tags::Tags::default(),
-            })
-        ));
 
         Ok(res)
     }
@@ -454,8 +301,6 @@ impl Connector for EcsConnector {
             EcsResourceAddress::Cluster(_, _) => ron_check_eq::<resource::Cluster>(a, b),
             EcsResourceAddress::Service(_, _, _) => ron_check_eq::<resource::Service>(a, b),
             EcsResourceAddress::TaskDefinition(_, _) => ron_check_eq::<resource::TaskDefinition>(a, b),
-            EcsResourceAddress::Task(_, _, _) => ron_check_eq::<resource::Task>(a, b),
-            EcsResourceAddress::ContainerInstance(_, _, _) => ron_check_eq::<resource::ContainerInstance>(a, b),
         }
     }
 
@@ -466,8 +311,6 @@ impl Connector for EcsConnector {
             EcsResourceAddress::Cluster(_, _) => ron_check_syntax::<resource::Cluster>(a),
             EcsResourceAddress::Service(_, _, _) => ron_check_syntax::<resource::Service>(a),
             EcsResourceAddress::TaskDefinition(_, _) => ron_check_syntax::<resource::TaskDefinition>(a),
-            EcsResourceAddress::Task(_, _, _) => ron_check_syntax::<resource::Task>(a),
-            EcsResourceAddress::ContainerInstance(_, _, _) => ron_check_syntax::<resource::ContainerInstance>(a),
         }
     }
 }
