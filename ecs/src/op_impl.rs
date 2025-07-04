@@ -7,7 +7,7 @@ use aws_sdk_ecs::{
         TaskDefinitionPlacementConstraint, TaskOverride,
     },
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use super::{
     op::{NetworkConfigurationRequest, TaskOverride as OpTaskOverride},
@@ -80,9 +80,10 @@ pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name:
     let aws_tags: Option<Vec<Tag>> = cluster.tags.clone().into();
 
     if let Some(tags) = aws_tags
-        && !tags.is_empty() {
-            create_cluster = create_cluster.set_tags(Some(tags));
-        }
+        && !tags.is_empty()
+    {
+        create_cluster = create_cluster.set_tags(Some(tags));
+    }
 
     // Create the cluster
     let resp = create_cluster.send().await?;
@@ -330,25 +331,26 @@ pub async fn create_service(
 
     // Set network configuration if specified
     if let Some(network_config) = &service.network_configuration
-        && let Some(awsvpc_config) = &network_config.awsvpc_configuration {
-            let mut builder = aws_sdk_ecs::types::AwsVpcConfiguration::builder()
-                .set_subnets(Some(awsvpc_config.subnets.clone()))
-                .set_security_groups(Some(awsvpc_config.security_groups.clone()));
+        && let Some(awsvpc_config) = &network_config.awsvpc_configuration
+    {
+        let mut builder = aws_sdk_ecs::types::AwsVpcConfiguration::builder()
+            .set_subnets(Some(awsvpc_config.subnets.clone()))
+            .set_security_groups(Some(awsvpc_config.security_groups.clone()));
 
-            if let Some(assign_public_ip) = &awsvpc_config.assign_public_ip {
-                match assign_public_ip.as_str() {
-                    "ENABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Enabled),
-                    "DISABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Disabled),
-                    _ => {}
-                }
-            }
-
-            if let Ok(vpc_config) = builder.build() {
-                let network_config = NetworkConfiguration::builder().awsvpc_configuration(vpc_config).build();
-
-                create_service = create_service.network_configuration(network_config);
+        if let Some(assign_public_ip) = &awsvpc_config.assign_public_ip {
+            match assign_public_ip.as_str() {
+                "ENABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Enabled),
+                "DISABLED" => builder = builder.assign_public_ip(aws_sdk_ecs::types::AssignPublicIp::Disabled),
+                _ => {}
             }
         }
+
+        if let Ok(vpc_config) = builder.build() {
+            let network_config = NetworkConfiguration::builder().awsvpc_configuration(vpc_config).build();
+
+            create_service = create_service.network_configuration(network_config);
+        }
+    }
 
     // Set placement constraints if specified
     if !service.placement_constraints.is_empty() {
@@ -484,9 +486,10 @@ pub async fn create_service(
     let aws_tags: Option<Vec<Tag>> = service.tags.clone().into();
 
     if let Some(tags) = aws_tags
-        && !tags.is_empty() {
-            create_service = create_service.set_tags(Some(tags));
-        }
+        && !tags.is_empty()
+    {
+        create_service = create_service.set_tags(Some(tags));
+    }
 
     // Create the service
     let resp = create_service.send().await?;
@@ -822,22 +825,18 @@ pub async fn register_task_definition(
             }
         }
 
-        // Set essential if specified
         if let Some(essential) = container.essential {
             builder = builder.essential(essential);
         }
 
-        // Set entry point if specified
         if !container.entry_point.is_empty() {
             builder = builder.set_entry_point(Some(container.entry_point.clone()));
         }
 
-        // Set command if specified
         if !container.command.is_empty() {
             builder = builder.set_command(Some(container.command.clone()));
         }
 
-        // Set environment variables if specified
         if !container.environment.is_empty() {
             let mut env_vars = Vec::new();
 
@@ -860,8 +859,457 @@ pub async fn register_task_definition(
             }
         }
 
-        // Additional properties would be set here...
-        // For brevity, we're not setting all possible properties, but the pattern is the same
+        // Set environment files if specified
+        if !container.environment_files.is_empty() {
+            let mut env_files = Vec::new();
+
+            for env_file in &container.environment_files {
+                let mut env_file_builder = aws_sdk_ecs::types::EnvironmentFile::builder().value(&env_file.value);
+
+                match env_file.r#type.as_str() {
+                    "s3" => env_file_builder = env_file_builder.r#type(aws_sdk_ecs::types::EnvironmentFileType::S3),
+                    _ => continue,
+                }
+
+                if let Ok(env_file) = env_file_builder.build() {
+                    env_files.push(env_file);
+                }
+            }
+
+            if !env_files.is_empty() {
+                builder = builder.set_environment_files(Some(env_files));
+            }
+        }
+
+        // Set mount points if specified
+        if !container.mount_points.is_empty() {
+            let mut mount_points = Vec::new();
+
+            for mp in &container.mount_points {
+                let mut mp_builder = aws_sdk_ecs::types::MountPoint::builder();
+
+                if let Some(source_volume) = &mp.source_volume {
+                    mp_builder = mp_builder.source_volume(source_volume);
+                }
+
+                if let Some(container_path) = &mp.container_path {
+                    mp_builder = mp_builder.container_path(container_path);
+                }
+
+                if let Some(read_only) = mp.read_only {
+                    mp_builder = mp_builder.read_only(read_only);
+                }
+
+                mount_points.push(mp_builder.build());
+            }
+
+            if !mount_points.is_empty() {
+                builder = builder.set_mount_points(Some(mount_points));
+            }
+        }
+
+        // Set volumes from if specified
+        if !container.volumes_from.is_empty() {
+            let mut volumes_from = Vec::new();
+
+            for vf in &container.volumes_from {
+                let mut vf_builder = aws_sdk_ecs::types::VolumeFrom::builder();
+
+                if let Some(source_container) = &vf.source_container {
+                    vf_builder = vf_builder.source_container(source_container);
+                }
+
+                if let Some(read_only) = vf.read_only {
+                    vf_builder = vf_builder.read_only(read_only);
+                }
+
+                volumes_from.push(vf_builder.build());
+            }
+
+            if !volumes_from.is_empty() {
+                builder = builder.set_volumes_from(Some(volumes_from));
+            }
+        }
+
+        // Set linux parameters if specified
+        if let Some(linux_params) = &container.linux_parameters {
+            let mut linux_builder = aws_sdk_ecs::types::LinuxParameters::builder();
+
+            // Set capabilities
+            if let Some(capabilities) = &linux_params.capabilities {
+                let mut cap_builder = aws_sdk_ecs::types::KernelCapabilities::builder();
+
+                if !capabilities.add.is_empty() {
+                    cap_builder = cap_builder.set_add(Some(capabilities.add.clone()));
+                }
+
+                if !capabilities.drop.is_empty() {
+                    cap_builder = cap_builder.set_drop(Some(capabilities.drop.clone()));
+                }
+
+                linux_builder = linux_builder.capabilities(cap_builder.build());
+            }
+
+            // Set devices
+            if !linux_params.devices.is_empty() {
+                let mut devices = Vec::new();
+
+                for device in &linux_params.devices {
+                    let mut device_builder = aws_sdk_ecs::types::Device::builder().host_path(&device.host_path);
+
+                    if let Some(container_path) = &device.container_path {
+                        device_builder = device_builder.container_path(container_path);
+                    }
+
+                    if !device.permissions.is_empty() {
+                        let mut perms = Vec::new();
+                        for perm in &device.permissions {
+                            match perm.as_str() {
+                                "read" => perms.push(aws_sdk_ecs::types::DeviceCgroupPermission::Read),
+                                "write" => perms.push(aws_sdk_ecs::types::DeviceCgroupPermission::Write),
+                                "mknod" => perms.push(aws_sdk_ecs::types::DeviceCgroupPermission::Mknod),
+                                _ => continue,
+                            }
+                        }
+                        device_builder = device_builder.set_permissions(Some(perms));
+                    }
+
+                    if let Ok(device) = device_builder.build() {
+                        devices.push(device);
+                    }
+                }
+
+                if !devices.is_empty() {
+                    linux_builder = linux_builder.set_devices(Some(devices));
+                }
+            }
+
+            // Set init process enabled
+            if let Some(init_process_enabled) = linux_params.init_process_enabled {
+                linux_builder = linux_builder.init_process_enabled(init_process_enabled);
+            }
+
+            // Set shared memory size
+            if let Some(shared_memory_size) = linux_params.shared_memory_size {
+                linux_builder = linux_builder.shared_memory_size(shared_memory_size);
+            }
+
+            // Set tmpfs
+            if !linux_params.tmpfs.is_empty() {
+                let mut tmpfs_list = Vec::new();
+
+                for tmpfs in &linux_params.tmpfs {
+                    let mut tmpfs_builder = aws_sdk_ecs::types::Tmpfs::builder()
+                        .container_path(&tmpfs.container_path)
+                        .size(tmpfs.size);
+
+                    if !tmpfs.mount_options.is_empty() {
+                        tmpfs_builder = tmpfs_builder.set_mount_options(Some(tmpfs.mount_options.clone()));
+                    }
+
+                    if let Ok(tmpfs) = tmpfs_builder.build() {
+                        tmpfs_list.push(tmpfs);
+                    }
+                }
+
+                if !tmpfs_list.is_empty() {
+                    linux_builder = linux_builder.set_tmpfs(Some(tmpfs_list));
+                }
+            }
+
+            // Set max swap
+            if let Some(max_swap) = linux_params.max_swap {
+                linux_builder = linux_builder.max_swap(max_swap);
+            }
+
+            // Set swappiness
+            if let Some(swappiness) = linux_params.swappiness {
+                linux_builder = linux_builder.swappiness(swappiness);
+            }
+
+            builder = builder.linux_parameters(linux_builder.build());
+        }
+
+        // Set secrets if specified
+        if !container.secrets.is_empty() {
+            let mut secrets = Vec::new();
+
+            for secret in &container.secrets {
+                let secret_builder = aws_sdk_ecs::types::Secret::builder()
+                    .name(&secret.name)
+                    .value_from(&secret.value_from);
+
+                if let Ok(secret) = secret_builder.build() {
+                    secrets.push(secret);
+                }
+            }
+
+            if !secrets.is_empty() {
+                builder = builder.set_secrets(Some(secrets));
+            }
+        }
+
+        // Set container dependencies if specified
+        if !container.depends_on.is_empty() {
+            let mut depends_on = Vec::new();
+
+            for dependency in &container.depends_on {
+                let mut dep_builder =
+                    aws_sdk_ecs::types::ContainerDependency::builder().container_name(&dependency.container_name);
+
+                match dependency.condition.as_str() {
+                    "START" => dep_builder = dep_builder.condition(aws_sdk_ecs::types::ContainerCondition::Start),
+                    "COMPLETE" => dep_builder = dep_builder.condition(aws_sdk_ecs::types::ContainerCondition::Complete),
+                    "SUCCESS" => dep_builder = dep_builder.condition(aws_sdk_ecs::types::ContainerCondition::Success),
+                    "HEALTHY" => dep_builder = dep_builder.condition(aws_sdk_ecs::types::ContainerCondition::Healthy),
+                    _ => continue,
+                }
+
+                if let Ok(dependency) = dep_builder.build() {
+                    depends_on.push(dependency);
+                }
+            }
+
+            if !depends_on.is_empty() {
+                builder = builder.set_depends_on(Some(depends_on));
+            }
+        }
+
+        // Set start timeout if specified
+        if let Some(start_timeout) = container.start_timeout {
+            builder = builder.start_timeout(start_timeout);
+        }
+
+        // Set stop timeout if specified
+        if let Some(stop_timeout) = container.stop_timeout {
+            builder = builder.stop_timeout(stop_timeout);
+        }
+
+        // Set hostname if specified
+        if let Some(hostname) = &container.hostname {
+            builder = builder.hostname(hostname);
+        }
+
+        // Set user if specified
+        if let Some(user) = &container.user {
+            builder = builder.user(user);
+        }
+
+        // Set working directory if specified
+        if let Some(working_directory) = &container.working_directory {
+            builder = builder.working_directory(working_directory);
+        }
+
+        // Set disable networking if specified
+        if let Some(disable_networking) = container.disable_networking {
+            builder = builder.disable_networking(disable_networking);
+        }
+
+        // Set privileged if specified
+        if let Some(privileged) = container.privileged {
+            builder = builder.privileged(privileged);
+        }
+
+        // Set readonly root filesystem if specified
+        if let Some(readonly_root_filesystem) = container.readonly_root_filesystem {
+            builder = builder.readonly_root_filesystem(readonly_root_filesystem);
+        }
+
+        // Set DNS servers if specified
+        if !container.dns_servers.is_empty() {
+            builder = builder.set_dns_servers(Some(container.dns_servers.clone()));
+        }
+
+        // Set DNS search domains if specified
+        if !container.dns_search_domains.is_empty() {
+            builder = builder.set_dns_search_domains(Some(container.dns_search_domains.clone()));
+        }
+
+        // Set extra hosts if specified
+        if !container.extra_hosts.is_empty() {
+            let mut extra_hosts = Vec::new();
+
+            for host_entry in &container.extra_hosts {
+                let host_entry_builder = aws_sdk_ecs::types::HostEntry::builder()
+                    .hostname(&host_entry.hostname)
+                    .ip_address(&host_entry.ip_address);
+
+                if let Ok(host_entry) = host_entry_builder.build() {
+                    extra_hosts.push(host_entry);
+                }
+            }
+
+            if !extra_hosts.is_empty() {
+                builder = builder.set_extra_hosts(Some(extra_hosts));
+            }
+        }
+
+        // Set docker security options if specified
+        if !container.docker_security_options.is_empty() {
+            builder = builder.set_docker_security_options(Some(container.docker_security_options.clone()));
+        }
+
+        // Set interactive if specified
+        if let Some(interactive) = container.interactive {
+            builder = builder.interactive(interactive);
+        }
+
+        // Set pseudo terminal if specified
+        if let Some(pseudo_terminal) = container.pseudo_terminal {
+            builder = builder.pseudo_terminal(pseudo_terminal);
+        }
+
+        // Set docker labels if specified
+        if !container.docker_labels.is_empty() {
+            builder = builder.set_docker_labels(Some(container.docker_labels.clone()));
+        }
+
+        // Set ulimits if specified
+        if !container.ulimits.is_empty() {
+            let mut ulimits = Vec::new();
+
+            for ulimit in &container.ulimits {
+                let ulimit_builder = aws_sdk_ecs::types::Ulimit::builder()
+                    .name(ulimit.name.as_str().into())
+                    .hard_limit(ulimit.hard_limit)
+                    .soft_limit(ulimit.soft_limit);
+
+                if let Ok(ulimit) = ulimit_builder.build() {
+                    ulimits.push(ulimit);
+                }
+            }
+
+            if !ulimits.is_empty() {
+                builder = builder.set_ulimits(Some(ulimits));
+            }
+        }
+
+        // Set log configuration if specified
+        if let Some(log_config) = &container.log_configuration {
+            let mut log_config_builder =
+                aws_sdk_ecs::types::LogConfiguration::builder().log_driver(log_config.log_driver.as_str().into());
+
+            if !log_config.options.is_empty() {
+                log_config_builder = log_config_builder.set_options(Some(log_config.options.clone()));
+            }
+
+            if !log_config.secret_options.is_empty() {
+                let mut secret_options = Vec::new();
+
+                for secret in &log_config.secret_options {
+                    let secret_builder = aws_sdk_ecs::types::Secret::builder()
+                        .name(&secret.name)
+                        .value_from(&secret.value_from);
+
+                    if let Ok(secret) = secret_builder.build() {
+                        secret_options.push(secret);
+                    }
+                }
+
+                if !secret_options.is_empty() {
+                    log_config_builder = log_config_builder.set_secret_options(Some(secret_options));
+                }
+            }
+
+            if let Ok(log_config) = log_config_builder.build() {
+                builder = builder.log_configuration(log_config);
+            }
+        }
+
+        // Set health check if specified
+        if let Some(health_check) = &container.health_check {
+            let mut health_check_builder =
+                aws_sdk_ecs::types::HealthCheck::builder().set_command(Some(health_check.command.clone()));
+
+            if let Some(interval) = health_check.interval {
+                health_check_builder = health_check_builder.interval(interval);
+            }
+
+            if let Some(timeout) = health_check.timeout {
+                health_check_builder = health_check_builder.timeout(timeout);
+            }
+
+            if let Some(retries) = health_check.retries {
+                health_check_builder = health_check_builder.retries(retries);
+            }
+
+            if let Some(start_period) = health_check.start_period {
+                health_check_builder = health_check_builder.start_period(start_period);
+            }
+
+            if let Ok(health_check) = health_check_builder.build() {
+                builder = builder.health_check(health_check);
+            }
+        }
+
+        // Set system controls if specified
+        if !container.system_controls.is_empty() {
+            let mut system_controls = Vec::new();
+
+            for system_control in &container.system_controls {
+                let mut sc_builder = aws_sdk_ecs::types::SystemControl::builder();
+
+                if let Some(namespace) = &system_control.namespace {
+                    sc_builder = sc_builder.namespace(namespace);
+                }
+
+                if let Some(value) = &system_control.value {
+                    sc_builder = sc_builder.value(value);
+                }
+
+                system_controls.push(sc_builder.build());
+            }
+
+            if !system_controls.is_empty() {
+                builder = builder.set_system_controls(Some(system_controls));
+            }
+        }
+
+        // Set resource requirements if specified
+        if !container.resource_requirements.is_empty() {
+            let mut resource_requirements = Vec::new();
+
+            for resource_req in &container.resource_requirements {
+                let mut rr_builder = aws_sdk_ecs::types::ResourceRequirement::builder().value(&resource_req.value);
+
+                match resource_req.r#type.as_str() {
+                    "GPU" => rr_builder = rr_builder.r#type(aws_sdk_ecs::types::ResourceType::Gpu),
+                    "InferenceAccelerator" => {
+                        rr_builder = rr_builder.r#type(aws_sdk_ecs::types::ResourceType::InferenceAccelerator)
+                    }
+                    _ => continue,
+                }
+
+                if let Ok(resource_req) = rr_builder.build() {
+                    resource_requirements.push(resource_req);
+                }
+            }
+
+            if !resource_requirements.is_empty() {
+                builder = builder.set_resource_requirements(Some(resource_requirements));
+            }
+        }
+
+        // Set firelens configuration if specified
+        if let Some(firelens_config) = &container.firelens_configuration {
+            let mut firelens_builder = aws_sdk_ecs::types::FirelensConfiguration::builder();
+
+            match firelens_config.r#type.as_str() {
+                "fluentd" => firelens_builder = firelens_builder.r#type(aws_sdk_ecs::types::FirelensConfigurationType::Fluentd),
+                "fluentbit" => {
+                    firelens_builder = firelens_builder.r#type(aws_sdk_ecs::types::FirelensConfigurationType::Fluentbit)
+                }
+                _ => {}
+            }
+
+            if !firelens_config.options.is_empty() {
+                firelens_builder = firelens_builder.set_options(Some(firelens_config.options.clone()));
+            }
+
+            if let Ok(firelens_config) = firelens_builder.build() {
+                builder = builder.firelens_configuration(firelens_config);
+            }
+        }
 
         container_defs.push(builder.build());
     }
@@ -888,7 +1336,88 @@ pub async fn register_task_definition(
                 vol_builder = vol_builder.host(host_builder.build());
             }
 
-            // Additional volume properties would be set here...
+            // Set docker volume configuration if specified
+            if let Some(docker_volume) = &vol.docker_volume_configuration {
+                let mut docker_builder = aws_sdk_ecs::types::DockerVolumeConfiguration::builder();
+
+                if let Some(scope) = &docker_volume.scope {
+                    match scope.as_str() {
+                        "task" => docker_builder = docker_builder.scope(aws_sdk_ecs::types::Scope::Task),
+                        "shared" => docker_builder = docker_builder.scope(aws_sdk_ecs::types::Scope::Shared),
+                        _ => {}
+                    }
+                }
+
+                if let Some(autoprovision) = docker_volume.autoprovision {
+                    docker_builder = docker_builder.autoprovision(autoprovision);
+                }
+
+                if let Some(driver) = &docker_volume.driver {
+                    docker_builder = docker_builder.driver(driver);
+                }
+
+                if !docker_volume.driver_opts.is_empty() {
+                    docker_builder = docker_builder.set_driver_opts(Some(docker_volume.driver_opts.clone()));
+                }
+
+                if !docker_volume.labels.is_empty() {
+                    docker_builder = docker_builder.set_labels(Some(docker_volume.labels.clone()));
+                }
+
+                vol_builder = vol_builder.docker_volume_configuration(docker_builder.build());
+            }
+
+            // Set EFS volume configuration if specified
+            if let Some(efs_volume) = &vol.efs_volume_configuration {
+                let mut efs_builder =
+                    aws_sdk_ecs::types::EfsVolumeConfiguration::builder().file_system_id(&efs_volume.file_system_id);
+
+                if let Some(root_directory) = &efs_volume.root_directory {
+                    efs_builder = efs_builder.root_directory(root_directory);
+                }
+
+                if let Some(transit_encryption) = &efs_volume.transit_encryption {
+                    match transit_encryption.as_str() {
+                        "ENABLED" => {
+                            efs_builder = efs_builder.transit_encryption(aws_sdk_ecs::types::EfsTransitEncryption::Enabled)
+                        }
+                        "DISABLED" => {
+                            efs_builder = efs_builder.transit_encryption(aws_sdk_ecs::types::EfsTransitEncryption::Disabled)
+                        }
+                        _ => {}
+                    }
+                }
+
+                if let Some(transit_encryption_port) = efs_volume.transit_encryption_port {
+                    efs_builder = efs_builder.transit_encryption_port(transit_encryption_port);
+                }
+
+                if let Some(auth_config) = &efs_volume.authorization_config {
+                    let mut auth_builder = aws_sdk_ecs::types::EfsAuthorizationConfig::builder();
+
+                    if let Some(iam) = &auth_config.iam {
+                        match iam.as_str() {
+                            "ENABLED" => {
+                                auth_builder = auth_builder.iam(aws_sdk_ecs::types::EfsAuthorizationConfigIam::Enabled)
+                            }
+                            "DISABLED" => {
+                                auth_builder = auth_builder.iam(aws_sdk_ecs::types::EfsAuthorizationConfigIam::Disabled)
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    if let Some(access_point_id) = &auth_config.access_point_id {
+                        auth_builder = auth_builder.access_point_id(access_point_id);
+                    }
+
+                    efs_builder = efs_builder.authorization_config(auth_builder.build());
+                }
+
+                if let Ok(efs_config) = efs_builder.build() {
+                    vol_builder = vol_builder.efs_volume_configuration(efs_config);
+                }
+            }
 
             volumes.push(vol_builder.build());
         }
@@ -962,6 +1491,61 @@ pub async fn register_task_definition(
             "none" => register_task_def = register_task_def.ipc_mode(aws_sdk_ecs::types::IpcMode::None),
             _ => {}
         }
+    }
+
+    // Set proxy configuration if specified
+    if let Some(proxy_config) = &task_definition.proxy_configuration {
+        let mut proxy_builder = aws_sdk_ecs::types::ProxyConfiguration::builder().container_name(&proxy_config.container_name);
+
+        if let Some(proxy_type) = &proxy_config.r#type {
+            match proxy_type.as_str() {
+                "APPMESH" => proxy_builder = proxy_builder.r#type(aws_sdk_ecs::types::ProxyConfigurationType::Appmesh),
+                _ => {}
+            }
+        }
+
+        if !proxy_config.properties.is_empty() {
+            let mut properties = Vec::new();
+
+            for prop in &proxy_config.properties {
+                let mut prop_builder = aws_sdk_ecs::types::KeyValuePair::builder();
+
+                if let Some(name) = &prop.name {
+                    prop_builder = prop_builder.name(name);
+                }
+
+                if let Some(value) = &prop.value {
+                    prop_builder = prop_builder.value(value);
+                }
+
+                properties.push(prop_builder.build());
+            }
+
+            if !properties.is_empty() {
+                proxy_builder = proxy_builder.set_properties(Some(properties));
+            }
+        }
+
+        register_task_def = register_task_def.proxy_configuration(proxy_builder.build()?);
+    }
+
+    // Set runtime platform if specified
+    if let Some(runtime_platform) = &task_definition.runtime_platform {
+        let mut runtime_builder = aws_sdk_ecs::types::RuntimePlatform::builder();
+
+        if let Some(cpu_architecture) = &runtime_platform.cpu_architecture {
+            match cpu_architecture.as_str() {
+                "X86_64" => runtime_builder = runtime_builder.cpu_architecture(aws_sdk_ecs::types::CpuArchitecture::X8664),
+                "ARM64" => runtime_builder = runtime_builder.cpu_architecture(aws_sdk_ecs::types::CpuArchitecture::Arm64),
+                _ => {}
+            }
+        }
+
+        if let Some(operating_system_family) = &runtime_platform.operating_system_family {
+            runtime_builder = runtime_builder.operating_system_family(aws_sdk_ecs::types::OsFamily::from_str(&operating_system_family).context("Parsing operating_system_family")?);
+        }
+
+        register_task_def = register_task_def.runtime_platform(runtime_builder.build());
     }
 
     // Register the task definition
@@ -1165,9 +1749,10 @@ pub async fn run_task(
     let aws_tags: Option<Vec<Tag>> = tags.clone().into();
 
     if let Some(tag_list) = aws_tags
-        && !tag_list.is_empty() {
-            run_task = run_task.set_tags(Some(tag_list));
-        }
+        && !tag_list.is_empty()
+    {
+        run_task = run_task.set_tags(Some(tag_list));
+    }
 
     // Run the task
     let resp = run_task.send().await?;
@@ -1293,9 +1878,10 @@ pub async fn register_container_instance(
     let aws_tags: Option<Vec<Tag>> = tags.clone().into();
 
     if let Some(tag_list) = aws_tags
-        && !tag_list.is_empty() {
-            register_container_instance = register_container_instance.set_tags(Some(tag_list));
-        }
+        && !tag_list.is_empty()
+    {
+        register_container_instance = register_container_instance.set_tags(Some(tag_list));
+    }
 
     // Register the container instance
     let resp = register_container_instance.send().await?;
