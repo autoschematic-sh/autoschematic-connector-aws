@@ -31,8 +31,8 @@ impl EcrConnector {
                         // Check if repository policy exists before adding it
                         let policy_resp = client.get_repository_policy().repository_name(&repo_name).send().await;
 
-                        if let Ok(policy_resp) = policy_resp {
-                            if let Some(_policy_text) = policy_resp.policy_text {
+                        if let Ok(policy_resp) = policy_resp
+                            && let Some(_policy_text) = policy_resp.policy_text {
                                 results.push(
                                     EcrResourceAddress::RepositoryPolicy {
                                         region: region_name.clone(),
@@ -41,13 +41,12 @@ impl EcrConnector {
                                     .to_path_buf(),
                                 );
                             }
-                        }
 
                         // Check if lifecycle policy exists before adding it
                         let lifecycle_policy_resp = client.get_lifecycle_policy().repository_name(&repo_name).send().await;
 
-                        if let Ok(lifecycle_policy_resp) = lifecycle_policy_resp {
-                            if let Some(_lifecycle_policy_text) = lifecycle_policy_resp.lifecycle_policy_text {
+                        if let Ok(lifecycle_policy_resp) = lifecycle_policy_resp
+                            && let Some(_lifecycle_policy_text) = lifecycle_policy_resp.lifecycle_policy_text {
                                 results.push(
                                     EcrResourceAddress::LifecyclePolicy {
                                         region: region_name.clone(),
@@ -56,7 +55,6 @@ impl EcrConnector {
                                     .to_path_buf(),
                                 );
                             }
-                        }
                     }
                 }
             }
@@ -74,8 +72,8 @@ impl EcrConnector {
 
             // List and add pull through cache rules
             let pull_through_cache_rules_resp = client.describe_pull_through_cache_rules().send().await;
-            if let Ok(rules_resp) = pull_through_cache_rules_resp {
-                if let Some(rules) = rules_resp.pull_through_cache_rules {
+            if let Ok(rules_resp) = pull_through_cache_rules_resp
+                && let Some(rules) = rules_resp.pull_through_cache_rules {
                     for rule in rules {
                         if let Some(prefix) = rule.ecr_repository_prefix {
                             results.push(
@@ -88,7 +86,6 @@ impl EcrConnector {
                         }
                     }
                 }
-            }
         }
 
         Ok(results)

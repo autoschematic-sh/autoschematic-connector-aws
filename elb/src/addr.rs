@@ -18,14 +18,13 @@ impl ResourceAddress for ElbResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             ElbResourceAddress::LoadBalancer(region, name) => {
-                PathBuf::from(format!("aws/elb/{}/load_balancers/{}.ron", region, name))
+                PathBuf::from(format!("aws/elb/{region}/load_balancers/{name}.ron"))
             }
             ElbResourceAddress::TargetGroup(region, name) => {
-                PathBuf::from(format!("aws/elb/{}/target_groups/{}.ron", region, name))
+                PathBuf::from(format!("aws/elb/{region}/target_groups/{name}.ron"))
             }
             ElbResourceAddress::Listener(region, lb_name, listener_id) => PathBuf::from(format!(
-                "aws/elb/{}/load_balancers/{}/listeners/{}.ron",
-                region, lb_name, listener_id
+                "aws/elb/{region}/load_balancers/{lb_name}/listeners/{listener_id}.ron"
             )),
         }
     }

@@ -381,8 +381,8 @@ impl Connector for EfsConnector {
                         }
 
                         // Check for file system protection changes
-                        if old_fs.file_system_protection != new_fs.file_system_protection {
-                            if let Some(protection) = new_fs.file_system_protection.clone() {
+                        if old_fs.file_system_protection != new_fs.file_system_protection
+                            && let Some(protection) = new_fs.file_system_protection.clone() {
                                 ops.push(connector_op!(
                                     EfsConnectorOp::UpdateFileSystemProtection {
                                         file_system_protection: protection,
@@ -390,7 +390,6 @@ impl Connector for EfsConnector {
                                     format!("Update protection settings for EFS file system '{}'", fs_id)
                                 ));
                             }
-                        }
 
                         // Check for tag changes
                         if old_fs.tags != new_fs.tags {

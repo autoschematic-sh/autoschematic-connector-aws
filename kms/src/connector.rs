@@ -72,8 +72,8 @@ impl KmsConnector {
         let keys = list_keys_paginator.collect::<Vec<_>>().await;
 
         for key_result in keys {
-            if let Ok(key) = key_result {
-                if let Some(key_id) = key.key_id {
+            if let Ok(key) = key_result
+                && let Some(key_id) = key.key_id {
                     // Add the key
                     results.push(KmsResourceAddress::Key(region.to_string(), key_id.clone()).to_path_buf());
 
@@ -83,7 +83,6 @@ impl KmsConnector {
                     // Add key rotation status
                     results.push(KmsResourceAddress::KeyRotation(region.to_string(), key_id).to_path_buf());
                 }
-            }
         }
 
         // List Aliases
@@ -91,14 +90,12 @@ impl KmsConnector {
         let aliases = list_aliases_paginator.collect::<Vec<_>>().await;
 
         for alias_result in aliases {
-            if let Ok(alias) = alias_result {
-                if let Some(alias_name) = alias.alias_name {
-                    if let Some(_target_key_id) = alias.target_key_id {
+            if let Ok(alias) = alias_result
+                && let Some(alias_name) = alias.alias_name
+                    && let Some(_target_key_id) = alias.target_key_id {
                         // We only care about aliases with a target key
                         results.push(KmsResourceAddress::Alias(region.to_string(), alias_name).to_path_buf());
                     }
-                }
-            }
         }
 
         Ok(())
@@ -267,9 +264,9 @@ impl Connector for KmsConnector {
 
                 // Find the specific alias
                 for alias in aliases {
-                    if let Some(current_alias_name) = &alias.alias_name {
-                        if current_alias_name == &alias_name {
-                            if let Some(target_key_id) = alias.target_key_id {
+                    if let Some(current_alias_name) = &alias.alias_name
+                        && current_alias_name == &alias_name
+                            && let Some(target_key_id) = alias.target_key_id {
                                 // Get tags (tags are on the key, not the alias in KMS)
                                 let list_resource_tags_output = client.list_resource_tags().key_id(&target_key_id).send().await;
 
@@ -286,8 +283,6 @@ impl Connector for KmsConnector {
                                     outputs: None,
                                 }));
                             }
-                        }
-                    }
                 }
 
                 return Ok(None);

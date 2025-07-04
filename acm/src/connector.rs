@@ -78,7 +78,7 @@ impl Connector for AcmConnector {
         let mut res = Vec::new();
 
         for region in &self.config.read().await.enabled_regions {
-            res.push(PathBuf::from(format!("aws/acm/{}", region)));
+            res.push(PathBuf::from(format!("aws/acm/{region}")));
         }
 
         Ok(res)

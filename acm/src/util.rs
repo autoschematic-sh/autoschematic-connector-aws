@@ -12,7 +12,7 @@ pub fn decode_certificate_arn(encoded: &str) -> Result<String> {
 /// Extract the certificate ID from a certificate ARN
 pub fn extract_certificate_id(arn: &str) -> Option<String> {
     // ACM ARN format: arn:aws:acm:region:account:certificate/certificate-id
-    arn.split('/').last().map(|s| s.to_string())
+    arn.split('/').next_back().map(|s| s.to_string())
 }
 
 /// Extract the region from a certificate ARN

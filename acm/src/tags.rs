@@ -58,13 +58,11 @@ pub fn tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>
             if let Ok(tag) = Tag::builder().key(key).value(new_value).build() {
                 new_tagset.push(tag);
             }
-        } else if let Some(old_value) = old_tags.0.get(key) {
-            if old_value != new_value {
-                if let Ok(tag) = Tag::builder().key(key).value(new_value).build() {
+        } else if let Some(old_value) = old_tags.0.get(key)
+            && old_value != new_value
+                && let Ok(tag) = Tag::builder().key(key).value(new_value).build() {
                     new_tagset.push(tag);
                 }
-            }
-        }
     }
 
     Ok((untag_keys, new_tagset))

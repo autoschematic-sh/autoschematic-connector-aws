@@ -77,8 +77,8 @@ pub async fn create_file_system(
     }
 
     // Apply file system protection if specified
-    if let Some(protection) = &file_system.file_system_protection {
-        if let Some(replication_protection) = &protection.replication_overwrite_protection {
+    if let Some(protection) = &file_system.file_system_protection
+        && let Some(replication_protection) = &protection.replication_overwrite_protection {
             client
                 .update_file_system_protection()
                 .file_system_id(response.file_system_id())
@@ -86,7 +86,6 @@ pub async fn create_file_system(
                 .send()
                 .await?;
         }
-    }
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
@@ -122,8 +121,7 @@ pub async fn update_file_system_throughput(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated throughput mode to '{}' for file system {}",
-            throughput_mode, file_system_id
+            "Updated throughput mode to '{throughput_mode}' for file system {file_system_id}"
         )),
     })
 }
@@ -160,8 +158,7 @@ pub async fn update_file_system_lifecycle_policies(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated lifecycle policies for file system {}",
-            file_system_id
+            "Updated lifecycle policies for file system {file_system_id}"
         )),
     })
 }
@@ -184,8 +181,7 @@ pub async fn update_file_system_protection(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated protection settings for file system {}",
-            file_system_id
+            "Updated protection settings for file system {file_system_id}"
         )),
     })
 }
@@ -221,7 +217,7 @@ pub async fn update_file_system_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for file system {}", file_system_id)),
+        friendly_message: Some(format!("Updated tags for file system {file_system_id}")),
     })
 }
 
@@ -265,7 +261,7 @@ pub async fn delete_file_system(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted file system {}", file_system_id)),
+        friendly_message: Some(format!("Deleted file system {file_system_id}")),
     })
 }
 
@@ -316,8 +312,7 @@ pub async fn update_mount_target_security_groups(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated security groups for mount target {}",
-            mount_target_id
+            "Updated security groups for mount target {mount_target_id}"
         )),
     })
 }
@@ -334,7 +329,7 @@ pub async fn delete_mount_target(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted mount target {}", mount_target_id)),
+        friendly_message: Some(format!("Deleted mount target {mount_target_id}")),
     })
 }
 
@@ -434,7 +429,7 @@ pub async fn update_access_point_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for access point {}", access_point_id)),
+        friendly_message: Some(format!("Updated tags for access point {access_point_id}")),
     })
 }
 
@@ -450,6 +445,6 @@ pub async fn delete_access_point(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted access point {}", access_point_id)),
+        friendly_message: Some(format!("Deleted access point {access_point_id}")),
     })
 }

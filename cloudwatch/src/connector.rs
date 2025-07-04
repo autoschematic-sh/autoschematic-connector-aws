@@ -2,8 +2,8 @@ pub use crate::addr::CloudWatchResourceAddress;
 use crate::{
     config, resource,
     resource::{
-        Alarm, AlarmAction, CloudWatchResource, Dashboard, Dimension, EventPattern, EventRule, EventTarget, LogGroup,
-        LogStream, Metric, MetricDataQuery, MetricIdentifier, MetricStat, StatOptions,
+        Alarm, AlarmAction, CloudWatchResource, Dashboard, Dimension, EventRule, EventTarget, LogGroup, LogStream, Metric,
+        StatOptions,
     },
     tags::Tags,
 };
@@ -12,7 +12,6 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
 use async_trait::async_trait;
@@ -26,7 +25,7 @@ use autoschematic_core::{
     skeleton,
     util::{ron_check_eq, ron_check_syntax},
 };
-use aws_config::{BehaviorVersion, Region, timeout::TimeoutConfig};
+use aws_config::{BehaviorVersion, Region};
 use config::CloudWatchConnectorConfig;
 use tokio::sync::Mutex;
 mod get;
@@ -133,7 +132,7 @@ impl Connector for CloudWatchConnector {
                 statistic: Some(String::from("Average")),
                 extended_statistic: None,
                 dimensions: Some(vec![Dimension {
-                    name:  String::from("[dimension_name]"),
+                    name: String::from("[dimension_name]"),
                     value: String::from("[dimension_value]"),
                 }]),
                 period: Some(300),
@@ -170,7 +169,6 @@ impl Connector for CloudWatchConnector {
         res.push(skeleton!(
             CloudWatchResourceAddress::LogGroup(region.clone(), log_group_name.clone()),
             CloudWatchResource::LogGroup(LogGroup {
-                name: String::from("[log_group_name]"),
                 retention_policy: Some(crate::resource::RetentionPolicy { retention_in_days: 14 }),
                 kms_key_id: None,
                 metric_filters: None,
@@ -197,12 +195,12 @@ impl Connector for CloudWatchConnector {
                 namespace: String::from("[namespace]"),
                 name: String::from("[metric_name]"),
                 dimensions: Some(vec![Dimension {
-                    name:  String::from("[dimension_name]"),
+                    name: String::from("[dimension_name]"),
                     value: String::from("[dimension_value]"),
                 }]),
                 stat_options: Some(StatOptions {
-                    stat:   String::from("Average"),
-                    unit:   Some(String::from("Count")),
+                    stat: String::from("Average"),
+                    unit: Some(String::from("Count")),
                     period: 300,
                 }),
                 tags: Tags::default(),

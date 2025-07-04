@@ -28,7 +28,7 @@ impl AcmConnector {
 
         match &addr {
             AcmResourceAddress::Certificate { region, .. } => {
-                let client = self.get_or_init_client(&region).await?;
+                let client = self.get_or_init_client(region).await?;
                 let certificate_arn = addr.to_certificate_arn(&account_id);
 
                 let describe_result = client.describe_certificate().certificate_arn(&certificate_arn).send().await;

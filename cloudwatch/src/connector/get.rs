@@ -130,7 +130,6 @@ impl CloudWatchConnector {
                             .map(|days| RetentionPolicy { retention_in_days: days });
 
                         let log_group = LogGroup {
-                            name: log_group_name.clone(),
                             retention_policy,
                             kms_key_id: aws_log_group.kms_key_id,
                             metric_filters: None,  // TODO: Fetch metric filters

@@ -19,20 +19,23 @@ impl S3Connector {
                     S3ConnectorOp::CreateBucket(bucket) => {
                         let client = self.get_or_init_client(&region).await?;
 
+                        let create_bucket_configuration = if region == "us-east-1" {
+                            None
+                        } else {
+                            Some(CreateBucketConfiguration::builder()
+                                .location_constraint(aws_sdk_s3::types::BucketLocationConstraint::try_parse(&region)?)
+                                .build())
+                        };
+
                         // Create the bucket
                         match client
                             .create_bucket()
-                            .create_bucket_configuration(
-                                CreateBucketConfiguration::builder()
-                                    .location_constraint(aws_sdk_s3::types::BucketLocationConstraint::try_parse(&region)?)
-                                    .build(),
-                            )
+                            .set_create_bucket_configuration(create_bucket_configuration)
                             .bucket(&name)
                             .send()
                             .await
                         {
                             Ok(_) => {
-                                // Apply policy if specified
                                 if let Some(policy) = &bucket.policy {
                                     let policy_json =
                                         serde_json::to_string(&policy).context("Failed to serialize bucket policy as JSON")?;
@@ -65,7 +68,6 @@ impl S3Connector {
                                         .context("Failed to set public access block")?;
                                 }
 
-                                // Apply ACL
                                 if let Some(acl) = bucket.acl {
                                     let mut grants = Vec::new();
                                     for grant in &acl.grants {
@@ -101,13 +103,10 @@ impl S3Connector {
                                         .context("Failed to set bucket ACL")?;
                                 }
 
-                                // Apply tags
                                 if bucket.tags.len() > 0 {
-                                    // Use bucket.tags.clone() to create a new copy we can convert
                                     let mut tag_set = Vec::new();
                                     let tags_clone = bucket.tags.clone();
 
-                                    // Convert tags to AWS format - manually since we can't access .0 directly
                                     if let Some(aws_tags) = Into::<Option<Vec<aws_sdk_s3::types::Tag>>>::into(tags_clone) {
                                         tag_set = aws_tags;
                                     }
@@ -128,17 +127,7 @@ impl S3Connector {
 
                                 Ok(OpExecOutput {
                                     outputs: None,
-                                    friendly_message: Some(format!("Created S3 bucket {} in region {}", name, region)),
-                                })
-                            }
-                            Err(e) if e.to_string().contains("BucketAlreadyOwnedByYou") => {
-                                // Bucket already exists and is owned by the same AWS account, which is fine
-                                Ok(OpExecOutput {
-                                    outputs: None,
-                                    friendly_message: Some(format!(
-                                        "S3 bucket {} in region {} already exists and is owned by you",
-                                        name, region
-                                    )),
+                                    friendly_message: Some(format!("Created S3 bucket {name} in region {region}")),
                                 })
                             }
                             Err(e) => Err(e.into()),
@@ -163,10 +152,7 @@ impl S3Connector {
 
                                 Ok(OpExecOutput {
                                     outputs: None,
-                                    friendly_message: Some(format!(
-                                        "Updated policy for S3 bucket {} in region {}",
-                                        name, region
-                                    )),
+                                    friendly_message: Some(format!("Updated policy for S3 bucket {name} in region {region}")),
                                 })
                             }
                             None => {
@@ -180,10 +166,7 @@ impl S3Connector {
 
                                 Ok(OpExecOutput {
                                     outputs: None,
-                                    friendly_message: Some(format!(
-                                        "Deleted policy for S3 bucket {} in region {}",
-                                        name, region
-                                    )),
+                                    friendly_message: Some(format!("Deleted policy for S3 bucket {name} in region {region}")),
                                 })
                             }
                         }
@@ -212,8 +195,7 @@ impl S3Connector {
                                 Ok(OpExecOutput {
                                     outputs: None,
                                     friendly_message: Some(format!(
-                                        "Updated public access block for S3 bucket {} in region {}",
-                                        name, region
+                                        "Updated public access block for S3 bucket {name} in region {region}"
                                     )),
                                 })
                             }
@@ -229,8 +211,7 @@ impl S3Connector {
                                 Ok(OpExecOutput {
                                     outputs: None,
                                     friendly_message: Some(format!(
-                                        "Deleted public access block for S3 bucket {} in region {}",
-                                        name, region
+                                        "Deleted public access block for S3 bucket {name} in region {region}"
                                     )),
                                 })
                             }
@@ -277,7 +258,7 @@ impl S3Connector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated ACL for S3 bucket {} in region {}", name, region)),
+                            friendly_message: Some(format!("Updated ACL for S3 bucket {name} in region {region}")),
                         })
                     }
                     S3ConnectorOp::UpdateBucketTags(_old_tags, new_tags) => {
@@ -308,7 +289,7 @@ impl S3Connector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated tags for S3 bucket {} in region {}", name, region)),
+                            friendly_message: Some(format!("Updated tags for S3 bucket {name} in region {region}")),
                         })
                     }
                     S3ConnectorOp::DeleteBucket => {
@@ -323,7 +304,7 @@ impl S3Connector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Deleted S3 bucket {} in region {}", name, region)),
+                            friendly_message: Some(format!("Deleted S3 bucket {name} in region {region}")),
                         })
                     }
                 }

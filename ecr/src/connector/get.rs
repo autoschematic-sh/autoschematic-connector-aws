@@ -31,13 +31,13 @@ impl EcrConnector {
 
                 match describe_repos_resp {
                     Ok(resp) => {
-                        if let Some(repositories) = resp.repositories {
-                            if let Some(repo) = repositories.first() {
+                        if let Some(repositories) = resp.repositories
+                            && let Some(repo) = repositories.first() {
                                 // Get tags
                                 let tags = if let Some(registry_id) = &repo.registry_id {
                                     let tags_resp = client
                                         .list_tags_for_resource()
-                                        .resource_arn(format!("arn:aws:ecr:{}:{}:repository/{}", region, registry_id, name))
+                                        .resource_arn(format!("arn:aws:ecr:{region}:{registry_id}:repository/{name}"))
                                         .send()
                                         .await;
 
@@ -71,7 +71,6 @@ impl EcrConnector {
                                     [(String::from("repository_url"), repo.repository_uri.clone().unwrap_or_default()),]
                                 );
                             }
-                        }
                         Ok(None)
                     }
                     Err(_) => Ok(None), // Repository not found or other error
@@ -175,12 +174,11 @@ impl EcrConnector {
 
                 match rule_resp {
                     Ok(rule_data) => {
-                        if let Some(rules) = rule_data.pull_through_cache_rules {
-                            if let Some(rule) = rules.first() {
-                                if let (Some(repo_prefix), Some(registry_url)) =
+                        if let Some(rules) = rule_data.pull_through_cache_rules
+                            && let Some(rule) = rules.first()
+                                && let (Some(repo_prefix), Some(registry_url)) =
                                     (&rule.ecr_repository_prefix, &rule.upstream_registry_url)
-                                {
-                                    if repo_prefix == &prefix {
+                                    && repo_prefix == &prefix {
                                         let pull_through_rule = PullThroughCacheRule {
                                             upstream_registry_url: registry_url.clone(),
                                             credential_arn: rule.credential_arn.clone(),
@@ -192,9 +190,6 @@ impl EcrConnector {
                                             outputs: None,
                                         }));
                                     }
-                                }
-                            }
-                        }
                         Ok(None)
                     }
                     Err(e) => {

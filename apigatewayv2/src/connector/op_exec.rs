@@ -1,10 +1,8 @@
 use std::path::Path;
 
-use anyhow::{Context, bail};
 use autoschematic_core::{
     connector::{ConnectorOp, OpExecOutput, ResourceAddress},
     error_util::invalid_op,
-    op_exec_output,
 };
 
 use crate::{

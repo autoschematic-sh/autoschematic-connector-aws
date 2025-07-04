@@ -13,10 +13,10 @@ pub enum IamResourceAddress {
 impl ResourceAddress for IamResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
-            IamResourceAddress::User { path, name } => PathBuf::from(format!("aws/iam/users{}{}.ron", path, name)),
-            IamResourceAddress::Role { path, name } => PathBuf::from(format!("aws/iam/roles{}{}.ron", path, name)),
-            IamResourceAddress::Group { path, name } => PathBuf::from(format!("aws/iam/groups{}{}.ron", path, name)),
-            IamResourceAddress::Policy { path, name } => PathBuf::from(format!("aws/iam/policies{}{}.ron", path, name)),
+            IamResourceAddress::User { path, name } => PathBuf::from(format!("aws/iam/users{path}{name}.ron")),
+            IamResourceAddress::Role { path, name } => PathBuf::from(format!("aws/iam/roles{path}{name}.ron")),
+            IamResourceAddress::Group { path, name } => PathBuf::from(format!("aws/iam/groups{path}{name}.ron")),
+            IamResourceAddress::Policy { path, name } => PathBuf::from(format!("aws/iam/policies{path}{name}.ron")),
         }
     }
     // IamResourceAddress::User{=>
@@ -37,7 +37,7 @@ impl ResourceAddress for IamResourceAddress {
             ["aws", "iam", "users", path @ .., name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 let path = path.join("/");
-                let path = format!("/{}/", path);
+                let path = format!("/{path}/");
                 Ok(IamResourceAddress::User { path, name })
             }
             ["aws", "iam", "groups", name] if name.ends_with(".ron") => {
@@ -48,7 +48,7 @@ impl ResourceAddress for IamResourceAddress {
             ["aws", "iam", "groups", path @ .., name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 let path = path.join("/");
-                let path = format!("/{}/", path);
+                let path = format!("/{path}/");
                 Ok(IamResourceAddress::Group { path, name })
             }
             ["aws", "iam", "roles", name] if name.ends_with(".ron") => {
@@ -59,7 +59,7 @@ impl ResourceAddress for IamResourceAddress {
             ["aws", "iam", "roles", path @ .., name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 let path = path.join("/");
-                let path = format!("/{}/", path);
+                let path = format!("/{path}/");
                 Ok(IamResourceAddress::Role { path, name })
             }
             ["aws", "iam", "policies", name] if name.ends_with(".ron") => {
@@ -70,7 +70,7 @@ impl ResourceAddress for IamResourceAddress {
             ["aws", "iam", "policies", path @ .., name] if name.ends_with(".ron") => {
                 let name = name.strip_suffix(".ron").unwrap().to_string();
                 let path = path.join("/");
-                let path = format!("/{}/", path);
+                let path = format!("/{path}/");
                 Ok(IamResourceAddress::Policy { path, name })
             }
             _ => Err(invalid_addr_path(path)),

@@ -8,12 +8,11 @@ use autoschematic_core::{
     util::RON,
 };
 
-use anyhow::Context;
 
 use crate::{
     addr::AcmResourceAddress,
     op::AcmConnectorOp,
-    resource::{AcmCertificate, AcmResource},
+    resource::AcmCertificate,
     tags::{self, Tags},
 };
 

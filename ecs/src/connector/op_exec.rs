@@ -147,7 +147,7 @@ impl EcsConnector {
                     EcsConnectorOp::UpdateTaskTags(old_tags, new_tags) => {
                         let client = self.get_or_init_client(region).await?;
                         // We need the full ARN for task tags
-                        let task_arn = format!("arn:aws:ecs:{}:{}:task/{}/{}", region, account_id, cluster_name, task_id);
+                        let task_arn = format!("arn:aws:ecs:{region}:{account_id}:task/{cluster_name}/{task_id}");
                         op_impl::update_task_tags(&client, &task_arn, &old_tags, &new_tags).await
                     }
                     _ => Err(invalid_op(&addr, &op)),
@@ -189,8 +189,7 @@ impl EcsConnector {
                         let client = self.get_or_init_client(region).await?;
                         // We need the full ARN for container instance tags
                         let container_instance_arn = format!(
-                            "arn:aws:ecs:{}:{}:container-instance/{}/{}",
-                            region, account_id, cluster_name, container_instance_id
+                            "arn:aws:ecs:{region}:{account_id}:container-instance/{cluster_name}/{container_instance_id}"
                         );
                         op_impl::update_container_instance_tags(&client, &container_instance_arn, &old_tags, &new_tags).await
                     }

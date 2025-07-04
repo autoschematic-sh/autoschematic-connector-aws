@@ -4,9 +4,7 @@ use aws_sdk_apigatewayv2::Client;
 use std::collections::HashMap;
 
 use crate::{
-    addr::ApiGatewayV2ResourceAddress,
     resource::{Api, Authorizer, Integration, Route, Stage},
-    tags::Tags,
     tags::tag_diff,
 };
 
@@ -86,7 +84,7 @@ pub async fn update_api_tags(
     if !new_tagset.is_empty() {
         client
             .tag_resource()
-            .resource_arn(format!("arn:aws:apigatewayv2:{}:{}/apis/{}", region, account_id, api_id)) // TODO: Get actual account ID
+            .resource_arn(format!("arn:aws:apigatewayv2:{region}:{account_id}/apis/{api_id}")) // TODO: Get actual account ID
             .set_tags(Some(new_tagset))
             .send()
             .await

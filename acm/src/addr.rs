@@ -12,7 +12,7 @@ impl AcmResourceAddress {
     pub fn to_certificate_arn(&self, account_id: &str) -> String {
         match self {
             AcmResourceAddress::Certificate { region, certificate_id } => {
-                format!("arn:aws:acm:{}:{}:certificate/{}", region, account_id, certificate_id)
+                format!("arn:aws:acm:{region}:{account_id}:certificate/{certificate_id}")
             }
         }
     }
@@ -20,7 +20,7 @@ impl AcmResourceAddress {
     /// Extract certificate ID from a certificate ARN
     pub fn from_certificate_arn(arn: &str) -> Option<String> {
         // ACM ARN format: arn:aws:acm:region:account:certificate/certificate-id
-        arn.split('/').last().map(|s| s.to_string())
+        arn.split('/').next_back().map(|s| s.to_string())
     }
 
     /// Get the region from this address
@@ -35,7 +35,7 @@ impl ResourceAddress for AcmResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             AcmResourceAddress::Certificate { region, certificate_id } => {
-                PathBuf::from(format!("aws/acm/{}/certificates/{}.ron", region, certificate_id))
+                PathBuf::from(format!("aws/acm/{region}/certificates/{certificate_id}.ron"))
             }
         }
     }

@@ -119,7 +119,7 @@ pub async fn update_secret_tags(
     
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for secret: {}", secret_id)),
+        friendly_message: Some(format!("Updated tags for secret: {secret_id}")),
     })
 }
 
@@ -155,11 +155,10 @@ pub async fn delete_secret(
         request = request.recovery_window_in_days(window);
     }
     
-    if let Some(force) = force_delete_without_recovery {
-        if force {
+    if let Some(force) = force_delete_without_recovery
+        && force {
             request = request.force_delete_without_recovery(true);
         }
-    }
     
     let result = request.send().await?;
     

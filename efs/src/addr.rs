@@ -17,15 +17,13 @@ impl ResourceAddress for EfsResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             EfsResourceAddress::FileSystem(region, fs_id) => {
-                PathBuf::from(format!("aws/efs/{}/file_systems/{}.ron", region, fs_id))
+                PathBuf::from(format!("aws/efs/{region}/file_systems/{fs_id}.ron"))
             }
             EfsResourceAddress::MountTarget(region, fs_id, mt_id) => PathBuf::from(format!(
-                "aws/efs/{}/file_systems/{}/mount_targets/{}.ron",
-                region, fs_id, mt_id
+                "aws/efs/{region}/file_systems/{fs_id}/mount_targets/{mt_id}.ron"
             )),
             EfsResourceAddress::AccessPoint(region, fs_id, ap_id) => PathBuf::from(format!(
-                "aws/efs/{}/file_systems/{}/access_points/{}.ron",
-                region, fs_id, ap_id
+                "aws/efs/{region}/file_systems/{fs_id}/access_points/{ap_id}.ron"
             )),
         }
     }

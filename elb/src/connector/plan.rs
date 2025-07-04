@@ -21,13 +21,10 @@ impl ElbConnector {
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
     ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
-        eprintln!("elb plan {:?} {:?} ", current, desired);
         let addr = ElbResourceAddress::from_path(addr)?;
         let current = optional_string_from_utf8(current)?;
         let desired = optional_string_from_utf8(desired)?;
         
-        eprintln!("elb plan {:?} {:?} ", current, desired);
-
         match addr {
             ElbResourceAddress::LoadBalancer(region, lb_name) => {
                 match (current, desired) {
@@ -149,14 +146,13 @@ impl ElbConnector {
                         }
 
                         // Check for health check changes
-                        if old_tg.health_check != new_tg.health_check {
-                            if let Some(new_health_check) = &new_tg.health_check {
+                        if old_tg.health_check != new_tg.health_check
+                            && let Some(new_health_check) = &new_tg.health_check {
                                 ops.push(connector_op!(
                                     ElbConnectorOp::UpdateHealthCheck(new_health_check.clone()),
                                     format!("Update health check for Target Group `{}`", tg_name)
                                 ));
                             }
-                        }
 
                         // Check for target changes
                         if old_tg.targets != new_tg.targets {

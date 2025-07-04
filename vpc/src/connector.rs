@@ -65,10 +65,8 @@ impl Connector for VpcConnector {
 
     async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
         if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
-            eprintln!("VpcConnector::filter({}) = true", addr.display());
             Ok(FilterOutput::Resource)
         } else {
-            eprintln!("VpcConnector::filter({}) = false", addr.display());
             Ok(FilterOutput::None)
         }
     }

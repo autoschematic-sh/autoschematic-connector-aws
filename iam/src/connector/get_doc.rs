@@ -8,7 +8,7 @@ use super::IamConnector;
 
 impl IamConnector {
     pub async fn do_get_doc(&self, ident: DocIdent) -> Result<Option<GetDocOutput>, anyhow::Error> {
-        eprintln!("get_doc: {:?}", ident);
+        eprintln!("get_doc: {ident:?}");
 
         match ident {
             DocIdent::Struct { name } => {

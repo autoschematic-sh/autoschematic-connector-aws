@@ -2,14 +2,12 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
 };
 
-use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
+        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
         ResourceAddress, SkeletonOutput, VirtToPhyOutput,
     },
     diag::DiagnosticOutput,
@@ -17,16 +15,8 @@ use autoschematic_core::{
     template::ReadOutput,
     util::{ron_check_eq, ron_check_syntax},
 };
-use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
-use aws_sdk_apigatewayv2::{
-    error::SdkError,
-    operation::{
-        get_apis::GetApisError, get_authorizers::GetAuthorizersError, get_integrations::GetIntegrationsError,
-        get_routes::GetRoutesError, get_stages::GetStagesError,
-    },
-};
 use config::ApiGatewayV2ConnectorConfig;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use crate::{
     addr,
@@ -91,7 +81,7 @@ impl Connector for ApiGatewayV2Connector {
         let mut results = Vec::new();
 
         for region in enabled_regions {
-            if !addr_matches_filter(&PathBuf::from(format!("aws/apigatewayv2/{}", region)), subpath) {
+            if !addr_matches_filter(&PathBuf::from(format!("aws/apigatewayv2/{region}")), subpath) {
                 continue;
             }
 
@@ -128,7 +118,7 @@ impl Connector for ApiGatewayV2Connector {
         let mut res = Vec::new();
 
         for region in &self.config.read().await.enabled_regions {
-            res.push(PathBuf::from(format!("aws/apigatewayv2/{}", region)));
+            res.push(PathBuf::from(format!("aws/apigatewayv2/{region}")));
         }
 
         Ok(res)
@@ -306,8 +296,7 @@ impl Connector for ApiGatewayV2Connector {
                     region,
                     api_id: virt_api_id,
                 }) = parent_api.phy_to_virt(&self.prefix)?
-                {
-                    if let Some(ApiGatewayV2ResourceAddress::Route { route_id, .. }) = addr.phy_to_virt(&self.prefix)? {
+                    && let Some(ApiGatewayV2ResourceAddress::Route { route_id, .. }) = addr.phy_to_virt(&self.prefix)? {
                         return Ok(Some(
                             ApiGatewayV2ResourceAddress::Route {
                                 region,
@@ -317,7 +306,6 @@ impl Connector for ApiGatewayV2Connector {
                             .to_path_buf(),
                         ));
                     }
-                }
             }
             ApiGatewayV2ResourceAddress::Integration { region, api_id, .. } => {
                 let region = region.clone();
@@ -332,8 +320,7 @@ impl Connector for ApiGatewayV2Connector {
                     region,
                     api_id: virt_api_id,
                 }) = parent_api.phy_to_virt(&self.prefix)?
-                {
-                    if let Some(ApiGatewayV2ResourceAddress::Integration { integration_id, .. }) =
+                    && let Some(ApiGatewayV2ResourceAddress::Integration { integration_id, .. }) =
                         addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
@@ -345,7 +332,6 @@ impl Connector for ApiGatewayV2Connector {
                             .to_path_buf(),
                         ));
                     }
-                }
             }
             ApiGatewayV2ResourceAddress::Authorizer { region, api_id, .. } => {
                 let region = region.clone();
@@ -360,8 +346,7 @@ impl Connector for ApiGatewayV2Connector {
                     region,
                     api_id: virt_api_id,
                 }) = parent_api.phy_to_virt(&self.prefix)?
-                {
-                    if let Some(ApiGatewayV2ResourceAddress::Authorizer { authorizer_id, .. }) =
+                    && let Some(ApiGatewayV2ResourceAddress::Authorizer { authorizer_id, .. }) =
                         addr.phy_to_virt(&self.prefix)?
                     {
                         return Ok(Some(
@@ -373,7 +358,6 @@ impl Connector for ApiGatewayV2Connector {
                             .to_path_buf(),
                         ));
                     }
-                }
             }
             ApiGatewayV2ResourceAddress::Stage {
                 region,

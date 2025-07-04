@@ -15,17 +15,17 @@ impl ResourceAddress for EcrResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             EcrResourceAddress::Repository { region, name } => {
-                PathBuf::from(format!("aws/ecr/{}/repositories/{}.ron", region, name))
+                PathBuf::from(format!("aws/ecr/{region}/repositories/{name}.ron"))
             }
             EcrResourceAddress::RepositoryPolicy { region, name } => {
-                PathBuf::from(format!("aws/ecr/{}/repositories/{}/policy.ron", region, name))
+                PathBuf::from(format!("aws/ecr/{region}/repositories/{name}/policy.ron"))
             }
             EcrResourceAddress::LifecyclePolicy { region, name } => {
-                PathBuf::from(format!("aws/ecr/{}/repositories/{}/lifecycle_policy.ron", region, name))
+                PathBuf::from(format!("aws/ecr/{region}/repositories/{name}/lifecycle_policy.ron"))
             }
-            EcrResourceAddress::RegistryPolicy { region } => PathBuf::from(format!("aws/ecr/{}/registry_policy.ron", region)),
+            EcrResourceAddress::RegistryPolicy { region } => PathBuf::from(format!("aws/ecr/{region}/registry_policy.ron")),
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => {
-                PathBuf::from(format!("aws/ecr/{}/pull_through_cache_rules/{}.ron", region, prefix))
+                PathBuf::from(format!("aws/ecr/{region}/pull_through_cache_rules/{prefix}.ron"))
             }
         }
     }

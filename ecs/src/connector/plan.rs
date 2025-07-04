@@ -191,8 +191,8 @@ impl EcsConnector {
                         }
 
                         // Check for execute command enablement changes
-                        if old_service.enable_execute_command != new_service.enable_execute_command {
-                            if let Some(enable_execute_command) = new_service.enable_execute_command {
+                        if old_service.enable_execute_command != new_service.enable_execute_command
+                            && let Some(enable_execute_command) = new_service.enable_execute_command {
                                 ops.push(connector_op!(
                                     EcsConnectorOp::EnableExecuteCommand(enable_execute_command),
                                     format!(
@@ -201,7 +201,6 @@ impl EcsConnector {
                                     )
                                 ));
                             }
-                        }
                         
                         // Check for load balancer changes
                         if old_service.load_balancers != new_service.load_balancers {
@@ -245,14 +244,13 @@ impl EcsConnector {
                         let mut ops = Vec::new();
 
                         // Check for tag changes (though this would need a separate operation to update tags)
-                        if let Ok(diff) = diff_ron_values(&old_task_def, &new_task_def) {
-                            if !diff.is_empty() {
+                        if let Ok(diff) = diff_ron_values(&old_task_def, &new_task_def)
+                            && !diff.is_empty() {
                                 ops.push(connector_op!(
                                     EcsConnectorOp::RegisterTaskDefinition(new_task_def),
                                     format!("Update ECS task definition {}\n{}", task_def_id, diff)
                                 ));
                             }
-                        }
 
                         Ok(ops)
                     }

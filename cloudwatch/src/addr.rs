@@ -25,23 +25,22 @@ impl ResourceAddress for CloudWatchResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             CloudWatchResourceAddress::Alarm(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/alarms/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{region}/alarms/{name}.ron"))
             }
             CloudWatchResourceAddress::Dashboard(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/dashboards/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{region}/dashboards/{name}.ron"))
             }
             CloudWatchResourceAddress::LogGroup(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/log_groups/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{region}/log_groups/{name}.ron"))
             }
             CloudWatchResourceAddress::LogStream(region, group_name, stream_name) => PathBuf::from(format!(
-                "aws/cloudwatch/{}/log_groups/{}/streams/{}.ron",
-                region, group_name, stream_name
+                "aws/cloudwatch/{region}/log_groups/{group_name}/streams/{stream_name}.ron"
             )),
             CloudWatchResourceAddress::Metric(region, namespace, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/metrics/{}/{}.ron", region, namespace, name))
+                PathBuf::from(format!("aws/cloudwatch/{region}/metrics/{namespace}/{name}.ron"))
             }
             CloudWatchResourceAddress::EventRule(region, name) => {
-                PathBuf::from(format!("aws/cloudwatch/{}/event_rules/{}.ron", region, name))
+                PathBuf::from(format!("aws/cloudwatch/{region}/event_rules/{name}.ron"))
             }
         }
     }

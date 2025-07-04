@@ -37,36 +37,33 @@ impl ResourceAddress for ApiGatewayV2ResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match self {
             ApiGatewayV2ResourceAddress::Api { region, api_id } => {
-                PathBuf::from(format!("aws/apigatewayv2/{}/apis/{}.ron", region, api_id))
+                PathBuf::from(format!("aws/apigatewayv2/{region}/apis/{api_id}.ron"))
             }
             ApiGatewayV2ResourceAddress::Route {
                 region,
                 api_id,
                 route_id,
-            } => PathBuf::from(format!("aws/apigatewayv2/{}/apis/{}/routes/{}.ron", region, api_id, route_id)),
+            } => PathBuf::from(format!("aws/apigatewayv2/{region}/apis/{api_id}/routes/{route_id}.ron")),
             ApiGatewayV2ResourceAddress::Integration {
                 region,
                 api_id,
                 integration_id,
             } => PathBuf::from(format!(
-                "aws/apigatewayv2/{}/apis/{}/integrations/{}.ron",
-                region, api_id, integration_id
+                "aws/apigatewayv2/{region}/apis/{api_id}/integrations/{integration_id}.ron"
             )),
             ApiGatewayV2ResourceAddress::Stage {
                 region,
                 api_id,
                 stage_name,
             } => PathBuf::from(format!(
-                "aws/apigatewayv2/{}/apis/{}/stages/{}.ron",
-                region, api_id, stage_name
+                "aws/apigatewayv2/{region}/apis/{api_id}/stages/{stage_name}.ron"
             )),
             ApiGatewayV2ResourceAddress::Authorizer {
                 region,
                 api_id,
                 authorizer_id,
             } => PathBuf::from(format!(
-                "aws/apigatewayv2/{}/apis/{}/authorizers/{}.ron",
-                region, api_id, authorizer_id
+                "aws/apigatewayv2/{region}/apis/{api_id}/authorizers/{authorizer_id}.ron"
             )),
         }
     }

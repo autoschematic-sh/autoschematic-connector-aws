@@ -13,13 +13,13 @@ pub enum RdsResourceAddress {
 impl ResourceAddress for RdsResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
-            RdsResourceAddress::DBInstance { region, id } => PathBuf::from(format!("aws/rds/{}/instances/{}.ron", region, id)),
-            RdsResourceAddress::DBCluster { region, id } => PathBuf::from(format!("aws/rds/{}/clusters/{}.ron", region, id)),
+            RdsResourceAddress::DBInstance { region, id } => PathBuf::from(format!("aws/rds/{region}/instances/{id}.ron")),
+            RdsResourceAddress::DBCluster { region, id } => PathBuf::from(format!("aws/rds/{region}/clusters/{id}.ron")),
             RdsResourceAddress::DBSubnetGroup { region, name } => {
-                PathBuf::from(format!("aws/rds/{}/subnet-groups/{}.ron", region, name))
+                PathBuf::from(format!("aws/rds/{region}/subnet-groups/{name}.ron"))
             }
             RdsResourceAddress::DBParameterGroup { region, name } => {
-                PathBuf::from(format!("aws/rds/{}/parameter-groups/{}.ron", region, name))
+                PathBuf::from(format!("aws/rds/{region}/parameter-groups/{name}.ron"))
             }
         }
     }

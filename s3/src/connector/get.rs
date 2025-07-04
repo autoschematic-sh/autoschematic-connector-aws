@@ -70,14 +70,13 @@ impl S3Connector {
                     };
                     let mut grants: Vec<resource::Grant> = Vec::new();
                     for grant in acl_output.grants.unwrap_or_default() {
-                        if let Some(grantee) = grant.grantee {
-                            if let Some(permission) = grant.permission {
+                        if let Some(grantee) = grant.grantee
+                            && let Some(permission) = grant.permission {
                                 grants.push(resource::Grant {
                                     grantee_id: grantee.id.unwrap_or_default(),
                                     permission: permission.as_str().to_string(),
                                 })
                             }
-                        }
                     }
 
                     Some(resource::Acl {
@@ -97,7 +96,7 @@ impl S3Connector {
                 let bucket = resource::S3Bucket {
                     policy,
                     public_access_block,
-                    acl: acl,
+                    acl,
                     tags,
                 };
 

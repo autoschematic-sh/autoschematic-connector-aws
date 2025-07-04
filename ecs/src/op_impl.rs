@@ -79,11 +79,10 @@ pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name:
     // Apply tags
     let aws_tags: Option<Vec<Tag>> = cluster.tags.clone().into();
 
-    if let Some(tags) = aws_tags {
-        if !tags.is_empty() {
+    if let Some(tags) = aws_tags
+        && !tags.is_empty() {
             create_cluster = create_cluster.set_tags(Some(tags));
         }
-    }
 
     // Create the cluster
     let resp = create_cluster.send().await?;
@@ -95,7 +94,7 @@ pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name:
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Created ECS cluster {}", cluster_name)),
+        friendly_message: Some(format!("Created ECS cluster {cluster_name}")),
     })
 }
 
@@ -109,7 +108,7 @@ pub async fn update_cluster_tags(
     // Get the cluster to retrieve the ARN
     let cluster = get_cluster(client, cluster_name)
         .await?
-        .context(format!("Cluster {} not found", cluster_name))?;
+        .context(format!("Cluster {cluster_name} not found"))?;
 
     let cluster_arn = cluster.cluster_arn.context("No cluster ARN returned")?;
 
@@ -138,7 +137,7 @@ pub async fn update_cluster_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for ECS cluster {}", cluster_name)),
+        friendly_message: Some(format!("Updated tags for ECS cluster {cluster_name}")),
     })
 }
 
@@ -173,7 +172,7 @@ pub async fn update_cluster_settings(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated settings for ECS cluster {}", cluster_name)),
+        friendly_message: Some(format!("Updated settings for ECS cluster {cluster_name}")),
     })
 }
 
@@ -188,7 +187,7 @@ pub async fn update_cluster_capacity_providers(
     // Get current capacity providers
     let cluster = get_cluster(client, cluster_name)
         .await?
-        .context(format!("Cluster {} not found", cluster_name))?;
+        .context(format!("Cluster {cluster_name} not found"))?;
 
     let mut capacity_providers = cluster.capacity_providers.unwrap_or_default();
 
@@ -233,7 +232,7 @@ pub async fn update_cluster_capacity_providers(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated capacity providers for ECS cluster {}", cluster_name)),
+        friendly_message: Some(format!("Updated capacity providers for ECS cluster {cluster_name}")),
     })
 }
 
@@ -243,7 +242,7 @@ pub async fn delete_cluster(client: &Client, cluster_name: &str) -> Result<OpExe
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted ECS cluster {}", cluster_name)),
+        friendly_message: Some(format!("Deleted ECS cluster {cluster_name}")),
     })
 }
 
@@ -330,8 +329,8 @@ pub async fn create_service(
     }
 
     // Set network configuration if specified
-    if let Some(network_config) = &service.network_configuration {
-        if let Some(awsvpc_config) = &network_config.awsvpc_configuration {
+    if let Some(network_config) = &service.network_configuration
+        && let Some(awsvpc_config) = &network_config.awsvpc_configuration {
             let mut builder = aws_sdk_ecs::types::AwsVpcConfiguration::builder()
                 .set_subnets(Some(awsvpc_config.subnets.clone()))
                 .set_security_groups(Some(awsvpc_config.security_groups.clone()));
@@ -350,7 +349,6 @@ pub async fn create_service(
                 create_service = create_service.network_configuration(network_config);
             }
         }
-    }
 
     // Set placement constraints if specified
     if !service.placement_constraints.is_empty() {
@@ -485,11 +483,10 @@ pub async fn create_service(
     // Apply tags
     let aws_tags: Option<Vec<Tag>> = service.tags.clone().into();
 
-    if let Some(tags) = aws_tags {
-        if !tags.is_empty() {
+    if let Some(tags) = aws_tags
+        && !tags.is_empty() {
             create_service = create_service.set_tags(Some(tags));
         }
-    }
 
     // Create the service
     let resp = create_service.send().await?;
@@ -503,7 +500,7 @@ pub async fn create_service(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Created ECS service {} in cluster {}", service_name, cluster_name)),
+        friendly_message: Some(format!("Created ECS service {service_name} in cluster {cluster_name}")),
     })
 }
 
@@ -518,7 +515,7 @@ pub async fn update_service_tags(
     // Get the service to retrieve the ARN
     let service = get_service(client, cluster_name, service_name)
         .await?
-        .context(format!("Service {} not found in cluster {}", service_name, cluster_name))?;
+        .context(format!("Service {service_name} not found in cluster {cluster_name}"))?;
 
     let service_arn = service.service_arn.context("No service ARN returned")?;
 
@@ -548,8 +545,7 @@ pub async fn update_service_tags(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated tags for ECS service {} in cluster {}",
-            service_name, cluster_name
+            "Updated tags for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -572,8 +568,7 @@ pub async fn update_service_desired_count(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated desired count to {} for ECS service {} in cluster {}",
-            desired_count, service_name, cluster_name
+            "Updated desired count to {desired_count} for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -596,8 +591,7 @@ pub async fn update_service_task_definition(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated task definition to {} for ECS service {} in cluster {}",
-            task_definition, service_name, cluster_name
+            "Updated task definition to {task_definition} for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -644,8 +638,7 @@ pub async fn update_service_deployment_configuration(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated deployment configuration for ECS service {} in cluster {}",
-            service_name, cluster_name
+            "Updated deployment configuration for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -695,8 +688,7 @@ pub async fn update_service_load_balancers(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated load balancers for ECS service {} in cluster {}",
-            service_name, cluster_name
+            "Updated load balancers for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -721,8 +713,7 @@ pub async fn enable_execute_command(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "{} execute command for ECS service {} in cluster {}",
-            action, service_name, cluster_name
+            "{action} execute command for ECS service {service_name} in cluster {cluster_name}"
         )),
     })
 }
@@ -739,7 +730,7 @@ pub async fn delete_service(client: &Client, cluster_name: &str, service_name: &
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted ECS service {} from cluster {}", service_name, cluster_name)),
+        friendly_message: Some(format!("Deleted ECS service {service_name} from cluster {cluster_name}")),
     })
 }
 
@@ -985,7 +976,7 @@ pub async fn register_task_definition(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Registered task definition {}", task_def_arn)),
+        friendly_message: Some(format!("Registered task definition {task_def_arn}")),
     })
 }
 
@@ -1021,7 +1012,7 @@ pub async fn update_task_definition_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for task definition {}", task_definition_arn)),
+        friendly_message: Some(format!("Updated tags for task definition {task_definition_arn}")),
     })
 }
 
@@ -1035,7 +1026,7 @@ pub async fn deregister_task_definition(client: &Client, task_definition: &str) 
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deregistered task definition {}", task_definition)),
+        friendly_message: Some(format!("Deregistered task definition {task_definition}")),
     })
 }
 
@@ -1173,11 +1164,10 @@ pub async fn run_task(
     // Apply tags
     let aws_tags: Option<Vec<Tag>> = tags.clone().into();
 
-    if let Some(tag_list) = aws_tags {
-        if !tag_list.is_empty() {
+    if let Some(tag_list) = aws_tags
+        && !tag_list.is_empty() {
             run_task = run_task.set_tags(Some(tag_list));
         }
-    }
 
     // Run the task
     let resp = run_task.send().await?;
@@ -1189,15 +1179,15 @@ pub async fn run_task(
     for (i, task) in tasks.iter().enumerate() {
         if let Some(task_arn) = &task.task_arn {
             task_arns.push(task_arn.clone());
-            outputs.insert(format!("task_arn_{}", i), Some(task_arn.clone()));
+            outputs.insert(format!("task_arn_{i}"), Some(task_arn.clone()));
         }
     }
 
     let task_count = tasks.len();
     let task_message = if task_count == 1 {
-        format!("Started 1 task in cluster {}", cluster)
+        format!("Started 1 task in cluster {cluster}")
     } else {
-        format!("Started {} tasks in cluster {}", task_count, cluster)
+        format!("Started {task_count} tasks in cluster {cluster}")
     };
 
     Ok(OpExecOutput {
@@ -1223,7 +1213,7 @@ pub async fn stop_task(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Stopped task {} in cluster {}", task_id, cluster)),
+        friendly_message: Some(format!("Stopped task {task_id} in cluster {cluster}")),
     })
 }
 
@@ -1259,7 +1249,7 @@ pub async fn update_task_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for task {}", task_arn)),
+        friendly_message: Some(format!("Updated tags for task {task_arn}")),
     })
 }
 
@@ -1302,11 +1292,10 @@ pub async fn register_container_instance(
     // Apply tags
     let aws_tags: Option<Vec<Tag>> = tags.clone().into();
 
-    if let Some(tag_list) = aws_tags {
-        if !tag_list.is_empty() {
+    if let Some(tag_list) = aws_tags
+        && !tag_list.is_empty() {
             register_container_instance = register_container_instance.set_tags(Some(tag_list));
         }
-    }
 
     // Register the container instance
     let resp = register_container_instance.send().await?;
@@ -1322,7 +1311,7 @@ pub async fn register_container_instance(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Registered container instance in cluster {}", cluster)),
+        friendly_message: Some(format!("Registered container instance in cluster {cluster}")),
     })
 }
 
@@ -1395,8 +1384,7 @@ pub async fn update_container_instance_attributes(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated attributes for container instance {} in cluster {}",
-            container_instance_id, cluster
+            "Updated attributes for container instance {container_instance_id} in cluster {cluster}"
         )),
     })
 }
@@ -1433,7 +1421,7 @@ pub async fn update_container_instance_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for container instance {}", container_instance_arn)),
+        friendly_message: Some(format!("Updated tags for container instance {container_instance_arn}")),
     })
 }
 
@@ -1455,8 +1443,7 @@ pub async fn deregister_container_instance(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Deregistered container instance {} from cluster {}",
-            container_instance_id, cluster
+            "Deregistered container instance {container_instance_id} from cluster {cluster}"
         )),
     })
 }

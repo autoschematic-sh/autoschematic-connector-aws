@@ -25,15 +25,14 @@ pub async fn list_buckets(
 
     let bucket_output: Vec<Result<ListBucketsOutput, _>> = bucket_stream.collect().await;
     for bucket_result in bucket_output {
-        if let Ok(bucket) = bucket_result {
-            if let Some(buckets) = bucket.buckets {
+        if let Ok(bucket) = bucket_result
+            && let Some(buckets) = bucket.buckets {
                 for bucket in buckets {
                     if let Some(bucket_name) = bucket.name {
                         res.push(bucket_name);
                     }
                 }
             }
-        }
     }
     Ok(res)
 }

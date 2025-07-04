@@ -126,7 +126,7 @@ impl IamConnector {
                 }
             }
             IamResourceAddress::Policy { path, name } => {
-                let arn = format!("arn:aws:iam::{}:policy{}{}", account_id, path, name);
+                let arn = format!("arn:aws:iam::{account_id}:policy{path}{name}");
                 let policy_result = client.get_policy().policy_arn(&arn).send().await;
 
                 match policy_result {

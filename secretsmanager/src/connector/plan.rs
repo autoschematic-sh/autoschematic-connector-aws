@@ -53,8 +53,8 @@ impl SecretsManagerConnector {
                         let mut ops = Vec::new();
 
                         // Check for description changes
-                        if old_secret.description != new_secret.description {
-                            if let Some(description) = &new_secret.description {
+                        if old_secret.description != new_secret.description
+                            && let Some(description) = &new_secret.description {
                                 ops.push(connector_op!(
                                     SecretsManagerConnectorOp::UpdateSecretDescription {
                                         description: description.clone(),
@@ -62,11 +62,10 @@ impl SecretsManagerConnector {
                                     format!("Update description for secret '{}'", name)
                                 ));
                             }
-                        }
 
                         // Check for KMS key ID changes
-                        if old_secret.kms_key_id != new_secret.kms_key_id {
-                            if let Some(kms_key_id) = &new_secret.kms_key_id {
+                        if old_secret.kms_key_id != new_secret.kms_key_id
+                            && let Some(kms_key_id) = &new_secret.kms_key_id {
                                 ops.push(connector_op!(
                                     SecretsManagerConnectorOp::UpdateSecretKmsKeyId {
                                         kms_key_id: kms_key_id.clone(),
@@ -74,7 +73,6 @@ impl SecretsManagerConnector {
                                     format!("Update KMS key for secret '{}'", name)
                                 ));
                             }
-                        }
 
                         // Check for secret value changes
                         // if old_secret.secret_ref != new_secret.secret_ref {

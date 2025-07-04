@@ -21,7 +21,7 @@ use resource::{IamPolicy, IamResource, IamRole, IamUser};
 use aws_config::{BehaviorVersion, meta::region::RegionProviderChain};
 use aws_sdk_iam::config::Region;
 use tags::Tags;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::RwLock;
 
 use crate::{resource, tags};
 
@@ -82,15 +82,14 @@ impl Connector for IamConnector {
                     bail!("Failed to get current account ID!");
                 };
 
-                if let Some(config_account_id) = config_file.account_id {
-                    if config_account_id != account_id {
+                if let Some(config_account_id) = config_file.account_id
+                    && config_account_id != account_id {
                         bail!(
                             "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
                             account_id,
                             config_account_id
                         );
                     }
-                }
 
                 *self.client.write().await = Some(Arc::new(client));
                 *self.account_id.write().await = Some(account_id);

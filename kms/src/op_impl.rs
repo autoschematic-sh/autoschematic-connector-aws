@@ -106,7 +106,7 @@ pub async fn create_key(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Created KMS key {}", key_id)),
+        friendly_message: Some(format!("Created KMS key {key_id}")),
     })
 }
 
@@ -125,7 +125,7 @@ pub async fn update_key_description(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated description for KMS key {}", key_id)),
+        friendly_message: Some(format!("Updated description for KMS key {key_id}")),
     })
 }
 
@@ -160,7 +160,7 @@ pub async fn update_key_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for KMS key {}", key_id)),
+        friendly_message: Some(format!("Updated tags for KMS key {key_id}")),
     })
 }
 
@@ -173,7 +173,7 @@ pub async fn enable_key(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Enabled KMS key {}", key_id)),
+        friendly_message: Some(format!("Enabled KMS key {key_id}")),
     })
 }
 
@@ -186,7 +186,7 @@ pub async fn disable_key(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Disabled KMS key {}", key_id)),
+        friendly_message: Some(format!("Disabled KMS key {key_id}")),
     })
 }
 
@@ -205,7 +205,7 @@ pub async fn delete_key(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Scheduled KMS key {} for deletion (7-day waiting period)", key_id)),
+        friendly_message: Some(format!("Scheduled KMS key {key_id} for deletion (7-day waiting period)")),
     })
 }
 
@@ -229,7 +229,7 @@ pub async fn update_key_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated policy for KMS key {}", key_id)),
+        friendly_message: Some(format!("Updated policy for KMS key {key_id}")),
     })
 }
 
@@ -243,7 +243,7 @@ pub async fn create_alias(
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
     } else {
-        format!("alias/{}", alias_name)
+        format!("alias/{alias_name}")
     };
 
     client
@@ -269,7 +269,7 @@ pub async fn update_alias(
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
     } else {
-        format!("alias/{}", alias_name)
+        format!("alias/{alias_name}")
     };
 
     client
@@ -281,7 +281,7 @@ pub async fn update_alias(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated KMS alias {} to point to key {}", alias_name, target_key_id)),
+        friendly_message: Some(format!("Updated KMS alias {alias_name} to point to key {target_key_id}")),
     })
 }
 
@@ -294,7 +294,7 @@ pub async fn delete_alias(
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
     } else {
-        format!("alias/{}", alias_name)
+        format!("alias/{alias_name}")
     };
 
     client
@@ -305,7 +305,7 @@ pub async fn delete_alias(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted KMS alias {}", alias_name)),
+        friendly_message: Some(format!("Deleted KMS alias {alias_name}")),
     })
 }
 
@@ -322,7 +322,7 @@ pub async fn enable_key_rotation(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Enabled automatic key rotation for KMS key {}", key_id)),
+        friendly_message: Some(format!("Enabled automatic key rotation for KMS key {key_id}")),
     })
 }
 
@@ -339,6 +339,6 @@ pub async fn disable_key_rotation(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Disabled automatic key rotation for KMS key {}", key_id)),
+        friendly_message: Some(format!("Disabled automatic key rotation for KMS key {key_id}")),
     })
 }

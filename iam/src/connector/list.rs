@@ -78,11 +78,10 @@ impl IamConnector {
             while let Some(policies) = policies.next().await {
                 if let Some(policies) = policies?.policies {
                     for policy in policies {
-                        if let (Some(path), Some(name), Some(arn)) = (policy.path, policy.policy_name, policy.arn) {
-                            if parse_arn(&arn)?.account_id == account_id {
+                        if let (Some(path), Some(name), Some(arn)) = (policy.path, policy.policy_name, policy.arn)
+                            && parse_arn(&arn)?.account_id == account_id {
                                 results.push(IamResourceAddress::Policy { path, name }.to_path_buf());
                             }
-                        }
                     }
                 }
             }

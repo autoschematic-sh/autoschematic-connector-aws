@@ -64,7 +64,7 @@ pub async fn create_repository(
 
     Ok(OpExecOutput {
         outputs: Some(outputs),
-        friendly_message: Some(format!("Created ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Created ECR repository {repository_name}")),
     })
 }
 
@@ -119,7 +119,7 @@ pub async fn update_repository_tags(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Updated tags for ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Updated tags for ECR repository {repository_name}")),
     })
 }
 
@@ -139,8 +139,7 @@ pub async fn update_image_tag_mutability(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated image tag mutability to {} for ECR repository {}",
-            image_tag_mutability, repository_name
+            "Updated image tag mutability to {image_tag_mutability} for ECR repository {repository_name}"
         )),
     })
 }
@@ -165,8 +164,7 @@ pub async fn update_image_scanning_configuration(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated image scanning configuration (scan_on_push: {}) for ECR repository {}",
-            scan_on_push, repository_name
+            "Updated image scanning configuration (scan_on_push: {scan_on_push}) for ECR repository {repository_name}"
         )),
     })
 }
@@ -226,8 +224,7 @@ pub async fn update_encryption_configuration(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Updated encryption configuration for ECR repository {}",
-            repository_name
+            "Updated encryption configuration for ECR repository {repository_name}"
         )),
     })
 }
@@ -247,7 +244,7 @@ pub async fn delete_repository(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Deleted ECR repository {repository_name}")),
     })
 }
 
@@ -269,7 +266,7 @@ pub async fn set_repository_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Set repository policy for ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Set repository policy for ECR repository {repository_name}")),
     })
 }
 
@@ -286,7 +283,7 @@ pub async fn delete_repository_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted repository policy for ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Deleted repository policy for ECR repository {repository_name}")),
     })
 }
 
@@ -308,7 +305,7 @@ pub async fn set_lifecycle_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Set lifecycle policy for ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Set lifecycle policy for ECR repository {repository_name}")),
     })
 }
 
@@ -325,7 +322,7 @@ pub async fn delete_lifecycle_policy(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Deleted lifecycle policy for ECR repository {}", repository_name)),
+        friendly_message: Some(format!("Deleted lifecycle policy for ECR repository {repository_name}")),
     })
 }
 
@@ -373,8 +370,7 @@ pub async fn tag_image(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Tagged image with digest {} as {} in ECR repository {}",
-            source_image_digest, image_tag, repository_name
+            "Tagged image with digest {source_image_digest} as {image_tag} in ECR repository {repository_name}"
         )),
     })
 }
@@ -394,7 +390,7 @@ pub async fn untag_image(
 
     Ok(OpExecOutput {
         outputs: None,
-        friendly_message: Some(format!("Untagged image {} in ECR repository {}", image_tag, repository_name)),
+        friendly_message: Some(format!("Untagged image {image_tag} in ECR repository {repository_name}")),
     })
 }
 
@@ -457,8 +453,7 @@ pub async fn create_pull_through_cache_rule(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Created pull through cache rule for prefix {} from {}",
-            ecr_repository_prefix, upstream_registry_url
+            "Created pull through cache rule for prefix {ecr_repository_prefix} from {upstream_registry_url}"
         )),
     })
 }
@@ -477,8 +472,7 @@ pub async fn delete_pull_through_cache_rule(
     Ok(OpExecOutput {
         outputs: None,
         friendly_message: Some(format!(
-            "Deleted pull through cache rule for prefix {}",
-            ecr_repository_prefix
+            "Deleted pull through cache rule for prefix {ecr_repository_prefix}"
         )),
     })
 }

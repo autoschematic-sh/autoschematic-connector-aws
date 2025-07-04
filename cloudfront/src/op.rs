@@ -7,7 +7,7 @@ use crate::tags::Tags;
 use super::resource::{
     CacheBehavior, CachePolicy, Distribution, EndPoint, FieldLevelEncryptionConfig, FieldLevelEncryptionProfile, Function,
     KeyGroup, Origin, OriginAccessControl, OriginRequestPolicy, PublicKey, RealtimeLogConfig, ResponseHeadersPolicy,
-    StreamingDistribution, TtlSettings,
+    StreamingDistribution,
 };
 
 #[derive(Debug, Serialize, Deserialize)]

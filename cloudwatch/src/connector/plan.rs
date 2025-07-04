@@ -175,8 +175,8 @@ impl CloudWatchConnector {
                         }
 
                         // Check for retention policy changes
-                        if old_log_group.retention_policy != new_log_group.retention_policy {
-                            if let Some(retention_policy) = &new_log_group.retention_policy {
+                        if old_log_group.retention_policy != new_log_group.retention_policy
+                            && let Some(retention_policy) = &new_log_group.retention_policy {
                                 ops.push(connector_op!(
                                     CloudWatchConnectorOp::UpdateLogGroupRetention {
                                         retention_in_days: retention_policy.retention_in_days,
@@ -184,7 +184,6 @@ impl CloudWatchConnector {
                                     format!("Update retention policy for CloudWatch log group `{}`", log_group_name)
                                 ));
                             }
-                        }
 
                         // Check for KMS key changes
                         if old_log_group.kms_key_id != new_log_group.kms_key_id {

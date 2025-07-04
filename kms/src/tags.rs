@@ -54,13 +54,11 @@ pub fn kms_tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<Str
             if let Ok(tag) = aws_sdk_kms::types::Tag::builder().tag_key(key).tag_value(new_value).build() {
                 add_tags.push(tag);
             }
-        } else if let Some(old_value) = old_tags.0.get(key) {
-            if old_value != new_value {
-                if let Ok(tag) = Tag::builder().tag_key(key).tag_value(new_value).build() {
+        } else if let Some(old_value) = old_tags.0.get(key)
+            && old_value != new_value
+                && let Ok(tag) = Tag::builder().tag_key(key).tag_value(new_value).build() {
                     add_tags.push(tag);
                 }
-            }
-        }
     }
 
     Ok((remove_keys, add_tags))

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use anyhow::bail;
 use autoschematic_core::connector::{Resource, ResourceAddress};
 use serde::{Deserialize, Serialize};
 

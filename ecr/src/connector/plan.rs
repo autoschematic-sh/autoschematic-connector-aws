@@ -54,8 +54,8 @@ impl EcrConnector {
                         }
 
                         // Check for image tag mutability changes
-                        if old_repo.image_tag_mutability != new_repo.image_tag_mutability {
-                            if let Some(mutability) = &new_repo.image_tag_mutability {
+                        if old_repo.image_tag_mutability != new_repo.image_tag_mutability
+                            && let Some(mutability) = &new_repo.image_tag_mutability {
                                 ops.push(connector_op!(
                                     EcrConnectorOp::UpdateImageTagMutability {
                                         image_tag_mutability: mutability.clone(),
@@ -63,11 +63,10 @@ impl EcrConnector {
                                     format!("Update image tag mutability to {} for ECR repository `{}`", mutability, name)
                                 ));
                             }
-                        }
 
                         // Check for image scanning configuration changes
-                        if old_repo.image_scanning_configuration != new_repo.image_scanning_configuration {
-                            if let Some(scanning_config) = &new_repo.image_scanning_configuration {
+                        if old_repo.image_scanning_configuration != new_repo.image_scanning_configuration
+                            && let Some(scanning_config) = &new_repo.image_scanning_configuration {
                                 ops.push(connector_op!(
                                     EcrConnectorOp::UpdateImageScanningConfiguration {
                                         scan_on_push: scanning_config.scan_on_push,
@@ -78,7 +77,6 @@ impl EcrConnector {
                                     )
                                 ));
                             }
-                        }
 
                         // Check for encryption configuration changes
                         if old_repo.encryption_configuration != new_repo.encryption_configuration {

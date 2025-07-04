@@ -53,7 +53,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: Some(outputs),
-                            friendly_message: Some(format!("Created secret '{}'", name)),
+                            friendly_message: Some(format!("Created secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::UpdateSecretDescription { description } => {
@@ -62,7 +62,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated description for secret '{}'", name)),
+                            friendly_message: Some(format!("Updated description for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::UpdateSecretValue {
@@ -82,7 +82,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated value for secret '{}'", name)),
+                            friendly_message: Some(format!("Updated value for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::UpdateSecretTags(old_tags, new_tags) => {
@@ -111,7 +111,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated tags for secret '{}'", name)),
+                            friendly_message: Some(format!("Updated tags for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::UpdateSecretKmsKeyId { kms_key_id } => {
@@ -120,7 +120,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Updated KMS key for secret '{}'", name)),
+                            friendly_message: Some(format!("Updated KMS key for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::DeleteSecret {
@@ -134,17 +134,16 @@ impl SecretsManagerConnector {
                             request = request.recovery_window_in_days(window);
                         }
 
-                        if let Some(force) = force_delete_without_recovery {
-                            if force {
+                        if let Some(force) = force_delete_without_recovery
+                            && force {
                                 request = request.force_delete_without_recovery(true);
                             }
-                        }
 
                         let result = request.send().await?;
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Deleted secret '{}'", name)),
+                            friendly_message: Some(format!("Deleted secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::RestoreSecret => {
@@ -153,7 +152,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Restored secret '{}'", name)),
+                            friendly_message: Some(format!("Restored secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::RotateSecret {
@@ -187,7 +186,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Configured rotation for secret '{}'", name)),
+                            friendly_message: Some(format!("Configured rotation for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::SetSecretPolicy {
@@ -207,7 +206,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Set policy for secret '{}'", name)),
+                            friendly_message: Some(format!("Set policy for secret '{name}'")),
                         })
                     }
                     SecretsManagerConnectorOp::DeleteSecretPolicy => {
@@ -216,7 +215,7 @@ impl SecretsManagerConnector {
 
                         Ok(OpExecOutput {
                             outputs: None,
-                            friendly_message: Some(format!("Deleted policy for secret '{}'", name)),
+                            friendly_message: Some(format!("Deleted policy for secret '{name}'")),
                         })
                     }
                     op => Err(invalid_op(&addr, &op)),

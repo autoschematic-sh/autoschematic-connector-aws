@@ -96,15 +96,14 @@ impl AwsConnectorConfig {
                     bail!("Failed to get current account ID!");
                 };
 
-                if let Some(ref config_account_id) = self.account_id {
-                    if *config_account_id != account_id {
+                if let Some(ref config_account_id) = self.account_id
+                    && *config_account_id != account_id {
                         bail!(
                             "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
                             account_id,
                             config_account_id
                         );
                     }
-                }
 
                 Ok(())
             }
@@ -147,13 +146,12 @@ pub async fn verify_sts_account_id(sts_region: String, account_id: Option<String
                 bail!("Failed to get current account ID!");
             };
 
-            if let Some(account_id) = account_id {
-                if caller_account_id != account_id {
+            if let Some(account_id) = account_id
+                && caller_account_id != account_id {
                     bail!(
                         "AWS: Account ID mismatch. Configured to use account ID {account_id}, \nbut credentials provided are for account ID {caller_account_id}."
                     )
                 }
-            }
             Ok(caller_account_id)
         }
         Err(e) => {

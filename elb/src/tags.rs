@@ -61,12 +61,11 @@ pub fn tag_diff(
                 .value(new_value)
                 .build();
             new_tagset.push(tag);
-        } else if let Some(old_value) = old_tags.0.get(key) {
-            if old_value != new_value {
+        } else if let Some(old_value) = old_tags.0.get(key)
+            && old_value != new_value {
                 let tag = Tag::builder().key(key).value(new_value).build();
                 new_tagset.push(tag);
             }
-        }
     }
 
     Ok((untag_keys, new_tagset))

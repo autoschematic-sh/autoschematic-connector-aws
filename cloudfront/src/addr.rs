@@ -22,38 +22,38 @@ impl ResourceAddress for CloudFrontResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             CloudFrontResourceAddress::Distribution { distribution_id } => {
-                PathBuf::from(format!("aws/cloudfront/distributions/{}.ron", distribution_id))
+                PathBuf::from(format!("aws/cloudfront/distributions/{distribution_id}.ron"))
             }
             CloudFrontResourceAddress::OriginAccessControl { oac_id } => {
-                PathBuf::from(format!("aws/cloudfront/origin_access_controls/{}.ron", oac_id))
+                PathBuf::from(format!("aws/cloudfront/origin_access_controls/{oac_id}.ron"))
             }
             CloudFrontResourceAddress::CachePolicy { policy_id } => {
-                PathBuf::from(format!("aws/cloudfront/cache_policies/{}.ron", policy_id))
+                PathBuf::from(format!("aws/cloudfront/cache_policies/{policy_id}.ron"))
             }
             CloudFrontResourceAddress::OriginRequestPolicy { policy_id } => {
-                PathBuf::from(format!("aws/cloudfront/origin_request_policies/{}.ron", policy_id))
+                PathBuf::from(format!("aws/cloudfront/origin_request_policies/{policy_id}.ron"))
             }
             CloudFrontResourceAddress::ResponseHeadersPolicy { policy_id } => {
-                PathBuf::from(format!("aws/cloudfront/response_headers_policies/{}.ron", policy_id))
+                PathBuf::from(format!("aws/cloudfront/response_headers_policies/{policy_id}.ron"))
             }
             CloudFrontResourceAddress::RealtimeLogConfig { name } => {
-                PathBuf::from(format!("aws/cloudfront/realtime_log_configs/{}.ron", name))
+                PathBuf::from(format!("aws/cloudfront/realtime_log_configs/{name}.ron"))
             }
-            CloudFrontResourceAddress::Function { name } => PathBuf::from(format!("aws/cloudfront/functions/{}.ron", name)),
+            CloudFrontResourceAddress::Function { name } => PathBuf::from(format!("aws/cloudfront/functions/{name}.ron")),
             CloudFrontResourceAddress::KeyGroup { key_group_id } => {
-                PathBuf::from(format!("aws/cloudfront/key_groups/{}.ron", key_group_id))
+                PathBuf::from(format!("aws/cloudfront/key_groups/{key_group_id}.ron"))
             }
             CloudFrontResourceAddress::PublicKey { public_key_id } => {
-                PathBuf::from(format!("aws/cloudfront/public_keys/{}.ron", public_key_id))
+                PathBuf::from(format!("aws/cloudfront/public_keys/{public_key_id}.ron"))
             }
             CloudFrontResourceAddress::FieldLevelEncryptionConfig { config_id } => {
-                PathBuf::from(format!("aws/cloudfront/field_level_encryption_configs/{}.ron", config_id))
+                PathBuf::from(format!("aws/cloudfront/field_level_encryption_configs/{config_id}.ron"))
             }
             CloudFrontResourceAddress::FieldLevelEncryptionProfile { profile_id } => {
-                PathBuf::from(format!("aws/cloudfront/field_level_encryption_profiles/{}.ron", profile_id))
+                PathBuf::from(format!("aws/cloudfront/field_level_encryption_profiles/{profile_id}.ron"))
             }
             CloudFrontResourceAddress::StreamingDistribution { distribution_id } => {
-                PathBuf::from(format!("aws/cloudfront/streaming_distributions/{}.ron", distribution_id))
+                PathBuf::from(format!("aws/cloudfront/streaming_distributions/{distribution_id}.ron"))
             }
         }
     }

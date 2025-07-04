@@ -11,7 +11,7 @@ impl SecretsManagerConnector {
         let config = self.config.read().await;
 
         for region_name in &config.enabled_regions {
-            if !addr_matches_filter(&PathBuf::from(format!("aws/secretsmanager/{}", region_name)), subpath) {
+            if !addr_matches_filter(&PathBuf::from(format!("aws/secretsmanager/{region_name}")), subpath) {
                 continue;
             }
 

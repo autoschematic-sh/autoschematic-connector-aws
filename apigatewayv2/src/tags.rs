@@ -59,11 +59,10 @@ pub fn tag_diff(
     for (key, new_value) in new_tags {
         if !old_tags.contains_key(key) {
             new_tagset.insert(key.clone(), new_value.clone());
-        } else if let Some(old_value) = old_tags.get(key) {
-            if old_value != new_value {
+        } else if let Some(old_value) = old_tags.get(key)
+            && old_value != new_value {
                 new_tagset.insert(key.clone(), new_value.clone());
             }
-        }
     }
 
     Ok((untag_keys, new_tagset))

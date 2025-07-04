@@ -2,15 +2,13 @@ use std::{collections::HashMap, path::Path, str::FromStr};
 
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, OutputMapExec, OutputValueExec, ResourceAddress},
+    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
-    workflow::list,
 };
 use aws_sdk_elasticloadbalancingv2::types::{
-    Action as AwsAction, ActionTypeEnum, Certificate as AwsCertificate, FixedResponseActionConfig, ForwardActionConfig,
-    IpAddressType, LoadBalancerSchemeEnum, LoadBalancerTypeEnum, Matcher, ProtocolEnum, RedirectActionConfig,
-    TargetDescription, TargetGroupAttribute, TargetTypeEnum,
+    Action as AwsAction, ActionTypeEnum, IpAddressType, LoadBalancerSchemeEnum, LoadBalancerTypeEnum, ProtocolEnum,
+    TargetTypeEnum,
 };
 
 use crate::{addr::ElbResourceAddress, op::ElbConnectorOp, tags::tag_diff};
@@ -174,6 +172,38 @@ impl ElbConnector {
                         client.delete_target_group().target_group_arn(tg_arn).send().await?;
 
                         op_exec_output!(format!("Deleted target group `{}`", tg_name))
+                    }
+                    ElbConnectorOp::UpdateHealthCheck(health_check) => {
+                        let Ok(target_groups_resp) = client.describe_target_groups().names(tg_name).send().await else {
+                            bail!("Target group {} not found", tg_name)
+                        };
+
+                        let Some(target_groups) = target_groups_resp.target_groups else {
+                            bail!("Target group {} not found", tg_name)
+                        };
+
+                        let Some(tg) = target_groups.first() else {
+                            bail!("Target group {} not found", tg_name)
+                        };
+
+                        let Some(ref target_group_arn) = tg.target_group_arn else {
+                            bail!("Target group {} not found", tg_name)
+                        };
+
+                        client
+                            .modify_target_group()
+                            .target_group_arn(target_group_arn)
+                            .health_check_enabled(health_check.enabled)
+                            .health_check_interval_seconds(health_check.interval_seconds)
+                            .health_check_path(health_check.path.clone())
+                            .health_check_port(health_check.port.clone())
+                            .health_check_protocol(ProtocolEnum::from_str(&health_check.protocol)?)
+                            .health_check_timeout_seconds(health_check.timeout_seconds)
+                            .healthy_threshold_count(health_check.healthy_threshold_count)
+                            .unhealthy_threshold_count(health_check.unhealthy_threshold_count)
+                            .send()
+                            .await?;
+                        op_exec_output!(format!("Updated health check for target group `{}`", tg_name))
                     }
                     _ => Err(invalid_op(&addr, &op)),
                 }

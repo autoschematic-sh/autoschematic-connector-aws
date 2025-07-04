@@ -13,7 +13,7 @@ impl AcmConnector {
         let config = self.config.read().await;
 
         for region in &config.enabled_regions {
-            if !addr_matches_filter(&PathBuf::from(format!("aws/acm/{}", region)), subpath) {
+            if !addr_matches_filter(&PathBuf::from(format!("aws/acm/{region}")), subpath) {
                 continue;
             }
 

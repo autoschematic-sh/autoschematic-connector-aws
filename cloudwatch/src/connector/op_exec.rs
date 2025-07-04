@@ -19,7 +19,7 @@ impl CloudWatchConnector {
 
         match &addr {
             CloudWatchResourceAddress::Alarm(region, alarm_name) => {
-                let client = self.get_or_init_client(&region).await?;
+                let client = self.get_or_init_client(region).await?;
 
                 match op {
                     CloudWatchConnectorOp::CreateAlarm(alarm) => {
@@ -78,7 +78,7 @@ impl CloudWatchConnector {
 
                         request.send().await?;
 
-                        let arn = format!("arn:aws:cloudwatch:{}:{}:alarm:{}", region, account_id, alarm_name);
+                        let arn = format!("arn:aws:cloudwatch:{region}:{account_id}:alarm:{alarm_name}");
                         op_exec_output!(
                             Some([("alarm_arn", Some(arn))]),
                             format!("Created CloudWatch alarm `{}`", alarm_name)
@@ -121,7 +121,7 @@ impl CloudWatchConnector {
                     }
 
                     CloudWatchConnectorOp::UpdateAlarmTags(old_tags, new_tags) => {
-                        let alarm_arn = format!("arn:aws:cloudwatch:{}:{}:alarm:{}", region, account_id, alarm_name);
+                        let alarm_arn = format!("arn:aws:cloudwatch:{region}:{account_id}:alarm:{alarm_name}");
                         let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
 
                         if !untag_keys.is_empty() {
@@ -138,7 +138,7 @@ impl CloudWatchConnector {
                             client
                                 .tag_resource()
                                 .resource_arn(&alarm_arn)
-                                .set_tags(Some(new_tagset.into_iter().map(|t| t.into()).collect()))
+                                .set_tags(Some(new_tagset.into_iter().map(|t| t).collect()))
                                 .send()
                                 .await
                                 .context("Failed to write new tags")?;
@@ -152,7 +152,7 @@ impl CloudWatchConnector {
             }
 
             CloudWatchResourceAddress::Dashboard(region, dashboard_name) => {
-                let client = self.get_or_init_client(&region).await?;
+                let client = self.get_or_init_client(region).await?;
 
                 match op {
                     CloudWatchConnectorOp::CreateDashboard(dashboard) => {
@@ -166,7 +166,7 @@ impl CloudWatchConnector {
                             .send()
                             .await?;
 
-                        let arn = format!("arn:aws:cloudwatch:{}:{}:dashboard/{}", region, account_id, dashboard_name);
+                        let arn = format!("arn:aws:cloudwatch:{region}:{account_id}:dashboard/{dashboard_name}");
                         op_exec_output!(
                             Some([("dashboard_arn", Some(arn))]),
                             format!("Created CloudWatch dashboard `{}`", dashboard_name)
@@ -223,7 +223,7 @@ impl CloudWatchConnector {
                                 .await?;
                         }
 
-                        let arn = format!("arn:aws:logs:{}:{}:log-group:{}", region, account_id, log_group_name);
+                        let arn = format!("arn:aws:logs:{region}:{account_id}:log-group:{log_group_name}");
                         op_exec_output!(
                             Some([("log_group_arn", Some(arn))]),
                             format!("Created CloudWatch log group `{}`", log_group_name)
@@ -268,8 +268,7 @@ impl CloudWatchConnector {
                             .await?;
 
                         let arn = format!(
-                            "arn:aws:logs:{}:{}:log-group:{}:log-stream:{}",
-                            region, account_id, log_group_name, log_stream_name
+                            "arn:aws:logs:{region}:{account_id}:log-group:{log_group_name}:log-stream:{log_stream_name}"
                         );
                         op_exec_output!(
                             Some([("log_stream_arn", Some(arn))]),
@@ -328,7 +327,7 @@ impl CloudWatchConnector {
 
                         let arn = response
                             .rule_arn
-                            .unwrap_or_else(|| format!("arn:aws:events:{}:{}:rule/{}", region, account_id, rule_name));
+                            .unwrap_or_else(|| format!("arn:aws:events:{region}:{account_id}:rule/{rule_name}"));
 
                         op_exec_output!(
                             Some([("rule_arn", Some(arn))]),
@@ -381,7 +380,7 @@ impl CloudWatchConnector {
             }
 
             CloudWatchResourceAddress::Metric(region, namespace, metric_name) => {
-                let client = self.get_or_init_client(&region).await?;
+                let client = self.get_or_init_client(region).await?;
 
                 match op {
                     CloudWatchConnectorOp::PutMetricData {

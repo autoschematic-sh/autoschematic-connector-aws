@@ -17,7 +17,6 @@ impl ElbConnector {
             ElbResourceAddress::LoadBalancer(region, load_balancer_name) => {
                 let client = self.get_or_init_client(&region).await?;
 
-                // Find the specific load balancer
                 let Ok(load_balancers_resp) = client.describe_load_balancers().names(&load_balancer_name).send().await else {
                     return Ok(None);
                 };
@@ -49,7 +48,6 @@ impl ElbConnector {
                     Default::default()
                 };
 
-                // Construct the LoadBalancer resource
                 let lb_resource = resource::LoadBalancer {
                     load_balancer_type: lb
                         .r#type
@@ -79,9 +77,9 @@ impl ElbConnector {
             }
             ElbResourceAddress::TargetGroup(region, target_group_name) => {
                 let client = self.get_or_init_client(&region).await?;
+                
 
-                // Find the specific target group
-                //
+                // TODO can target groups have the same name with a different ARN? I sure as hell think they can!
                 let Ok(target_groups_resp) = client.describe_target_groups().names(&target_group_name).send().await else {
                     return Ok(None);
                 };
@@ -126,8 +124,7 @@ impl ElbConnector {
                 };
 
                 // Construct health check
-                let health_check = match &tg.health_check_protocol {
-                    Some(protocol) => Some(resource::HealthCheck {
+                let health_check = tg.health_check_protocol.as_ref().map(|protocol| resource::HealthCheck {
                         enabled: tg.health_check_enabled.unwrap_or(false),
                         protocol: protocol.as_str().to_string(),
                         port: tg.health_check_port.clone().unwrap_or("traffic-port".to_string()),
@@ -136,9 +133,7 @@ impl ElbConnector {
                         timeout_seconds: tg.health_check_timeout_seconds.unwrap_or(5),
                         healthy_threshold_count: tg.healthy_threshold_count.unwrap_or(5),
                         unhealthy_threshold_count: tg.unhealthy_threshold_count.unwrap_or(2),
-                    }),
-                    None => None,
-                };
+                    });
 
                 // Construct the TargetGroup resource
                 let tg_resource = resource::TargetGroup {
@@ -179,7 +174,7 @@ impl ElbConnector {
                 };
 
                 // Now, reconstruct the full listener ARN
-                let listener_arn = format!("{}/listener/{}", lb_arn, listener_id);
+                let listener_arn = format!("{lb_arn}/listener/{listener_id}");
 
                 // Find the specific listener
                 let Ok(listeners_resp) = client.describe_listeners().listener_arns(&listener_arn).send().await else {

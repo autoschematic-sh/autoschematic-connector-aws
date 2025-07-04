@@ -151,7 +151,7 @@ impl Connector for SecretsManagerConnector {
         let mut res = Vec::new();
 
         for region in &self.config.read().await.enabled_regions {
-            res.push(PathBuf::from(format!("aws/secretsmanager/{}", region)));
+            res.push(PathBuf::from(format!("aws/secretsmanager/{region}")));
         }
 
         Ok(res)

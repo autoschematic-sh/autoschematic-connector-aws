@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use autoschematic_core::{
     connector::{GetResourceOutput, Resource, ResourceAddress},
     get_resource_output,
@@ -30,7 +30,7 @@ impl ApiGatewayV2Connector {
                             tags: output.tags,
                         };
 
-                        return get_resource_output!(ApiGatewayV2Resource::Api(api));
+                        get_resource_output!(ApiGatewayV2Resource::Api(api))
                     }
                     Err(e) => Ok(None),
                 }
@@ -49,7 +49,7 @@ impl ApiGatewayV2Connector {
                             route_key: output.route_key().unwrap_or_default().to_string(),
                             target:    output.target().map(|x| x.to_string()),
                         };
-                        return get_resource_output!(ApiGatewayV2Resource::Route(route));
+                        get_resource_output!(ApiGatewayV2Resource::Route(route))
                     }
                     Err(e) => Ok(None),
                 }
@@ -74,7 +74,7 @@ impl ApiGatewayV2Connector {
                             integration_uri:  output.integration_uri().unwrap_or_default().to_string(),
                         };
 
-                        return get_resource_output!(ApiGatewayV2Resource::Integration(integration));
+                        get_resource_output!(ApiGatewayV2Resource::Integration(integration))
                     }
                     Err(e) => Ok(None),
                 }
@@ -95,7 +95,7 @@ impl ApiGatewayV2Connector {
                             tags: output.tags,
                         };
 
-                        return get_resource_output!(ApiGatewayV2Resource::Stage(stage));
+                        get_resource_output!(ApiGatewayV2Resource::Stage(stage))
                     }
                     Err(e) => Ok(None),
                 }
@@ -120,7 +120,7 @@ impl ApiGatewayV2Connector {
                             authorizer_uri:  output.authorizer_uri().unwrap_or_default().to_string(),
                             identity_source: output.identity_source().to_vec(),
                         };
-                        return get_resource_output!(ApiGatewayV2Resource::Authorizer(authorizer));
+                        get_resource_output!(ApiGatewayV2Resource::Authorizer(authorizer))
                     }
                     Err(e) => Ok(None),
                 }

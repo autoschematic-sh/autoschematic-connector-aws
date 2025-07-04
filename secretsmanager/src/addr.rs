@@ -11,7 +11,7 @@ impl ResourceAddress for SecretsManagerResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             SecretsManagerResourceAddress::Secret { region, name } => {
-                PathBuf::from(format!("aws/secretsmanager/{}/secrets/{}.ron", region, name))
+                PathBuf::from(format!("aws/secretsmanager/{region}/secrets/{name}.ron"))
             }
         }
     }

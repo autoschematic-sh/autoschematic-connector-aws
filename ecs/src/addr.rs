@@ -15,21 +15,19 @@ impl ResourceAddress for EcsResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
             EcsResourceAddress::Cluster(region, cluster_name) => {
-                PathBuf::from(format!("aws/ecs/{}/clusters/{}.ron", region, cluster_name))
+                PathBuf::from(format!("aws/ecs/{region}/clusters/{cluster_name}.ron"))
             }
             EcsResourceAddress::Service(region, cluster_name, service_name) => PathBuf::from(format!(
-                "aws/ecs/{}/clusters/{}/services/{}.ron",
-                region, cluster_name, service_name
+                "aws/ecs/{region}/clusters/{cluster_name}/services/{service_name}.ron"
             )),
             EcsResourceAddress::TaskDefinition(region, task_def_id) => {
-                PathBuf::from(format!("aws/ecs/{}/task_definitions/{}.ron", region, task_def_id))
+                PathBuf::from(format!("aws/ecs/{region}/task_definitions/{task_def_id}.ron"))
             }
             EcsResourceAddress::Task(region, cluster_name, task_id) => {
-                PathBuf::from(format!("aws/ecs/{}/clusters/{}/tasks/{}.ron", region, cluster_name, task_id))
+                PathBuf::from(format!("aws/ecs/{region}/clusters/{cluster_name}/tasks/{task_id}.ron"))
             }
             EcsResourceAddress::ContainerInstance(region, cluster_name, container_instance_id) => PathBuf::from(format!(
-                "aws/ecs/{}/clusters/{}/container_instances/{}.ron",
-                region, cluster_name, container_instance_id
+                "aws/ecs/{region}/clusters/{cluster_name}/container_instances/{container_instance_id}.ron"
             )),
         }
     }

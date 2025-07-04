@@ -82,7 +82,7 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "autoschematic-connector-aws-acm"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -112,7 +112,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-apigatewayv2"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -139,7 +139,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-cloudfront"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -166,7 +166,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-cloudwatch"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -195,7 +195,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-core"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -213,7 +213,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-ecr"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -241,7 +241,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-ecs"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -268,7 +268,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-elb"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -295,7 +295,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-iam"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -325,7 +325,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-kms"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -352,7 +352,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-rds"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -379,7 +379,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-route53"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -406,7 +406,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-s3"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -433,7 +433,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-secretsmanager"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -460,7 +460,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-template"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -487,7 +487,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-vpc"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-core"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "async-trait",

@@ -11,7 +11,7 @@ pub enum S3ResourceAddress {
 impl ResourceAddress for S3ResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
-            S3ResourceAddress::Bucket { region, name } => PathBuf::from(format!("aws/s3/{}/buckets/{}.ron", region, name)),
+            S3ResourceAddress::Bucket { region, name } => PathBuf::from(format!("aws/s3/{region}/buckets/{name}.ron")),
         }
     }
 

@@ -17,8 +17,8 @@ impl EcsConnector {
 
             // List clusters
             let clusters_resp = client.list_clusters().send().await?;
-            if let Some(cluster_arns) = clusters_resp.cluster_arns {
-                if !cluster_arns.is_empty() {
+            if let Some(cluster_arns) = clusters_resp.cluster_arns
+                && !cluster_arns.is_empty() {
                     // Get cluster names from ARNs
                     let clusters_resp = client.describe_clusters().set_clusters(Some(cluster_arns)).send().await?;
 
@@ -33,8 +33,8 @@ impl EcsConnector {
                                 // List services in the cluster
                                 let services_resp = client.list_services().cluster(&cluster_name).send().await?;
 
-                                if let Some(service_arns) = services_resp.service_arns {
-                                    if !service_arns.is_empty() {
+                                if let Some(service_arns) = services_resp.service_arns
+                                    && !service_arns.is_empty() {
                                         // Get service details
                                         let describe_services_resp = client
                                             .describe_services()
@@ -58,13 +58,12 @@ impl EcsConnector {
                                             }
                                         }
                                     }
-                                }
 
                                 // List tasks in the cluster
                                 let tasks_resp = client.list_tasks().cluster(&cluster_name).send().await?;
 
-                                if let Some(task_arns) = tasks_resp.task_arns {
-                                    if !task_arns.is_empty() {
+                                if let Some(task_arns) = tasks_resp.task_arns
+                                    && !task_arns.is_empty() {
                                         // Get task details
                                         let describe_tasks_resp = client
                                             .describe_tasks()
@@ -90,14 +89,13 @@ impl EcsConnector {
                                             }
                                         }
                                     }
-                                }
 
                                 // List container instances in the cluster
                                 let container_instances_resp =
                                     client.list_container_instances().cluster(&cluster_name).send().await?;
 
-                                if let Some(container_instance_arns) = container_instances_resp.container_instance_arns {
-                                    if !container_instance_arns.is_empty() {
+                                if let Some(container_instance_arns) = container_instances_resp.container_instance_arns
+                                    && !container_instance_arns.is_empty() {
                                         // Get container instance details
                                         let describe_container_instances_resp = client
                                             .describe_container_instances()
@@ -125,12 +123,10 @@ impl EcsConnector {
                                             }
                                         }
                                     }
-                                }
                             }
                         }
                     }
                 }
-            }
 
             // List task definitions (not cluster-specific)
             let task_definitions_resp = client.list_task_definition_families().send().await?;

@@ -1,5 +1,4 @@
 use aws_sdk_cloudfront::types::Tag;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -65,7 +64,7 @@ impl Tags {
 // From a pair of hashmap determine the set of aws_ecs::Tag structs to pass to untag and set_tags respectively
 pub fn tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>, Vec<Tag>)> {
     let mut untag_keys = Vec::new();
-    for (k, _) in old_tags {
+    for k in old_tags.keys() {
         if !new_tags.contains_key(k) {
             untag_keys.push(k.to_string());
         }
@@ -75,11 +74,10 @@ pub fn tag_diff(old_tags: &Tags, new_tags: &Tags) -> anyhow::Result<(Vec<String>
     for (key, new_value) in new_tags {
         if !old_tags.contains_key(key) {
             new_tagset.push(Tag::builder().key(key).value(new_value).build()?);
-        } else if let Some(old_value) = old_tags.get(key) {
-            if old_value != new_value {
+        } else if let Some(old_value) = old_tags.get(key)
+            && old_value != new_value {
                 new_tagset.push(Tag::builder().key(key).value(new_value).build()?);
             }
-        }
     }
 
     Ok((untag_keys, new_tagset))

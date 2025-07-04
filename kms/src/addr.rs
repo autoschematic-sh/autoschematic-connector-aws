@@ -13,15 +13,15 @@ pub enum KmsResourceAddress {
 impl ResourceAddress for KmsResourceAddress {
     fn to_path_buf(&self) -> PathBuf {
         match &self {
-            KmsResourceAddress::Key(region, key_id) => PathBuf::from(format!("aws/kms/{}/keys/{}.ron", region, key_id)),
+            KmsResourceAddress::Key(region, key_id) => PathBuf::from(format!("aws/kms/{region}/keys/{key_id}.ron")),
             KmsResourceAddress::KeyPolicy(region, key_id) => {
-                PathBuf::from(format!("aws/kms/{}/keys/{}/policy.ron", region, key_id))
+                PathBuf::from(format!("aws/kms/{region}/keys/{key_id}/policy.ron"))
             }
             KmsResourceAddress::Alias(region, alias_name) => {
-                PathBuf::from(format!("aws/kms/{}/aliases/{}.ron", region, alias_name))
+                PathBuf::from(format!("aws/kms/{region}/aliases/{alias_name}.ron"))
             }
             KmsResourceAddress::KeyRotation(region, key_id) => {
-                PathBuf::from(format!("aws/kms/{}/keys/{}/rotation.ron", region, key_id))
+                PathBuf::from(format!("aws/kms/{region}/keys/{key_id}/rotation.ron"))
             }
         }
     }

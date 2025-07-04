@@ -82,7 +82,6 @@ pub struct RetentionPolicy {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub struct LogGroup {
-    pub name: String,
     pub retention_policy: Option<RetentionPolicy>,
     pub kms_key_id: Option<String>,
     pub metric_filters: Option<Vec<MetricFilter>>,
