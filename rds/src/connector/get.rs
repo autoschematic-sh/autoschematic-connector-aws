@@ -7,7 +7,13 @@ use autoschematic_core::{
 
 use crate::addr::RdsResourceAddress;
 use anyhow::Context;
-use aws_sdk_rds::types::DbInstance;
+use aws_sdk_rds::{
+    operation::{
+        describe_db_clusters::DescribeDBClustersError, describe_db_instances::DescribeDBInstancesError,
+        describe_db_parameter_groups::DescribeDBParameterGroupsError, describe_db_subnet_groups::DescribeDBSubnetGroupsError,
+    },
+    types::DbInstance,
+};
 
 use super::RdsConnector;
 
@@ -18,7 +24,17 @@ impl RdsConnector {
             RdsResourceAddress::DBInstance { region, id } => {
                 let client = self.get_or_init_client(&region).await?;
 
-                let resp = client.describe_db_instances().db_instance_identifier(&id).send().await?;
+                let resp = match client.describe_db_instances().db_instance_identifier(&id).send().await {
+                    Ok(resp) => resp,
+                    Err(e) => match e.as_service_error() {
+                        Some(DescribeDBInstancesError::DbInstanceNotFoundFault(_)) => {
+                            return Ok(None);
+                        }
+                        _ => {
+                            return Err(e.into());
+                        }
+                    },
+                };
 
                 let db_instance = resp.db_instances.and_then(|instances| instances.first().cloned());
 
@@ -33,7 +49,17 @@ impl RdsConnector {
             RdsResourceAddress::DBCluster { region, id } => {
                 let client = self.get_or_init_client(&region).await?;
 
-                let resp = client.describe_db_clusters().db_cluster_identifier(&id).send().await?;
+                let resp = match client.describe_db_clusters().db_cluster_identifier(&id).send().await {
+                    Ok(resp) => resp,
+                    Err(e) => match e.as_service_error() {
+                        Some(DescribeDBClustersError::DbClusterNotFoundFault(_)) => {
+                            return Ok(None);
+                        }
+                        _ => {
+                            return Err(e.into());
+                        }
+                    },
+                };
 
                 let Some(db_clusters) = resp.db_clusters else {
                     return Ok(None);
@@ -49,7 +75,17 @@ impl RdsConnector {
             RdsResourceAddress::DBSubnetGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
 
-                let resp = client.describe_db_subnet_groups().db_subnet_group_name(&name).send().await?;
+                let resp = match client.describe_db_subnet_groups().db_subnet_group_name(&name).send().await {
+                    Ok(resp) => resp,
+                    Err(e) => match e.as_service_error() {
+                        Some(DescribeDBSubnetGroupsError::DbSubnetGroupNotFoundFault(_)) => {
+                            return Ok(None);
+                        }
+                        _ => {
+                            return Err(e.into());
+                        }
+                    },
+                };
 
                 let Some(db_subnet_groups) = resp.db_subnet_groups else {
                     return Ok(None);
@@ -65,11 +101,22 @@ impl RdsConnector {
             RdsResourceAddress::DBParameterGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
 
-                let resp = client
+                let resp = match client
                     .describe_db_parameter_groups()
                     .db_parameter_group_name(&name)
                     .send()
-                    .await?;
+                    .await
+                {
+                    Ok(resp) => resp,
+                    Err(e) => match e.as_service_error() {
+                        Some(DescribeDBParameterGroupsError::DbParameterGroupNotFoundFault(_)) => {
+                            return Ok(None);
+                        }
+                        _ => {
+                            return Err(e.into());
+                        }
+                    },
+                };
 
                 let Some(db_parameter_groups) = resp.db_parameter_groups else {
                     return Ok(None);
@@ -89,17 +136,78 @@ impl RdsConnector {
 fn map_db_instance(db_instance: &DbInstance) -> Result<crate::resource::RdsDBInstance, anyhow::Error> {
     Ok(crate::resource::RdsDBInstance {
         engine: db_instance.engine().unwrap_or_default().to_string(),
+        engine_version: db_instance.engine_version().map(|s| s.to_string()),
         instance_class: db_instance.db_instance_class().unwrap_or_default().to_string(),
         allocated_storage: db_instance.allocated_storage(),
+        max_allocated_storage: db_instance.max_allocated_storage(),
+        storage_type: db_instance.storage_type().map(|s| s.to_string()),
+        storage_throughput: db_instance.storage_throughput(),
+        iops: db_instance.iops(),
+        db_name: db_instance.db_name().map(|s| s.to_string()),
         master_username: db_instance.master_username().map(|s| s.to_string()),
         port: db_instance.db_instance_port(),
         publicly_accessible: db_instance.publicly_accessible(),
-        storage_type: db_instance.storage_type().map(|s| s.to_string()),
         backup_retention_period: db_instance.backup_retention_period(),
         preferred_backup_window: db_instance.preferred_backup_window().map(|s| s.to_string()),
         preferred_maintenance_window: db_instance.preferred_maintenance_window().map(|s| s.to_string()),
         multi_az: db_instance.multi_az(),
         storage_encrypted: db_instance.storage_encrypted(),
+        kms_key_id: db_instance.kms_key_id().map(|s| s.to_string()),
+        enable_iam_database_authentication: db_instance.iam_database_authentication_enabled(),
+        enable_performance_insights: db_instance.performance_insights_enabled(),
+        performance_insights_retention_period: db_instance.performance_insights_retention_period(),
+        performance_insights_kms_key_id: db_instance.performance_insights_kms_key_id().map(|s| s.to_string()),
+        monitoring_interval: db_instance.monitoring_interval(),
+        monitoring_role_arn: db_instance.monitoring_role_arn().map(|s| s.to_string()),
+        auto_minor_version_upgrade: db_instance.auto_minor_version_upgrade(),
+        deletion_protection: db_instance.deletion_protection(),
+        copy_tags_to_snapshot: db_instance.copy_tags_to_snapshot(),
+        skip_final_snapshot: None, // This is a create/delete parameter, not stored in the instance
+        final_snapshot_identifier: None, // This is a create/delete parameter, not stored in the instance
+        availability_zone: db_instance.availability_zone().map(|s| s.to_string()),
+        db_subnet_group_name: db_instance
+            .db_subnet_group()
+            .and_then(|sg| sg.db_subnet_group_name())
+            .map(|s| s.to_string()),
+        vpc_security_group_ids: db_instance.vpc_security_groups.as_ref().map(|groups| {
+            groups
+                .iter()
+                .filter_map(|sg| sg.vpc_security_group_id())
+                .map(|s| s.to_string())
+                .collect()
+        }),
+        db_parameter_group_name: db_instance
+            .db_parameter_groups
+            .as_ref()
+            .and_then(|groups| groups.first())
+            .and_then(|group| group.db_parameter_group_name())
+            .map(|s| s.to_string()),
+        option_group_name: db_instance
+            .option_group_memberships
+            .as_ref()
+            .and_then(|groups| groups.first())
+            .and_then(|group| group.option_group_name())
+            .map(|s| s.to_string()),
+        license_model: db_instance.license_model().map(|s| s.to_string()),
+        character_set_name: db_instance.character_set_name().map(|s| s.to_string()),
+        timezone: db_instance.timezone().map(|s| s.to_string()),
+        domain: db_instance
+            .domain_memberships
+            .as_ref()
+            .and_then(|domains| domains.first())
+            .and_then(|domain| domain.domain())
+            .map(|s| s.to_string()),
+        domain_iam_role_name: db_instance
+            .domain_memberships
+            .as_ref()
+            .and_then(|domains| domains.first())
+            .and_then(|domain| domain.iam_role_name())
+            .map(|s| s.to_string()),
+        enabled_cloudwatch_logs_exports: db_instance
+            .enabled_cloudwatch_logs_exports()
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
         tags: db_instance.tag_list.clone().into(),
     })
 }
@@ -109,12 +217,49 @@ fn map_db_cluster(db_cluster: &aws_sdk_rds::types::DbCluster) -> Result<crate::r
         engine: db_cluster.engine().unwrap_or_default().to_string(),
         engine_version: db_cluster.engine_version().map(|s| s.to_string()),
         port: db_cluster.port(),
+        database_name: db_cluster.database_name().map(|s| s.to_string()),
         master_username: db_cluster.master_username().map(|s| s.to_string()),
         backup_retention_period: db_cluster.backup_retention_period(),
         preferred_backup_window: db_cluster.preferred_backup_window().map(|s| s.to_string()),
         preferred_maintenance_window: db_cluster.preferred_maintenance_window().map(|s| s.to_string()),
         storage_encrypted: db_cluster.storage_encrypted(),
+        kms_key_id: db_cluster.kms_key_id().map(|s| s.to_string()),
+        enable_iam_database_authentication: db_cluster.iam_database_authentication_enabled(),
         deletion_protection: db_cluster.deletion_protection(),
+        copy_tags_to_snapshot: db_cluster.copy_tags_to_snapshot(),
+        skip_final_snapshot: None,       // This is a create/delete parameter, not stored in the cluster
+        final_snapshot_identifier: None, // This is a create/delete parameter, not stored in the cluster
+        availability_zones: db_cluster
+            .availability_zones
+            .as_ref()
+            .map(|azs| azs.iter().map(|s| s.to_string()).collect()),
+        db_subnet_group_name: db_cluster.db_subnet_group().map(|s| s.to_string()),
+        vpc_security_group_ids: db_cluster.vpc_security_groups.as_ref().map(|groups| {
+            groups
+                .iter()
+                .filter_map(|sg| sg.vpc_security_group_id())
+                .map(|s| s.to_string())
+                .collect()
+        }),
+        db_cluster_parameter_group_name: db_cluster.db_cluster_parameter_group().map(|s| s.to_string()),
+        backtrack_window: db_cluster.backtrack_window(),
+        enabled_cloudwatch_logs_exports: db_cluster
+            .enabled_cloudwatch_logs_exports
+            .as_ref()
+            .map(|exports| exports.iter().map(|s| s.to_string()).collect()),
+        enable_http_endpoint: db_cluster.http_endpoint_enabled(),
+        global_cluster_identifier: db_cluster.db_cluster_identifier().map(|s| s.to_string()),
+        replication_source_identifier: db_cluster.replication_source_identifier().map(|s| s.to_string()),
+        restore_type: None,            // This is a create parameter, not stored in the cluster
+        source_engine: None,           // This is a restore parameter, not stored in the cluster
+        source_engine_version: None,   // This is a restore parameter, not stored in the cluster
+        s3_import_configuration: None, // Complex structure, would need separate mapping if needed
+        serverless_v2_scaling_configuration: db_cluster.serverless_v2_scaling_configuration().map(|config| {
+            crate::resource::ServerlessV2ScalingConfiguration {
+                max_capacity: config.max_capacity(),
+                min_capacity: config.min_capacity(),
+            }
+        }),
         tags: db_cluster.tag_list.clone().into(),
     })
 }
@@ -124,7 +269,7 @@ fn map_db_subnet_group(
 ) -> Result<crate::resource::RdsDBSubnetGroup, anyhow::Error> {
     Ok(crate::resource::RdsDBSubnetGroup {
         description: db_subnet_group.db_subnet_group_description().unwrap_or_default().to_string(),
-        subnet_ids: db_subnet_group
+        subnet_ids:  db_subnet_group
             .subnets()
             .iter()
             .map(|subnet| subnet.subnet_identifier().unwrap_or_default().to_string())
@@ -137,7 +282,7 @@ fn map_db_parameter_group(
 ) -> Result<crate::resource::RdsDBParameterGroup, anyhow::Error> {
     Ok(crate::resource::RdsDBParameterGroup {
         description: db_parameter_group.description.clone(),
-        family: db_parameter_group.db_parameter_group_family().unwrap_or_default().to_string(),
-        parameters: HashMap::new(), // TODO: Implement parameter retrieval
+        family:      db_parameter_group.db_parameter_group_family().unwrap_or_default().to_string(),
+        parameters:  HashMap::new(), // TODO: Implement parameter retrieval
     })
 }

@@ -26,10 +26,31 @@ impl RdsConnector {
                             .create_db_instance()
                             .db_instance_identifier(id)
                             .engine(&instance.engine)
+                            .manage_master_user_password(true)
                             .db_instance_class(&instance.instance_class);
+
+                        if let Some(version) = &instance.engine_version {
+                            request = request.engine_version(version);
+                        }
 
                         if let Some(storage) = instance.allocated_storage {
                             request = request.allocated_storage(storage);
+                        }
+
+                        if let Some(max_storage) = instance.max_allocated_storage {
+                            request = request.max_allocated_storage(max_storage);
+                        }
+
+                        if let Some(throughput) = instance.storage_throughput {
+                            request = request.storage_throughput(throughput);
+                        }
+
+                        if let Some(iops) = instance.iops {
+                            request = request.iops(iops);
+                        }
+
+                        if let Some(db_name) = &instance.db_name {
+                            request = request.db_name(db_name);
                         }
 
                         if let Some(username) = &instance.master_username {
@@ -68,6 +89,90 @@ impl RdsConnector {
                             request = request.storage_encrypted(encrypted);
                         }
 
+                        if let Some(kms_key) = &instance.kms_key_id {
+                            request = request.kms_key_id(kms_key);
+                        }
+
+                        if let Some(iam_auth) = instance.enable_iam_database_authentication {
+                            request = request.enable_iam_database_authentication(iam_auth);
+                        }
+
+                        if let Some(performance_insights) = instance.enable_performance_insights {
+                            request = request.enable_performance_insights(performance_insights);
+                        }
+
+                        if let Some(retention) = instance.performance_insights_retention_period {
+                            request = request.performance_insights_retention_period(retention);
+                        }
+
+                        if let Some(insights_kms_key) = &instance.performance_insights_kms_key_id {
+                            request = request.performance_insights_kms_key_id(insights_kms_key);
+                        }
+
+                        if let Some(monitoring_interval) = instance.monitoring_interval {
+                            request = request.monitoring_interval(monitoring_interval);
+                        }
+
+                        if let Some(monitoring_role) = &instance.monitoring_role_arn {
+                            request = request.monitoring_role_arn(monitoring_role);
+                        }
+
+                        if let Some(auto_upgrade) = instance.auto_minor_version_upgrade {
+                            request = request.auto_minor_version_upgrade(auto_upgrade);
+                        }
+
+                        if let Some(deletion_protection) = instance.deletion_protection {
+                            request = request.deletion_protection(deletion_protection);
+                        }
+
+                        if let Some(copy_tags) = instance.copy_tags_to_snapshot {
+                            request = request.copy_tags_to_snapshot(copy_tags);
+                        }
+
+                        if let Some(az) = &instance.availability_zone {
+                            request = request.availability_zone(az);
+                        }
+
+                        if let Some(subnet_group) = &instance.db_subnet_group_name {
+                            request = request.db_subnet_group_name(subnet_group);
+                        }
+
+                        if let Some(security_groups) = &instance.vpc_security_group_ids {
+                            request = request.set_vpc_security_group_ids(Some(security_groups.clone()));
+                        }
+
+                        if let Some(param_group) = &instance.db_parameter_group_name {
+                            request = request.db_parameter_group_name(param_group);
+                        }
+
+                        if let Some(option_group) = &instance.option_group_name {
+                            request = request.option_group_name(option_group);
+                        }
+
+                        if let Some(license) = &instance.license_model {
+                            request = request.license_model(license);
+                        }
+
+                        if let Some(character_set) = &instance.character_set_name {
+                            request = request.character_set_name(character_set);
+                        }
+
+                        if let Some(timezone) = &instance.timezone {
+                            request = request.timezone(timezone);
+                        }
+
+                        if let Some(domain) = &instance.domain {
+                            request = request.domain(domain);
+                        }
+
+                        if let Some(domain_role) = &instance.domain_iam_role_name {
+                            request = request.domain_iam_role_name(domain_role);
+                        }
+
+                        if !instance.enabled_cloudwatch_logs_exports.is_empty() {
+                            request = request
+                                .set_enable_cloudwatch_logs_exports(Some(instance.enabled_cloudwatch_logs_exports.clone()));
+                        }
                         // Add tags if provided
                         request = request.set_tags(instance.tags.clone().into());
 
@@ -156,6 +261,111 @@ impl RdsConnector {
                         client.stop_db_instance().db_instance_identifier(id).send().await?;
 
                         op_exec_output!(format!("Stopped DB instance `{}`", id))
+                    }
+                    RdsConnectorOp::ModifyDBInstance {
+                        instance_class,
+                        allocated_storage,
+                        max_allocated_storage,
+                        backup_retention_period,
+                        preferred_backup_window,
+                        preferred_maintenance_window,
+                        multi_az,
+                        storage_type,
+                        publicly_accessible,
+                        enable_iam_database_authentication,
+                        auto_minor_version_upgrade,
+                        deletion_protection,
+                        apply_immediately,
+                    } => {
+                        let mut request = client.modify_db_instance().db_instance_identifier(id);
+
+                        if let Some(class) = instance_class {
+                            request = request.db_instance_class(class);
+                        }
+
+                        if let Some(storage) = allocated_storage {
+                            request = request.allocated_storage(storage);
+                        }
+
+                        if let Some(max_storage) = max_allocated_storage {
+                            request = request.max_allocated_storage(max_storage);
+                        }
+
+                        if let Some(backup_retention) = backup_retention_period {
+                            request = request.backup_retention_period(backup_retention);
+                        }
+
+                        if let Some(backup_window) = preferred_backup_window {
+                            request = request.preferred_backup_window(backup_window);
+                        }
+
+                        if let Some(maintenance_window) = preferred_maintenance_window {
+                            request = request.preferred_maintenance_window(maintenance_window);
+                        }
+
+                        if let Some(multi_az_val) = multi_az {
+                            request = request.multi_az(multi_az_val);
+                        }
+
+                        if let Some(storage_type_val) = storage_type {
+                            request = request.storage_type(storage_type_val);
+                        }
+
+                        // Note: storage_encrypted cannot be modified after instance creation
+
+                        if let Some(publicly_accessible_val) = publicly_accessible {
+                            request = request.publicly_accessible(publicly_accessible_val);
+                        }
+
+                        if let Some(iam_auth) = enable_iam_database_authentication {
+                            request = request.enable_iam_database_authentication(iam_auth);
+                        }
+
+                        if let Some(auto_upgrade) = auto_minor_version_upgrade {
+                            request = request.auto_minor_version_upgrade(auto_upgrade);
+                        }
+
+                        if let Some(deletion_prot) = deletion_protection {
+                            request = request.deletion_protection(deletion_prot);
+                        }
+
+                        if let Some(apply_now) = apply_immediately {
+                            request = request.apply_immediately(apply_now);
+                        }
+
+                        request.send().await?;
+
+                        op_exec_output!(format!("Modified DB instance `{}`", id))
+                    }
+                    RdsConnectorOp::ModifyDBInstanceMonitoring {
+                        monitoring_interval,
+                        monitoring_role_arn,
+                        enable_performance_insights,
+                        performance_insights_retention_period,
+                    } => {
+                        let mut request = client.modify_db_instance().db_instance_identifier(id);
+
+                        if let Some(interval) = monitoring_interval {
+                            request = request.monitoring_interval(interval);
+                        }
+
+                        if let Some(role_arn) = monitoring_role_arn {
+                            request = request.monitoring_role_arn(role_arn);
+                        }
+
+                        if let Some(enable_insights) = enable_performance_insights {
+                            request = request.enable_performance_insights(enable_insights);
+                        }
+
+                        if let Some(retention) = performance_insights_retention_period {
+                            request = request.performance_insights_retention_period(retention);
+                        }
+
+                        request = request.apply_immediately(true);
+
+                        request.send().await?;
+
+                        op_exec_output!(format!("Modified monitoring for DB instance `{}`", id))
                     }
                     RdsConnectorOp::RebootDBInstance { force_failover } => {
                         let mut request = client.reboot_db_instance().db_instance_identifier(id);
@@ -287,6 +497,59 @@ impl RdsConnector {
                         client.start_db_cluster().db_cluster_identifier(id).send().await?;
 
                         op_exec_output!(format!("Started DB cluster `{}`", id))
+                    }
+                    RdsConnectorOp::ModifyDBCluster {
+                        engine_version,
+                        backup_retention_period,
+                        preferred_backup_window,
+                        preferred_maintenance_window,
+                        deletion_protection,
+                        enable_iam_database_authentication,
+                        backtrack_window,
+                        master_user_password,
+                        apply_immediately,
+                    } => {
+                        let mut request = client.modify_db_cluster().db_cluster_identifier(id);
+
+                        if let Some(version) = engine_version {
+                            request = request.engine_version(version);
+                        }
+
+                        if let Some(backup_retention) = backup_retention_period {
+                            request = request.backup_retention_period(backup_retention);
+                        }
+
+                        if let Some(backup_window) = preferred_backup_window {
+                            request = request.preferred_backup_window(backup_window);
+                        }
+
+                        if let Some(maintenance_window) = preferred_maintenance_window {
+                            request = request.preferred_maintenance_window(maintenance_window);
+                        }
+
+                        if let Some(deletion_prot) = deletion_protection {
+                            request = request.deletion_protection(deletion_prot);
+                        }
+
+                        if let Some(iam_auth) = enable_iam_database_authentication {
+                            request = request.enable_iam_database_authentication(iam_auth);
+                        }
+
+                        if let Some(backtrack) = backtrack_window {
+                            request = request.backtrack_window(backtrack);
+                        }
+
+                        if let Some(password) = master_user_password {
+                            request = request.master_user_password(password);
+                        }
+
+                        if let Some(apply_now) = apply_immediately {
+                            request = request.apply_immediately(apply_now);
+                        }
+
+                        request.send().await?;
+
+                        op_exec_output!(format!("Modified DB cluster `{}`", id))
                     }
                     RdsConnectorOp::StopDBCluster => {
                         client.stop_db_cluster().db_cluster_identifier(id).send().await?;
