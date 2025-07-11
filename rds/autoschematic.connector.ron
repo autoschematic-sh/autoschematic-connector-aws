@@ -1,0 +1,6 @@
+ConnectorManifest(
+    shortname: "aws/rds",
+    protocol: "binary-tarpc",
+    description: "Manages AWS Relational Database Services resources (Aurora, PostgreSQL etc), such as clusters, instances, and subnet & parameter groups.",
+    stability: "preview"
+)

@@ -1,0 +1,6 @@
+ConnectorManifest(
+    shortname: "aws/ecr",
+    protocol: "binary-tarpc",
+    description: "Manages AWS Elastic Container Respository resources, such as repos, lifecycle & registry policies, and pull-through caches rules.",
+    stability: "preview"
+)

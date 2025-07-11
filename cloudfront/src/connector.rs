@@ -405,45 +405,15 @@ impl Connector for CloudFrontConnector {
             todo => [
             ]
         )
-        // match &addr {
-        //     CloudFrontResourceAddress::Distribution { .. } => {
-        //         if let Some(distribution_id) = addr.get_output(&self.prefix, "distribution_id")? {
-        //             Ok(VirtToPhyOutput::Present(
-        //                 CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf(),
-        //             ))
-        //         } else {
-        //             Ok(VirtToPhyOutput::NotPresent)
-        //         }
-        //     }
-        //     CloudFrontResourceAddress::OriginAccessControl { oac_id } => todo!(),
-        //     CloudFrontResourceAddress::CachePolicy { policy_id } => todo!(),
-        //     CloudFrontResourceAddress::OriginRequestPolicy { policy_id } => todo!(),
-        //     CloudFrontResourceAddress::ResponseHeadersPolicy { policy_id } => todo!(),
-        //     CloudFrontResourceAddress::RealtimeLogConfig { name } => {
-        //         Ok(VirtToPhyOutput::Null(CloudFrontResourceAddress::RealtimeLogConfig { name }))
-        //     }
-        //     CloudFrontResourceAddress::Function { name } => {
-        //         Ok(VirtToPhyOutput::Null(CloudFrontResourceAddress::Function { name }))
-        //     }
-        //     CloudFrontResourceAddress::KeyGroup { key_group_id } => todo!(),
-        //     CloudFrontResourceAddress::PublicKey { public_key_id } => todo!(),
-        //     CloudFrontResourceAddress::FieldLevelEncryptionConfig { config_id } => todo!(),
-        //     CloudFrontResourceAddress::FieldLevelEncryptionProfile { profile_id } => todo!(),
-        //     CloudFrontResourceAddress::StreamingDistribution { distribution_id } => todo!(),
-        // }
     }
 
     async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
-        // match &addr {
-        //     CloudFrontResourceAddress::Distribution { .. } => {
         if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
             return Ok(Some(virt_addr.to_path_buf()));
         }
-        // }
-        // _ => todo!(),
-        // }
+
         Ok(None)
     }
 

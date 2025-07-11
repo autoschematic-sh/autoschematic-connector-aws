@@ -1,0 +1,5 @@
+ConnectorManifest(
+    shortname: "aws/efs",
+    protocol: "binary-tarpc",
+    stability: "preview"
+)

@@ -1,0 +1,6 @@
+ConnectorManifest(
+    shortname: "aws/vpc",
+    protocol: "binary-tarpc",
+    description: "Manages AWS Virtual Private Cloud resources, such as VPCs, subnets, security groups, and route tables.",
+    stability: "preview"
+)

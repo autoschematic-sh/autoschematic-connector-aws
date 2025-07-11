@@ -167,7 +167,10 @@ impl Connector for SecretsManagerConnector {
                     Ok((secret, arn)) => {
                         return get_resource_output!(SecretsManagerResource::Secret(secret), [(String::from("arn"), arn)]);
                     }
-                    Err(_) => Ok(None),
+                    Err(e) => {
+                        tracing::error!("{}", e);
+                        Ok(None)
+                    },
                 }
             }
         }

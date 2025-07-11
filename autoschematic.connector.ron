@@ -1,5 +1,0 @@
-ConnectorManifest(
-    name: "autoschematic-connector-aws",
-    type: "binary-tarpc",
-    executable_name: "autoschematic-connector-aws"
-)
