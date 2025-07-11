@@ -28,78 +28,77 @@ impl IamConnector {
         };
 
         match &addr {
-            IamResourceAddress::User { path, name } => {
-                match op {
-                    IamConnectorOp::CreateUser(user) => {
-                        client.create_user().user_name(name).set_tags(user.tags.into()).send().await?;
-                        let arn = format!("arn:aws:iam::{account_id}:user/{name}");
-                        op_exec_output!(Some([("arn", Some(arn))]), format!("Created IAM user `{}`", name))
-                    }
-                    IamConnectorOp::DeleteUser => {
-                        client.delete_user().user_name(name).send().await?;
-
-                        op_exec_output!(
-                            format!("Deleted IAM user `{}{}`", path, name)
-                        )
-                    }
-                    IamConnectorOp::AttachUserPolicy(policy) => {
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{policy}");
-                        client
-                            .attach_user_policy()
-                            .policy_arn(policy_arn)
-                            .user_name(name)
-                            .send()
-                            .await?;
-                        Ok(OpExecOutput {
-                            outputs: None,
-                            friendly_message: Some(format!("Attached policy {policy} for IAM user `{name}`")),
-                        })
-                    }
-                    IamConnectorOp::DetachUserPolicy(policy) => {
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{policy}");
-
-                        client
-                            .detach_user_policy()
-                            .policy_arn(policy_arn)
-                            .user_name(name)
-                            .send()
-                            .await?;
-                        Ok(OpExecOutput {
-                            outputs: None,
-                            friendly_message: Some(format!("Detached policy {policy} for IAM user `{name}`")),
-                        })
-                    }
-                    IamConnectorOp::UpdateUserTags(old_tags, new_tags) => {
-                        let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
-
-                        if !untag_keys.is_empty() {
-                            client
-                                .untag_user()
-                                .user_name(name)
-                                .set_tag_keys(Some(untag_keys))
-                                .send()
-                                .await
-                                .context("Failed to remove tags")?;
-                        }
-
-                        if !new_tagset.is_empty() {
-                            client
-                                .tag_user()
-                                .user_name(name)
-                                .set_tags(Some(new_tagset))
-                                .send()
-                                .await
-                                .context("Failed to write new tags")?;
-                        }
-
-                        Ok(OpExecOutput {
-                            outputs: None,
-                            friendly_message: Some(format!("Updated tags for IAM role {}", &name)),
-                        })
-                    }
-                    _ => bail!("Invalid Op {:#?} for addr {:?}! This is a bug in the connector.", op, addr),
+            IamResourceAddress::User { path, name } => match op {
+                IamConnectorOp::CreateUser(user) => {
+                    client
+                        .create_user()
+                        .path(path)
+                        .user_name(name)
+                        .set_tags(user.tags.into())
+                        .send()
+                        .await?;
+                    let arn = format!("arn:aws:iam::{account_id}:user{path}{name}");
+                    op_exec_output!(Some([("arn", Some(arn))]), format!("Created IAM user `{}`", name))
                 }
-            }
+                IamConnectorOp::DeleteUser => {
+                    client.delete_user().user_name(name).send().await?;
+
+                    op_exec_output!(format!("Deleted IAM user `{}{}`", path, name))
+                }
+                IamConnectorOp::AttachUserPolicy(policy_arn) => {
+                    client
+                        .attach_user_policy()
+                        .policy_arn(&policy_arn)
+                        .user_name(name)
+                        .send()
+                        .await?;
+                    Ok(OpExecOutput {
+                        outputs: None,
+                        friendly_message: Some(format!("Attached policy {policy_arn} for IAM user `{name}`")),
+                    })
+                }
+                IamConnectorOp::DetachUserPolicy(policy_arn) => {
+                    client
+                        .detach_user_policy()
+                        .policy_arn(&policy_arn)
+                        .user_name(name)
+                        .send()
+                        .await?;
+                    Ok(OpExecOutput {
+                        outputs: None,
+                        friendly_message: Some(format!("Detached policy {policy_arn} from IAM user `{name}`")),
+                    })
+                }
+                IamConnectorOp::UpdateUserTags(old_tags, new_tags) => {
+                    let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
+
+                    if !untag_keys.is_empty() {
+                        client
+                            .untag_user()
+                            .user_name(name)
+                            .set_tag_keys(Some(untag_keys))
+                            .send()
+                            .await
+                            .context("Failed to remove tags")?;
+                    }
+
+                    if !new_tagset.is_empty() {
+                        client
+                            .tag_user()
+                            .user_name(name)
+                            .set_tags(Some(new_tagset))
+                            .send()
+                            .await
+                            .context("Failed to write new tags")?;
+                    }
+
+                    Ok(OpExecOutput {
+                        outputs: None,
+                        friendly_message: Some(format!("Updated tags for IAM role {}", &name)),
+                    })
+                }
+                _ => bail!("Invalid Op {:#?} for addr {:?}! This is a bug in the connector.", op, addr),
+            },
             IamResourceAddress::Role { path, name } => {
                 match op {
                     IamConnectorOp::CreateRole(role) => {
@@ -115,18 +114,14 @@ impl IamConnector {
                             client.create_role().role_name(name).send().await?;
                         }
 
-                        let arn = format!("arn:aws:iam::{account_id}:role/{name}");
+                        let arn = format!("arn:aws:iam::{account_id}:role{path}{name}");
                         op_exec_output!(Some([("arn", Some(arn))]), format!("Created IAM role `{}{}`", path, &name))
                     }
                     IamConnectorOp::DeleteRole => {
                         client.delete_role().role_name(name).send().await?;
-                        op_exec_output!(
-                            format!("Deleted IAM role `{}`", name)
-                        )
+                        op_exec_output!(format!("Deleted IAM role `{}`", name))
                     }
                     IamConnectorOp::AttachRolePolicy(policy_arn) => {
-                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
-
                         client
                             .attach_role_policy()
                             .role_name(name)
@@ -137,8 +132,6 @@ impl IamConnector {
                         op_exec_output!(format!("Attached policy `{}` to role `{}{}`", &policy_arn, path, &name))
                     }
                     IamConnectorOp::DetachRolePolicy(policy_arn) => {
-                        // let policy_arn = format!("arn:aws:iam::{}:policy/{}", account_id, policy);
-
                         client
                             .detach_role_policy()
                             .role_name(name)
@@ -255,104 +248,101 @@ impl IamConnector {
                     _ => Err(invalid_op(&addr, &op)),
                 }
             }
-            IamResourceAddress::Policy { path, name } => {
-                match op {
-                    IamConnectorOp::CreatePolicy(policy) => {
-                        let policy_document = policy.policy_document;
+            IamResourceAddress::Policy { path, name } => match op {
+                IamConnectorOp::CreatePolicy(policy) => {
+                    let policy_document = policy.policy_document;
 
-                        let policy_json =
-                            serde_json::to_string(&policy_document).context("Failed to serialize policy document as JSON")?;
+                    let policy_json =
+                        serde_json::to_string(&policy_document).context("Failed to serialize policy document as JSON")?;
 
-                        client
-                            .create_policy()
-                            .policy_name(name)
-                            .path(path)
-                            .policy_document(policy_json)
-                            .set_tags(policy.tags.into())
-                            .send()
-                            .await?;
+                    let policy_output = client
+                        .create_policy()
+                        .path(path)
+                        .policy_name(name)
+                        .policy_document(policy_json)
+                        .set_tags(policy.tags.into())
+                        .send()
+                        .await?;
 
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{name}");
+                    let new_policy_arn = policy_output.policy.and_then(|p| p.arn).unwrap_or_default();
 
-                        op_exec_output!(
-                            format!("Created IAM policy `{}{}`", path, &name)
-                        )
-                    }
-                    IamConnectorOp::DeletePolicy => {
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{path}{name}");
-
-                        client.delete_policy().policy_arn(policy_arn).send().await?;
-                        op_exec_output!(
-                            format!("Deleted IAM policy `{}`", name)
-                        )
-                    }
-                    IamConnectorOp::UpdatePolicyDocument(_old_policy_document, new_policy_document) => {
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{path}{name}");
-
-                        let policy_json = serde_json::to_string(&new_policy_document)
-                            .context("Failed to serialize policy document as JSON")?;
-
-                        let create_policy_version_output = client
-                            .create_policy_version()
-                            .policy_arn(&policy_arn)
-                            .policy_document(policy_json)
-                            .send()
-                            .await
-                            .context("Failed to create new policy version")?;
-
-                        let Some(policy_version) = create_policy_version_output.policy_version else {
-                            bail!("Failed to create new policy version");
-                        };
-
-                        let Some(version_id) = policy_version.version_id else {
-                            bail!("Failed to create new policy version");
-                        };
-
-                        client
-                            .set_default_policy_version()
-                            .policy_arn(policy_arn)
-                            .version_id(version_id)
-                            .send()
-                            .await
-                            .context("Failed to set new default policy version ID")?;
-
-                        Ok(OpExecOutput {
-                            outputs: None,
-                            friendly_message: Some(format!("Updated policy document for IAM policy `{}`", &name)),
-                        })
-                    }
-                    IamConnectorOp::UpdatePolicyTags(old_tags, new_tags) => {
-                        let policy_arn = format!("arn:aws:iam::{account_id}:policy/{path}{name}");
-                        let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
-
-                        if !untag_keys.is_empty() {
-                            client
-                                .untag_policy()
-                                .policy_arn(&policy_arn)
-                                .set_tag_keys(Some(untag_keys))
-                                .send()
-                                .await
-                                .context("Failed to remove tags")?;
-                        }
-
-                        if !new_tagset.is_empty() {
-                            client
-                                .tag_policy()
-                                .policy_arn(&policy_arn)
-                                .set_tags(Some(new_tagset))
-                                .send()
-                                .await
-                                .context("Failed to write new tags")?;
-                        }
-
-                        Ok(OpExecOutput {
-                            outputs: None,
-                            friendly_message: Some(format!("Updated tags for IAM policy `{}`", &name)),
-                        })
-                    }
-                    _ => Err(invalid_op(&addr, &op)),
+                    op_exec_output!(
+                        Some([("arn", Some(new_policy_arn))]),
+                        format!("Created IAM policy `{}{}`", path, &name)
+                    )
                 }
-            }
+                IamConnectorOp::DeletePolicy => {
+                    let policy_arn = format!("arn:aws:iam::{account_id}:policy{path}{name}");
+
+                    client.delete_policy().policy_arn(policy_arn).send().await?;
+                    op_exec_output!(format!("Deleted IAM policy `{}`", name))
+                }
+                IamConnectorOp::UpdatePolicyDocument(_old_policy_document, new_policy_document) => {
+                    let policy_arn = format!("arn:aws:iam::{account_id}:policy{path}{name}");
+
+                    let policy_json =
+                        serde_json::to_string(&new_policy_document).context("Failed to serialize policy document as JSON")?;
+
+                    let create_policy_version_output = client
+                        .create_policy_version()
+                        .policy_arn(&policy_arn)
+                        .policy_document(policy_json)
+                        .send()
+                        .await
+                        .context("Failed to create new policy version")?;
+
+                    let Some(policy_version) = create_policy_version_output.policy_version else {
+                        bail!("Failed to create new policy version");
+                    };
+
+                    let Some(version_id) = policy_version.version_id else {
+                        bail!("Failed to create new policy version");
+                    };
+
+                    client
+                        .set_default_policy_version()
+                        .policy_arn(policy_arn)
+                        .version_id(version_id)
+                        .send()
+                        .await
+                        .context("Failed to set new default policy version ID")?;
+
+                    Ok(OpExecOutput {
+                        outputs: None,
+                        friendly_message: Some(format!("Updated policy document for IAM policy `{}`", &name)),
+                    })
+                }
+                IamConnectorOp::UpdatePolicyTags(old_tags, new_tags) => {
+                    let policy_arn = format!("arn:aws:iam::{account_id}:policy{path}{name}");
+                    let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
+
+                    if !untag_keys.is_empty() {
+                        client
+                            .untag_policy()
+                            .policy_arn(&policy_arn)
+                            .set_tag_keys(Some(untag_keys))
+                            .send()
+                            .await
+                            .context("Failed to remove tags")?;
+                    }
+
+                    if !new_tagset.is_empty() {
+                        client
+                            .tag_policy()
+                            .policy_arn(&policy_arn)
+                            .set_tags(Some(new_tagset))
+                            .send()
+                            .await
+                            .context("Failed to write new tags")?;
+                    }
+
+                    Ok(OpExecOutput {
+                        outputs: None,
+                        friendly_message: Some(format!("Updated tags for IAM policy `{}`", &name)),
+                    })
+                }
+                _ => Err(invalid_op(&addr, &op)),
+            },
         }
     }
 }
