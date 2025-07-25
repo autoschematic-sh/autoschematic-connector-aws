@@ -707,7 +707,7 @@ impl Connector for KmsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<Option<DiagnosticResponse>, anyhow::Error> {
         let addr = KmsResourceAddress::from_path(addr)?;
 
         match addr {

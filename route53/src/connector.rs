@@ -132,7 +132,7 @@ impl Connector for Route53Connector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<Option<DiagnosticResponse>, anyhow::Error> {
         let addr = Route53ResourceAddress::from_path(addr)?;
 
         match addr {

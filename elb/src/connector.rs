@@ -262,7 +262,7 @@ impl Connector for ElbConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<Option<DiagnosticResponse>, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {

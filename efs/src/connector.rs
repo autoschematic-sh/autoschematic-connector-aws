@@ -636,7 +636,7 @@ impl Connector for EfsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<Option<DiagnosticResponse>, anyhow::Error> {
         let addr = EfsResourceAddress::from_path(addr)?;
 
         match addr {

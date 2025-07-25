@@ -440,7 +440,7 @@ impl Connector for CloudFrontConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<Option<DiagnosticResponse>, anyhow::Error> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
         match addr {
             CloudFrontResourceAddress::Distribution { .. } => ron_check_syntax::<resource::Distribution>(a),
