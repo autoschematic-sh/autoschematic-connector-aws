@@ -2,13 +2,13 @@
 name = "autoschematic-connector-aws-core"
 description = "Core functionality for Autoschematic AWS Connectors."
 license = "MIT"
-version = "0.6.1"
+version = "0.7.0"
 edition = "2024"
 
 [dependencies]
 anyhow = "1.0.95"
 async-trait = "0.1.86"
-autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.6.1" }
+autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.7.0" }
 aws-config = "1.5.16"
 ron = { version = "0.10.1", features = ["indexmap"] }
 serde = { version = "1.0.217", features = ["derive"] }
