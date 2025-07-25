@@ -10,12 +10,12 @@ use crate::resource::{Cluster, EcsResource, Service, TaskDefinition};
 use crate::{addr::EcsResourceAddress, resource, tags};
 use anyhow::bail;
 use async_trait::async_trait;
-use autoschematic_core::{connector::FilterOutput, skeleton};
+use autoschematic_core::{connector::FilterResponse, skeleton};
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOutbox, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource, ResourceAddress, SkeletonResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     util::{ron_check_eq, ron_check_syntax},
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
@@ -90,11 +90,11 @@ impl Connector for EcsConnector {
         Ok(())
     }
 
-    async fn filter(&self, addr: &Path) -> anyhow::Result<FilterOutput> {
+    async fn filter(&self, addr: &Path) -> anyhow::Result<FilterResponse> {
         if let Ok(_addr) = EcsResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -102,7 +102,7 @@ impl Connector for EcsConnector {
         self.do_list(subpath).await
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -111,15 +111,15 @@ impl Connector for EcsConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // Cluster skeleton
@@ -304,7 +304,7 @@ impl Connector for EcsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
 
         match addr {

@@ -1,5 +1,5 @@
 use anyhow::{Context, bail};
-use autoschematic_core::connector::OpExecOutput;
+use autoschematic_core::connector::OpExecResponse;
 use aws_sdk_apigatewayv2::Client;
 use std::collections::HashMap;
 
@@ -10,7 +10,7 @@ use crate::{
 
 use autoschematic_core::op_exec_output;
 
-pub async fn create_api(client: &Client, account_id: &str, region: &str, api: Api) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_api(client: &Client, account_id: &str, region: &str, api: Api) -> Result<OpExecResponse, anyhow::Error> {
     let create_api_output = client
         .create_api()
         .name(&api.name)
@@ -35,7 +35,7 @@ pub async fn update_api(
     api_id: &str,
     old_api: Api,
     new_api: Api,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut update_api_builder = client.update_api().api_id(api_id);
 
     if old_api.name != new_api.name {
@@ -65,7 +65,7 @@ pub async fn update_api_tags(
     api_id: &str,
     old_tags: HashMap<String, String>,
     new_tags: HashMap<String, String>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let (untag_keys, new_tagset) = tag_diff(&old_tags, &new_tags).context("Failed to generate tag diff")?;
 
     if !untag_keys.is_empty() {
@@ -97,7 +97,7 @@ pub async fn update_api_tags(
     ))
 }
 
-pub async fn delete_api(client: &Client, region: &str, api_id: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_api(client: &Client, region: &str, api_id: &str) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_api()
         .api_id(api_id)
@@ -108,7 +108,7 @@ pub async fn delete_api(client: &Client, region: &str, api_id: &str) -> Result<O
     op_exec_output!(format!("Deleted API Gateway V2 API `{}` in region `{}`", api_id, region))
 }
 
-pub async fn create_route(client: &Client, region: &str, api_id: &str, route: Route) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_route(client: &Client, region: &str, api_id: &str, route: Route) -> Result<OpExecResponse, anyhow::Error> {
     let create_route_output = client
         .create_route()
         .api_id(api_id)
@@ -136,7 +136,7 @@ pub async fn update_route(
     route_id: &str,
     old_route: Route,
     new_route: Route,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut update_route_builder = client.update_route().api_id(api_id).route_id(route_id);
 
     if old_route.route_key != new_route.route_key {
@@ -155,7 +155,7 @@ pub async fn update_route(
     ))
 }
 
-pub async fn delete_route(client: &Client, region: &str, api_id: &str, route_id: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_route(client: &Client, region: &str, api_id: &str, route_id: &str) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_route()
         .api_id(api_id)
@@ -175,7 +175,7 @@ pub async fn create_integration(
     region: &str,
     api_id: &str,
     integration: Integration,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let create_integration_output = client
         .create_integration()
         .api_id(api_id)
@@ -207,7 +207,7 @@ pub async fn update_integration(
     integration_id: &str,
     old_integration: Integration,
     new_integration: Integration,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut update_integration_builder = client.update_integration().api_id(api_id).integration_id(integration_id);
 
     if old_integration.integration_type != new_integration.integration_type {
@@ -236,7 +236,7 @@ pub async fn delete_integration(
     region: &str,
     api_id: &str,
     integration_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_integration()
         .api_id(api_id)
@@ -251,7 +251,7 @@ pub async fn delete_integration(
     ))
 }
 
-pub async fn create_stage(client: &Client, region: &str, api_id: &str, stage: Stage) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_stage(client: &Client, region: &str, api_id: &str, stage: Stage) -> Result<OpExecResponse, anyhow::Error> {
     client
         .create_stage()
         .api_id(api_id)
@@ -275,7 +275,7 @@ pub async fn update_stage(
     stage_name: &str,
     old_stage: Stage,
     new_stage: Stage,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut update_stage_builder = client.update_stage().api_id(api_id).stage_name(stage_name);
 
     if old_stage.auto_deploy != new_stage.auto_deploy {
@@ -295,7 +295,7 @@ pub async fn delete_stage(
     region: &str,
     api_id: &str,
     stage_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_stage()
         .api_id(api_id)
@@ -315,7 +315,7 @@ pub async fn create_authorizer(
     region: &str,
     api_id: &str,
     authorizer: Authorizer,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let create_authorizer_output = client
         .create_authorizer()
         .api_id(api_id)
@@ -348,7 +348,7 @@ pub async fn update_authorizer(
     authorizer_id: &str,
     old_authorizer: Authorizer,
     new_authorizer: Authorizer,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut update_authorizer_builder = client.update_authorizer().api_id(api_id).authorizer_id(authorizer_id);
 
     if old_authorizer.authorizer_type != new_authorizer.authorizer_type {
@@ -381,7 +381,7 @@ pub async fn delete_authorizer(
     region: &str,
     api_id: &str,
     authorizer_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_authorizer()
         .api_id(api_id)

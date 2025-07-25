@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::Context;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
@@ -12,7 +12,7 @@ use crate::{addr::RdsResourceAddress, op::RdsConnectorOp, tags::tag_diff};
 use super::RdsConnector;
 
 impl RdsConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = RdsResourceAddress::from_path(addr)?;
         let op = RdsConnectorOp::from_str(op)?;
 

@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::bail;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     op_exec_output,
 };
 use aws_sdk_route53::types::{AliasTarget, Change, ChangeBatch, RrType};
@@ -12,7 +12,7 @@ use crate::{addr::Route53ResourceAddress, op::Route53ConnectorOp};
 use super::Route53Connector;
 
 impl Route53Connector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = Route53ResourceAddress::from_path(addr)?;
         let op = Route53ConnectorOp::from_str(op)?;
 

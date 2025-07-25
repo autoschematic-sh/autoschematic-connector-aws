@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::bail;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
 };
 
@@ -11,7 +11,7 @@ use crate::{addr::EcrResourceAddress, op::EcrConnectorOp, op_impl};
 use super::EcrConnector;
 
 impl EcrConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = EcrResourceAddress::from_path(addr)?;
         let op = EcrConnectorOp::from_str(op)?;
 

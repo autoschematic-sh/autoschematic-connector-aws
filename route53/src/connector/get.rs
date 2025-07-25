@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::bail;
-use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
+use autoschematic_core::connector::{GetResourceResponse, Resource, ResourceAddress};
 use aws_sdk_route53::types::RrType;
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
 use super::Route53Connector;
 
 impl Route53Connector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = Route53ResourceAddress::from_path(addr)?;
         let Some(ref client) = *self.client.lock().await else {
             bail!("No client")
@@ -31,7 +31,7 @@ impl Route53Connector {
                 let mut outputs = HashMap::new();
                 outputs.insert(String::from("id"), hz.id.clone());
 
-                Ok(Some(GetResourceOutput {
+                Ok(Some(GetResourceResponse {
                     resource_definition: Route53Resource::HostedZone(hz_config).to_bytes()?,
                     outputs: Some(outputs),
                 }))
@@ -76,7 +76,7 @@ impl Route53Connector {
                                         .map(|records| records.iter().map(|r| r.value.clone()).collect()),
                                 };
 
-                                Ok(Some(GetResourceOutput {
+                                Ok(Some(GetResourceResponse {
                                     resource_definition: Route53Resource::RecordSet(record_set).to_bytes()?,
                                     outputs: None,
                                 }))

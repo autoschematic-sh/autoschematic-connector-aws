@@ -15,12 +15,12 @@ use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
-        ResourceAddress, SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        ResourceAddress, SkeletonResponse, VirtToPhyResponse,
     },
     connector_op,
-    diag::DiagnosticOutput,
-    get_resource_output, skeleton,
+    diag::DiagnosticResponse,
+    get_resource_response, skeleton,
     util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
@@ -104,11 +104,11 @@ impl KmsConnector {
 
 #[async_trait]
 impl Connector for KmsConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = KmsResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -165,7 +165,7 @@ impl Connector for KmsConnector {
         Ok(results)
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = KmsResourceAddress::from_path(addr)?;
 
         match addr {
@@ -211,7 +211,7 @@ impl Connector for KmsConnector {
                     tags,
                 };
 
-                get_resource_output!(KmsResource::Key(kms_key), [(String::from("key_id"), key_id)])
+                get_resource_response!(KmsResource::Key(kms_key), [(String::from("key_id"), key_id)])
             }
             KmsResourceAddress::KeyPolicy(region_name, key_id) => {
                 let client = self.get_or_init_client(&region_name).await?;
@@ -240,7 +240,7 @@ impl Connector for KmsConnector {
                         policy_document: ron_val,
                     };
 
-                    return Ok(Some(GetResourceOutput {
+                    return Ok(Some(GetResourceResponse {
                         resource_definition: KmsResource::KeyPolicy(key_policy).to_bytes()?,
                         outputs: None,
                     }));
@@ -278,7 +278,7 @@ impl Connector for KmsConnector {
 
                                 let kms_alias = resource::KmsAlias { target_key_id, tags };
 
-                                return Ok(Some(GetResourceOutput {
+                                return Ok(Some(GetResourceResponse {
                                     resource_definition: KmsResource::Alias(kms_alias).to_bytes()?,
                                     outputs: None,
                                 }));
@@ -305,7 +305,7 @@ impl Connector for KmsConnector {
                     enabled: key_rotation_enabled,
                 };
 
-                return Ok(Some(GetResourceOutput {
+                return Ok(Some(GetResourceResponse {
                     resource_definition: KmsResource::KeyRotation(key_rotation).to_bytes()?,
                     outputs: None,
                 }));
@@ -318,7 +318,7 @@ impl Connector for KmsConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = KmsResourceAddress::from_path(addr)?;
 
         let current = optional_string_from_utf8(current)?;
@@ -504,7 +504,7 @@ impl Connector for KmsConnector {
         }
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = KmsResourceAddress::from_path(addr)?;
         let op = KmsConnectorOp::from_str(op)?;
 
@@ -560,22 +560,22 @@ impl Connector for KmsConnector {
         }
     }
 
-    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
         let Ok(addr) = KmsResourceAddress::from_path(addr) else {
-            return Ok(VirtToPhyOutput::NotPresent);
+            return Ok(VirtToPhyResponse::NotPresent);
         };
 
         match &addr {
             KmsResourceAddress::Key(region, _key_id) => {
                 if let Some(key_id) = addr.get_output(&self.prefix, "key_id")? {
-                    Ok(VirtToPhyOutput::Present(
+                    Ok(VirtToPhyResponse::Present(
                         KmsResourceAddress::Key(region.into(), key_id).to_path_buf(),
                     ))
                 } else {
-                    Ok(VirtToPhyOutput::NotPresent)
+                    Ok(VirtToPhyResponse::NotPresent)
                 }
             },
-            _ => Ok(VirtToPhyOutput::Null(addr.to_path_buf())),
+            _ => Ok(VirtToPhyResponse::Null(addr.to_path_buf())),
         }
     }
 
@@ -597,7 +597,7 @@ impl Connector for KmsConnector {
         Ok(Some(addr.to_path_buf()))
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // KMS Key skeleton
@@ -707,7 +707,7 @@ impl Connector for KmsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = KmsResourceAddress::from_path(addr)?;
 
         match addr {

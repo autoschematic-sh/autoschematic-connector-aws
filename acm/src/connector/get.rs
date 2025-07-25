@@ -2,8 +2,8 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource},
+    get_resource_response,
 };
 
 use anyhow::Context;
@@ -20,7 +20,7 @@ use autoschematic_core::connector::ResourceAddress;
 use super::AcmConnector;
 
 impl AcmConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>> {
         let Some(account_id) = self.account_id.read().await.clone() else {
             bail!("Account ID not set");
         };
@@ -90,7 +90,7 @@ impl AcmConnector {
                             let certificate_id = extract_certificate_id(&certificate_arn).unwrap_or_default();
 
                             let resource = AcmResource::Certificate(acm_certificate);
-                            get_resource_output!(
+                            get_resource_response!(
                                 resource,
                                 [
                                     (String::from("certificate_id"), certificate_id),

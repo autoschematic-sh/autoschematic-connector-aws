@@ -4,7 +4,7 @@ use crate::tags::tag_diff;
 use crate::{addr::CloudWatchResourceAddress, op::CloudWatchConnectorOp};
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
@@ -12,7 +12,7 @@ use autoschematic_core::{
 use super::CloudWatchConnector;
 
 impl CloudWatchConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = CloudWatchResourceAddress::from_path(addr)?;
         let op = CloudWatchConnectorOp::from_str(op)?;
         let account_id = self.account_id.lock().await.clone();

@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Context, bail};
-use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
-use autoschematic_core::get_resource_output;
+use autoschematic_core::connector::{GetResourceResponse, Resource, ResourceAddress};
+use autoschematic_core::get_resource_response;
 use aws_sdk_cloudfront::operation::get_key_group::GetKeyGroupError;
 
 use crate::{addr::CloudFrontResourceAddress, resource::*};
@@ -10,7 +10,7 @@ use crate::{addr::CloudFrontResourceAddress, resource::*};
 use super::CloudFrontConnector;
 
 impl CloudFrontConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let client = self.get_or_init_client().await?;
 
         let addr = CloudFrontResourceAddress::from_path(addr)?;
@@ -136,7 +136,7 @@ impl CloudFrontConnector {
                             tags,
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::Distribution(dist),
                             [(String::from("distribution_id"), distribution_id.into())]
                         )
@@ -173,7 +173,7 @@ impl CloudFrontConnector {
                             signing_protocol: config.signing_protocol.as_str().to_string(),
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::OriginAccessControl(origin_access_control),
                             [(String::from("oac_id"), oac_id.into())]
                         )
@@ -211,7 +211,7 @@ impl CloudFrontConnector {
                             parameters_in_cache_key_and_forwarded_to_origin: None, // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::CachePolicy(cache_policy),
                             [(String::from("policy_id"), policy_id.into())]
                         )
@@ -241,7 +241,7 @@ impl CloudFrontConnector {
                             runtime: "cloudfront-js-1.0".to_string(), // Default runtime
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::Function(function),
                             [(String::from("function_name"), name.into())]
                         )
@@ -278,7 +278,7 @@ impl CloudFrontConnector {
                             query_strings_config: None, // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::OriginRequestPolicy(origin_request_policy),
                             [(String::from("policy_id"), policy_id.into())]
                         )
@@ -315,7 +315,7 @@ impl CloudFrontConnector {
                             security_headers_config: None, // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::ResponseHeadersPolicy(response_headers_policy),
                             [(String::from("policy_id"), policy_id.into())]
                         )
@@ -347,7 +347,7 @@ impl CloudFrontConnector {
                             sampling_rate: config.sampling_rate as f64,
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::RealtimeLogConfig(realtime_log_config),
                             [(String::from("name"), name.into())]
                         )
@@ -382,7 +382,7 @@ impl CloudFrontConnector {
                             items:   config.items,
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::KeyGroup(key_group),
                             [(String::from("key_group_id"), key_group_id.into())]
                         )
@@ -415,7 +415,7 @@ impl CloudFrontConnector {
                             encoded_key: config.encoded_key,
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::PublicKey(public_key),
                             [(String::from("public_key_id"), public_key_id.into())]
                         )
@@ -447,7 +447,7 @@ impl CloudFrontConnector {
                             query_arg_profile_config: None,    // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::FieldLevelEncryptionConfig(field_level_encryption_config),
                             [(String::from("config_id"), config_id.into())]
                         )
@@ -483,7 +483,7 @@ impl CloudFrontConnector {
                             encryption_entities: HashMap::new(), // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::FieldLevelEncryptionProfile(field_level_encryption_profile),
                             [(String::from("profile_id"), profile_id.into())]
                         )
@@ -533,7 +533,7 @@ impl CloudFrontConnector {
                             tags: Default::default(), // Simplified for now
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudFrontResource::StreamingDistribution(streaming_distribution),
                             [(String::from("distribution_id"), distribution_id.into())]
                         )

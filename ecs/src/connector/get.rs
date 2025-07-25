@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource, ResourceAddress},
+    get_resource_response,
 };
 
 use anyhow::Context;
@@ -18,7 +18,7 @@ use crate::util;
 use super::EcsConnector;
 
 impl EcsConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
         match addr {
             EcsResourceAddress::Cluster(region, cluster_name) => {
@@ -67,7 +67,7 @@ impl EcsConnector {
                         tags: tags::Tags::from(cluster.tags()),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EcsResource::Cluster(our_cluster),
                         [(String::from("cluster_name"), cluster_name)]
                     );
@@ -158,7 +158,7 @@ impl EcsConnector {
                         tags: tags::Tags::from(service.tags()),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EcsResource::Service(our_service),
                         [
                             (String::from("cluster_name"), cluster_name),
@@ -434,7 +434,7 @@ impl EcsConnector {
                         }),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EcsResource::TaskDefinition(our_task_def),
                         [(String::from("task_definition_id"), family)]
                     );

@@ -15,13 +15,13 @@ use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
-        ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        ResourceAddress, SkeletonResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     util::{RON, diff_ron_values, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
-use autoschematic_core::{connector_op, get_resource_output, skeleton};
+use autoschematic_core::{connector_op, get_resource_response, skeleton};
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use config::EfsConnectorConfig;
 use tokio::sync::Mutex;
@@ -74,11 +74,11 @@ impl EfsConnector {
 
 #[async_trait]
 impl Connector for EfsConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = EfsResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -181,7 +181,7 @@ impl Connector for EfsConnector {
         Ok(results)
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr_option = EfsResourceAddress::from_path(addr)?;
 
         match addr_option {
@@ -230,7 +230,7 @@ impl Connector for EfsConnector {
                         tags: Tags::from(fs.tags()),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EfsResource::FileSystem(file_system),
                         [(String::from("file_system_id"), fs_id.clone())]
                     );
@@ -265,7 +265,7 @@ impl Connector for EfsConnector {
                         file_system_id: mt.file_system_id().to_string(),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EfsResource::MountTarget(mount_target),
                         [
                             (String::from("file_system_id"), fs_id.clone()),
@@ -305,7 +305,7 @@ impl Connector for EfsConnector {
                         tags: Tags::from(ap.tags()),
                     };
 
-                    return get_resource_output!(
+                    return get_resource_response!(
                         EfsResource::AccessPoint(access_point),
                         [
                             (String::from("file_system_id"), fs_id.clone()),
@@ -324,7 +324,7 @@ impl Connector for EfsConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = EfsResourceAddress::from_path(addr)?;
 
         let current = optional_string_from_utf8(current)?;
@@ -488,7 +488,7 @@ impl Connector for EfsConnector {
         }
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = EfsResourceAddress::from_path(addr)?;
         let op = EfsConnectorOp::from_str(op)?;
 
@@ -558,7 +558,7 @@ impl Connector for EfsConnector {
         }
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // Add skeleton for a file system (general purpose)
@@ -636,7 +636,7 @@ impl Connector for EfsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = EfsResourceAddress::from_path(addr)?;
 
         match addr {

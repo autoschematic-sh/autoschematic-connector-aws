@@ -7,10 +7,10 @@ use std::{
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
-        ResourceAddress, SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        ResourceAddress, SkeletonResponse, VirtToPhyResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     glob::addr_matches_filter,
     template::ReadOutput,
     util::{ron_check_eq, ron_check_syntax},
@@ -46,11 +46,11 @@ pub struct ApiGatewayV2Connector {
 
 #[async_trait]
 impl Connector for ApiGatewayV2Connector {
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = ApiGatewayV2ResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -124,7 +124,7 @@ impl Connector for ApiGatewayV2Connector {
         Ok(res)
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -133,26 +133,26 @@ impl Connector for ApiGatewayV2Connector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
         match &addr {
             ApiGatewayV2ResourceAddress::Api { region, .. } => {
                 let region = region.clone();
                 if let Some(api_id) = addr.get_output(&self.prefix, "api_id")? {
-                    Ok(VirtToPhyOutput::Present(
+                    Ok(VirtToPhyResponse::Present(
                         ApiGatewayV2ResourceAddress::Api { region, api_id }.to_path_buf(),
                     ))
                 } else {
-                    Ok(VirtToPhyOutput::NotPresent)
+                    Ok(VirtToPhyResponse::NotPresent)
                 }
             }
             ApiGatewayV2ResourceAddress::Route { region, api_id, .. } => {
@@ -165,14 +165,14 @@ impl Connector for ApiGatewayV2Connector {
                 };
 
                 let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
                 if let Some(route_id) = addr.get_output(&self.prefix, "route_id")? {
-                    return Ok(VirtToPhyOutput::Present(
+                    return Ok(VirtToPhyResponse::Present(
                         ApiGatewayV2ResourceAddress::Route {
                             region,
                             api_id,
@@ -181,7 +181,7 @@ impl Connector for ApiGatewayV2Connector {
                         .to_path_buf(),
                     ));
                 } else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
             }
             ApiGatewayV2ResourceAddress::Integration { region, api_id, .. } => {
@@ -194,17 +194,17 @@ impl Connector for ApiGatewayV2Connector {
                 };
 
                 let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
                 let Some(integration_id) = addr.get_output(&self.prefix, "integration_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     ApiGatewayV2ResourceAddress::Integration {
                         region,
                         api_id,
@@ -227,13 +227,13 @@ impl Connector for ApiGatewayV2Connector {
                 };
 
                 let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     ApiGatewayV2ResourceAddress::Stage {
                         region,
                         api_id,
@@ -252,17 +252,17 @@ impl Connector for ApiGatewayV2Connector {
                 };
 
                 let Some(api_id) = parent_api.get_output(&self.prefix, "api_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_api.to_path_buf(),
                         key:  String::from("api_id"),
                     }]));
                 };
 
                 let Some(authorizer_id) = addr.get_output(&self.prefix, "authorizer_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     ApiGatewayV2ResourceAddress::Authorizer {
                         region,
                         api_id,
@@ -392,7 +392,7 @@ impl Connector for ApiGatewayV2Connector {
         Ok(None)
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         let region = String::from("[region]");
@@ -484,7 +484,7 @@ impl Connector for ApiGatewayV2Connector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
         match addr {

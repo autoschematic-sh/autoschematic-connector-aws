@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::Path};
 use crate::addr::IamResourceAddress;
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
@@ -17,7 +17,7 @@ use crate::{op, tags};
 use super::IamConnector;
 
 impl IamConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
         let op = IamConnectorOp::from_str(op)?;
         let Some(ref client) = *self.client.read().await else {
@@ -52,7 +52,7 @@ impl IamConnector {
                         .user_name(name)
                         .send()
                         .await?;
-                    Ok(OpExecOutput {
+                    Ok(OpExecResponse {
                         outputs: None,
                         friendly_message: Some(format!("Attached policy {policy_arn} for IAM user `{name}`")),
                     })
@@ -64,7 +64,7 @@ impl IamConnector {
                         .user_name(name)
                         .send()
                         .await?;
-                    Ok(OpExecOutput {
+                    Ok(OpExecResponse {
                         outputs: None,
                         friendly_message: Some(format!("Detached policy {policy_arn} from IAM user `{name}`")),
                     })
@@ -92,7 +92,7 @@ impl IamConnector {
                             .context("Failed to write new tags")?;
                     }
 
-                    Ok(OpExecOutput {
+                    Ok(OpExecResponse {
                         outputs: None,
                         friendly_message: Some(format!("Updated tags for IAM role {}", &name)),
                     })
@@ -157,7 +157,7 @@ impl IamConnector {
                             .await
                             .context("Failed to update AssumeRolePolicy!")?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated AssumRolePolicy for IAM role `{}{}`", path, &name)),
                         })
@@ -185,7 +185,7 @@ impl IamConnector {
                                 .context("Failed to write new tags")?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated tags for IAM role `{}{}`", path, &name)),
                         })
@@ -307,7 +307,7 @@ impl IamConnector {
                         .await
                         .context("Failed to set new default policy version ID")?;
 
-                    Ok(OpExecOutput {
+                    Ok(OpExecResponse {
                         outputs: None,
                         friendly_message: Some(format!("Updated policy document for IAM policy `{}`", &name)),
                     })
@@ -336,7 +336,7 @@ impl IamConnector {
                             .context("Failed to write new tags")?;
                     }
 
-                    Ok(OpExecOutput {
+                    Ok(OpExecResponse {
                         outputs: None,
                         friendly_message: Some(format!("Updated tags for IAM policy `{}`", &name)),
                     })

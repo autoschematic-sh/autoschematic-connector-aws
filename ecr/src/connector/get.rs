@@ -2,8 +2,8 @@ use anyhow::Context;
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource, ResourceAddress},
+    get_resource_response,
     util::RON,
 };
 
@@ -19,7 +19,7 @@ use crate::{
 use super::EcrConnector;
 
 impl EcrConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = EcrResourceAddress::from_path(addr)?;
 
         match addr {
@@ -66,7 +66,7 @@ impl EcrConnector {
                                     tags,
                                 };
 
-                                return get_resource_output!(
+                                return get_resource_response!(
                                     EcrResource::Repository(repository),
                                     [(String::from("repository_url"), repo.repository_uri.clone().unwrap_or_default()),]
                                 );
@@ -91,7 +91,7 @@ impl EcrConnector {
 
                             let repo_policy = RepositoryPolicy { policy_document: rval };
 
-                            return Ok(Some(GetResourceOutput {
+                            return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::RepositoryPolicy(repo_policy).to_bytes()?,
                                 outputs: None,
                             }));
@@ -121,7 +121,7 @@ impl EcrConnector {
                                 lifecycle_policy_text: rval,
                             };
 
-                            return Ok(Some(GetResourceOutput {
+                            return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::LifecyclePolicy(lifecycle_policy).to_bytes()?,
                                 outputs: None,
                             }));
@@ -149,7 +149,7 @@ impl EcrConnector {
 
                             let registry_policy = RegistryPolicy { policy_document: rval };
 
-                            return Ok(Some(GetResourceOutput {
+                            return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::RegistryPolicy(registry_policy).to_bytes()?,
                                 outputs: None,
                             }));
@@ -184,7 +184,7 @@ impl EcrConnector {
                                             credential_arn: rule.credential_arn.clone(),
                                         };
 
-                                        return Ok(Some(GetResourceOutput {
+                                        return Ok(Some(GetResourceResponse {
                                             resource_definition: EcrResource::PullThroughCacheRule(pull_through_rule)
                                                 .to_bytes()?,
                                             outputs: None,

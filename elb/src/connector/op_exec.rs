@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path, str::FromStr};
 
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
@@ -16,7 +16,7 @@ use crate::{addr::ElbResourceAddress, op::ElbConnectorOp, tags::tag_diff};
 use super::ElbConnector;
 
 impl ElbConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
         let op = ElbConnectorOp::from_str(op)?;
 

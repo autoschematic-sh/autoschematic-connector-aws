@@ -7,8 +7,8 @@ use std::{
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
-    connector::{Connector, ConnectorOutbox, Resource, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, ResourceAddress, SkeletonOutput},
-    diag::DiagnosticOutput,
+    connector::{Connector, ConnectorOutbox, Resource, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, ResourceAddress, SkeletonResponse},
+    diag::DiagnosticResponse,
     skeleton,
     util::{ron_check_eq, ron_check_syntax},
 };
@@ -59,13 +59,13 @@ impl Connector for RdsConnector {
         Ok(())
     }
 
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if addr == PathBuf::from("aws/rds/config.ron") {
-            Ok(FilterOutput::Config)
+            Ok(FilterResponse::Config)
         } else if let Ok(_addr) = RdsResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -73,7 +73,7 @@ impl Connector for RdsConnector {
         self.do_list(subpath).await
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -82,15 +82,15 @@ impl Connector for RdsConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // RDS PostgreSQL Instance skeleton
@@ -233,7 +233,7 @@ impl Connector for RdsConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = RdsResourceAddress::from_path(addr)?;
 
         match addr {

@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use autoschematic_core::{
-    connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
+    connector::{ConnectorOp, PlanResponseElement, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values, optional_string_from_utf8},
 };
@@ -20,7 +20,7 @@ impl ElbConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
         let current = optional_string_from_utf8(current)?;
         let desired = optional_string_from_utf8(desired)?;

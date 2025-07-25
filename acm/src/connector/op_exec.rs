@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Result, bail};
 use autoschematic_core::{
-    connector::{OpExecOutput, ResourceAddress},
+    connector::{OpExecResponse, ResourceAddress},
     util::RON,
 };
 
@@ -14,7 +14,7 @@ use crate::{
 use super::AcmConnector;
 
 impl AcmConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse> {
         let Some(account_id) = self.account_id.read().await.clone() else {
             bail!("Account ID not set");
         };
@@ -91,12 +91,12 @@ impl AcmConnector {
                         if let Some(cert_arn) = response.certificate_arn {
                             let mut outputs = std::collections::HashMap::new();
                             outputs.insert("certificate_arn".to_string(), Some(cert_arn));
-                            Ok(OpExecOutput {
+                            Ok(OpExecResponse {
                                 outputs: Some(outputs),
                                 friendly_message: Some("Certificate requested successfully".to_string()),
                             })
                         } else {
-                            Ok(OpExecOutput {
+                            Ok(OpExecResponse {
                                 outputs: None,
                                 friendly_message: Some("Certificate request completed".to_string()),
                             })
@@ -106,7 +106,7 @@ impl AcmConnector {
                         // Delete the certificate
                         client.delete_certificate().certificate_arn(&certificate_arn).send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some("Certificate deleted successfully".to_string()),
                         })
@@ -123,7 +123,7 @@ impl AcmConnector {
                                 .await?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some("Tags added successfully".to_string()),
                         })
@@ -142,7 +142,7 @@ impl AcmConnector {
                             .send()
                             .await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some("Tags removed successfully".to_string()),
                         })
@@ -176,7 +176,7 @@ impl AcmConnector {
                                 .await?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some("Tags updated successfully".to_string()),
                         })

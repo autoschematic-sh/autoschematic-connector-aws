@@ -1,8 +1,8 @@
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource, ResourceAddress},
+    get_resource_response,
 };
 
 use crate::addr::RdsResourceAddress;
@@ -18,7 +18,7 @@ use aws_sdk_rds::{
 use super::RdsConnector;
 
 impl RdsConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = RdsResourceAddress::from_path(addr)?;
         match addr {
             RdsResourceAddress::DBInstance { region, id } => {
@@ -41,7 +41,7 @@ impl RdsConnector {
                 match db_instance {
                     Some(db_instance) => {
                         let instance = crate::resource::RdsResource::DBInstance(map_db_instance(&db_instance)?);
-                        get_resource_output!(instance, [(String::from("id"), id)])
+                        get_resource_response!(instance, [(String::from("id"), id)])
                     }
                     None => Ok(None),
                 }
@@ -70,7 +70,7 @@ impl RdsConnector {
                 };
 
                 let cluster = crate::resource::RdsResource::DBCluster(map_db_cluster(cluster)?);
-                get_resource_output!(cluster, [(String::from("id"), id)])
+                get_resource_response!(cluster, [(String::from("id"), id)])
             }
             RdsResourceAddress::DBSubnetGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
@@ -96,7 +96,7 @@ impl RdsConnector {
                 };
 
                 let group = crate::resource::RdsResource::DBSubnetGroup(map_db_subnet_group(db_subnet_group)?);
-                get_resource_output!(group, [(String::from("name"), name)])
+                get_resource_response!(group, [(String::from("name"), name)])
             }
             RdsResourceAddress::DBParameterGroup { region, name } => {
                 let client = self.get_or_init_client(&region).await?;
@@ -127,7 +127,7 @@ impl RdsConnector {
                 };
 
                 let group = crate::resource::RdsResource::DBParameterGroup(map_db_parameter_group(db_parameter_group)?);
-                get_resource_output!(group, [(String::from("name"), name)])
+                get_resource_response!(group, [(String::from("name"), name)])
             }
         }
     }

@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress}, connector_util::read_mounted_secret, error_util::invalid_op
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress}, connector_util::read_mounted_secret, error_util::invalid_op
 };
 
 use crate::tags;
@@ -9,7 +9,7 @@ use crate::tags;
 use super::{SecretsManagerConnector, SecretsManagerConnectorOp, SecretsManagerResourceAddress};
 
 impl SecretsManagerConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
         let op = SecretsManagerConnectorOp::from_str(op)?;
 
@@ -51,7 +51,7 @@ impl SecretsManagerConnector {
                             outputs.insert(String::from("arn"), Some(arn));
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: Some(outputs),
                             friendly_message: Some(format!("Created secret '{name}'")),
                         })
@@ -60,7 +60,7 @@ impl SecretsManagerConnector {
                         // Update the secret description
                         let result = client.update_secret().secret_id(name).description(description).send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated description for secret '{name}'")),
                         })
@@ -80,7 +80,7 @@ impl SecretsManagerConnector {
 
                         let result = request.send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated value for secret '{name}'")),
                         })
@@ -109,7 +109,7 @@ impl SecretsManagerConnector {
                                 .await?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated tags for secret '{name}'")),
                         })
@@ -118,7 +118,7 @@ impl SecretsManagerConnector {
                         // Update the KMS key ID used to encrypt the secret
                         let result = client.update_secret().secret_id(name).kms_key_id(kms_key_id).send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated KMS key for secret '{name}'")),
                         })
@@ -141,7 +141,7 @@ impl SecretsManagerConnector {
 
                         let result = request.send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Deleted secret '{name}'")),
                         })
@@ -150,7 +150,7 @@ impl SecretsManagerConnector {
                         // Restore a previously deleted secret
                         let result = client.restore_secret().secret_id(name).send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Restored secret '{name}'")),
                         })
@@ -184,7 +184,7 @@ impl SecretsManagerConnector {
 
                         let result = request.send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Configured rotation for secret '{name}'")),
                         })
@@ -204,7 +204,7 @@ impl SecretsManagerConnector {
 
                         let result = request.send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Set policy for secret '{name}'")),
                         })
@@ -213,7 +213,7 @@ impl SecretsManagerConnector {
                         // Delete the resource policy
                         let result = client.delete_resource_policy().secret_id(name).send().await?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Deleted policy for secret '{name}'")),
                         })

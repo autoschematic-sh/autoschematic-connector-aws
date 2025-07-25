@@ -2,8 +2,8 @@ use std::path::Path;
 
 use anyhow::Result;
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource, ResourceAddress},
+    get_resource_response,
 };
 
 use anyhow::Context;
@@ -13,7 +13,7 @@ use crate::{addr::ApiGatewayV2ResourceAddress, resource::ApiGatewayV2Resource};
 use super::ApiGatewayV2Connector;
 
 impl ApiGatewayV2Connector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
 
         match addr {
@@ -30,7 +30,7 @@ impl ApiGatewayV2Connector {
                             tags: output.tags,
                         };
 
-                        get_resource_output!(ApiGatewayV2Resource::Api(api))
+                        get_resource_response!(ApiGatewayV2Resource::Api(api))
                     }
                     Err(e) => Ok(None),
                 }
@@ -49,7 +49,7 @@ impl ApiGatewayV2Connector {
                             route_key: output.route_key().unwrap_or_default().to_string(),
                             target:    output.target().map(|x| x.to_string()),
                         };
-                        get_resource_output!(ApiGatewayV2Resource::Route(route))
+                        get_resource_response!(ApiGatewayV2Resource::Route(route))
                     }
                     Err(e) => Ok(None),
                 }
@@ -74,7 +74,7 @@ impl ApiGatewayV2Connector {
                             integration_uri:  output.integration_uri().unwrap_or_default().to_string(),
                         };
 
-                        get_resource_output!(ApiGatewayV2Resource::Integration(integration))
+                        get_resource_response!(ApiGatewayV2Resource::Integration(integration))
                     }
                     Err(e) => Ok(None),
                 }
@@ -95,7 +95,7 @@ impl ApiGatewayV2Connector {
                             tags: output.tags,
                         };
 
-                        get_resource_output!(ApiGatewayV2Resource::Stage(stage))
+                        get_resource_response!(ApiGatewayV2Resource::Stage(stage))
                     }
                     Err(e) => Ok(None),
                 }
@@ -120,7 +120,7 @@ impl ApiGatewayV2Connector {
                             authorizer_uri:  output.authorizer_uri().unwrap_or_default().to_string(),
                             identity_source: output.identity_source().to_vec(),
                         };
-                        get_resource_output!(ApiGatewayV2Resource::Authorizer(authorizer))
+                        get_resource_response!(ApiGatewayV2Resource::Authorizer(authorizer))
                     }
                     Err(e) => Ok(None),
                 }

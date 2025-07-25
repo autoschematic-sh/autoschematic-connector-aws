@@ -6,13 +6,13 @@ use super::{
     resource::{KmsKey, KmsKeyPolicy, KmsAlias},
     tags::Tags,
 };
-use autoschematic_core::connector::OpExecOutput;
+use autoschematic_core::connector::OpExecResponse;
 
 /// Creates a KMS key using the provided configuration
 pub async fn create_key(
     client: &aws_sdk_kms::Client,
     key: &KmsKey,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut create_key_req = client.create_key().description(&key.description);
 
     // Set key usage
@@ -104,7 +104,7 @@ pub async fn create_key(
     let mut outputs = HashMap::new();
     outputs.insert(String::from("key_id"), Some(key_id.clone()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Created KMS key {key_id}")),
     })
@@ -115,7 +115,7 @@ pub async fn update_key_description(
     client: &aws_sdk_kms::Client,
     key_id: &str,
     description: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .update_key_description()
         .key_id(key_id)
@@ -123,7 +123,7 @@ pub async fn update_key_description(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated description for KMS key {key_id}")),
     })
@@ -135,7 +135,7 @@ pub async fn update_key_tags(
     key_id: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let (remove_keys, add_tags) = super::tags::kms_tag_diff(old_tags, new_tags)?;
 
     // Remove tags if needed
@@ -158,7 +158,7 @@ pub async fn update_key_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for KMS key {key_id}")),
     })
@@ -168,10 +168,10 @@ pub async fn update_key_tags(
 pub async fn enable_key(
     client: &aws_sdk_kms::Client,
     key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client.enable_key().key_id(key_id).send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Enabled KMS key {key_id}")),
     })
@@ -181,10 +181,10 @@ pub async fn enable_key(
 pub async fn disable_key(
     client: &aws_sdk_kms::Client,
     key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client.disable_key().key_id(key_id).send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Disabled KMS key {key_id}")),
     })
@@ -194,7 +194,7 @@ pub async fn disable_key(
 pub async fn delete_key(
     client: &aws_sdk_kms::Client,
     key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // KMS requires a waiting period (minimum 7 days, maximum 30 days)
     client
         .schedule_key_deletion()
@@ -203,7 +203,7 @@ pub async fn delete_key(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Scheduled KMS key {key_id} for deletion (7-day waiting period)")),
     })
@@ -214,7 +214,7 @@ pub async fn update_key_policy(
     client: &aws_sdk_kms::Client,
     key_id: &str,
     policy: &KmsKeyPolicy,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Convert the RON policy to JSON
     let policy_json = serde_json::to_string(&policy.policy_document)
         .context("Failed to serialize policy document as JSON")?;
@@ -227,7 +227,7 @@ pub async fn update_key_policy(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated policy for KMS key {key_id}")),
     })
@@ -238,7 +238,7 @@ pub async fn create_alias(
     client: &aws_sdk_kms::Client,
     alias_name: &str,
     alias: &KmsAlias,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Ensure the alias name has the required prefix
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
@@ -253,7 +253,7 @@ pub async fn create_alias(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Created KMS alias {} pointing to key {}", alias_name, alias.target_key_id)),
     })
@@ -264,7 +264,7 @@ pub async fn update_alias(
     client: &aws_sdk_kms::Client,
     alias_name: &str,
     target_key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Ensure the alias name has the required prefix
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
@@ -279,7 +279,7 @@ pub async fn update_alias(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated KMS alias {alias_name} to point to key {target_key_id}")),
     })
@@ -289,7 +289,7 @@ pub async fn update_alias(
 pub async fn delete_alias(
     client: &aws_sdk_kms::Client,
     alias_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Ensure the alias name has the required prefix
     let full_alias_name = if alias_name.starts_with("alias/") {
         alias_name.to_string()
@@ -303,7 +303,7 @@ pub async fn delete_alias(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted KMS alias {alias_name}")),
     })
@@ -313,14 +313,14 @@ pub async fn delete_alias(
 pub async fn enable_key_rotation(
     client: &aws_sdk_kms::Client,
     key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .enable_key_rotation()
         .key_id(key_id)
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Enabled automatic key rotation for KMS key {key_id}")),
     })
@@ -330,14 +330,14 @@ pub async fn enable_key_rotation(
 pub async fn disable_key_rotation(
     client: &aws_sdk_kms::Client,
     key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .disable_key_rotation()
         .key_id(key_id)
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Disabled automatic key rotation for KMS key {key_id}")),
     })

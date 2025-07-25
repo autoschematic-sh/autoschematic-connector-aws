@@ -17,13 +17,13 @@ use anyhow::{Context, bail};
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
-        ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        ResourceAddress, SkeletonResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     util::{RON, ron_check_eq, ron_check_syntax},
 };
-use autoschematic_core::{get_resource_output, skeleton};
+use autoschematic_core::{get_resource_response, skeleton};
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
 use serde_json;
 use tokio::sync::{Mutex, RwLock};
@@ -135,11 +135,11 @@ impl Connector for SecretsManagerConnector {
         Ok(())
     }
 
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = SecretsManagerResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -157,7 +157,7 @@ impl Connector for SecretsManagerConnector {
         Ok(res)
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
         match addr {
@@ -165,7 +165,7 @@ impl Connector for SecretsManagerConnector {
                 let client = self.get_or_init_client(&region).await?;
                 match get_secret(&client, &name).await {
                     Ok((secret, arn)) => {
-                        return get_resource_output!(SecretsManagerResource::Secret(secret), [(String::from("arn"), arn)]);
+                        return get_resource_response!(SecretsManagerResource::Secret(secret), [(String::from("arn"), arn)]);
                     }
                     Err(e) => {
                         tracing::error!("{}", e);
@@ -181,15 +181,15 @@ impl Connector for SecretsManagerConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // Create a default JSON policy structure
@@ -239,7 +239,7 @@ impl Connector for SecretsManagerConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = SecretsManagerResourceAddress::from_path(addr)?;
 
         match addr {

@@ -13,10 +13,10 @@ use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput, VirtToPhyOutput,
+        Connector, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource, ResourceAddress,
+        SkeletonResponse, VirtToPhyResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     template::ReadOutput,
     skeleton,
     util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
@@ -63,11 +63,11 @@ impl Connector for VpcConnector {
         Ok(())
     }
 
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = VpcResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -85,7 +85,7 @@ impl Connector for VpcConnector {
         Ok(res)
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -94,24 +94,24 @@ impl Connector for VpcConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, optional_string_from_utf8(current)?, optional_string_from_utf8(desired)?)
             .await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
         let addr = VpcResourceAddress::from_path(addr)?;
 
         match &addr {
             VpcResourceAddress::Vpc { region, .. } => {
                 let Some(vpc_id) = addr.get_output(&self.prefix, "vpc_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     VpcResourceAddress::Vpc {
                         region: region.into(),
                         vpc_id,
@@ -126,17 +126,17 @@ impl Connector for VpcConnector {
                 };
 
                 let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
                 let Some(subnet_id) = addr.get_output(&self.prefix, "subnet_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     VpcResourceAddress::Subnet {
                         region: region.into(),
                         vpc_id,
@@ -147,9 +147,9 @@ impl Connector for VpcConnector {
             }
             VpcResourceAddress::InternetGateway { region, .. } => {
                 let Some(igw_id) = addr.get_output(&self.prefix, "internet_gateway_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     VpcResourceAddress::InternetGateway {
                         region: region.into(),
                         igw_id,
@@ -164,17 +164,17 @@ impl Connector for VpcConnector {
                 };
 
                 let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
                 let Some(rt_id) = addr.get_output(&self.prefix, "route_table_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     VpcResourceAddress::RouteTable {
                         region: region.into(),
                         vpc_id,
@@ -190,17 +190,17 @@ impl Connector for VpcConnector {
                 };
 
                 let Some(vpc_id) = parent_vpc_addr.get_output(&self.prefix, "vpc_id")? else {
-                    return Ok(VirtToPhyOutput::Deferred(vec![ReadOutput {
+                    return Ok(VirtToPhyResponse::Deferred(vec![ReadOutput {
                         addr: parent_vpc_addr.to_path_buf(),
                         key:  "vpc_id".to_string(),
                     }]));
                 };
 
                 let Some(sg_id) = addr.get_output(&self.prefix, "security_group_id")? else {
-                    return Ok(VirtToPhyOutput::NotPresent);
+                    return Ok(VirtToPhyResponse::NotPresent);
                 };
 
-                Ok(VirtToPhyOutput::Present(
+                Ok(VirtToPhyResponse::Present(
                     VpcResourceAddress::SecurityGroup {
                         region: region.into(),
                         vpc_id,
@@ -298,7 +298,7 @@ impl Connector for VpcConnector {
         Ok(None)
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         let region = String::from("[region]");
@@ -395,7 +395,7 @@ impl Connector for VpcConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = VpcResourceAddress::from_path(addr)?;
 
         match addr {

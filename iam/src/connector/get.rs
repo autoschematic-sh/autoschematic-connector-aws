@@ -3,8 +3,8 @@ use std::path::Path;
 use crate::{addr::IamResourceAddress, resource::IamGroup, util::list_attached_group_policies};
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
-    get_resource_output,
+    connector::{GetResourceResponse, Resource, ResourceAddress},
+    get_resource_response,
     util::RON,
 };
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
@@ -19,7 +19,7 @@ use crate::{
 use super::IamConnector;
 
 impl IamConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = IamResourceAddress::from_path(addr)?;
         let Some(client) = self.client.read().await.clone() else {
             bail!("No client");
@@ -45,7 +45,7 @@ impl IamConnector {
                             tags: user.tags.into(),
                         };
 
-                        get_resource_output!(IamResource::User(iam_user))
+                        get_resource_response!(IamResource::User(iam_user))
                     }
                     Err(e) => {
                         match e.as_service_error() {
@@ -86,7 +86,7 @@ impl IamConnector {
                             }
                         };
 
-                        get_resource_output!(IamResource::Role(iam_role))
+                        get_resource_response!(IamResource::Role(iam_role))
                     }
                     Err(e) => {
                         match e.as_service_error() {
@@ -115,7 +115,7 @@ impl IamConnector {
                             attached_policies,
                         };
 
-                        get_resource_output!(IamResource::Group(iam_group))
+                        get_resource_response!(IamResource::Group(iam_group))
                     }
                     Err(e) => {
                         match e.as_service_error() {
@@ -168,7 +168,7 @@ impl IamConnector {
                             tags: policy.tags.into(),
                         };
 
-                        get_resource_output!(IamResource::Policy(iam_policy))
+                        get_resource_response!(IamResource::Policy(iam_policy))
                     }
                     Err(e) => {
                         match e.as_service_error() {

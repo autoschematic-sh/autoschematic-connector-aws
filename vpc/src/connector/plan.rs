@@ -10,7 +10,7 @@ use crate::{
 };
 use anyhow::bail;
 use autoschematic_core::{
-    connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
+    connector::{ConnectorOp, PlanResponseElement, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values},
 };
@@ -21,7 +21,7 @@ impl VpcConnector {
         addr: &Path,
         current: Option<String>,
         desired: Option<String>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = VpcResourceAddress::from_path(addr)?;
         match addr {
             VpcResourceAddress::Vpc { region, vpc_id } => {

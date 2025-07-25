@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
 };
 
@@ -10,7 +10,7 @@ use crate::{addr::EcsResourceAddress, op::EcsConnectorOp, op_impl};
 use super::EcsConnector;
 
 impl EcsConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = EcsResourceAddress::from_path(addr)?;
         let op = EcsConnectorOp::from_str(op)?;
         let account_id = self.account_id.lock().await.clone();

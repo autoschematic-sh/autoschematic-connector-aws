@@ -5,14 +5,14 @@ use super::{
     tags::Tags, 
     op::RotationRules,
 };
-use autoschematic_core::{connector::OpExecOutput, util::RON};
+use autoschematic_core::{connector::OpExecResponse, util::RON};
 
 /// Creates a Secret using the provided configuration
 pub async fn create_secret(
     client: &aws_sdk_secretsmanager::Client,
     secret_id: &str,
     secret: &Secret,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut request = client.create_secret().name(secret_id);
     
     if let Some(description) = &secret.description {
@@ -38,7 +38,7 @@ pub async fn create_secret(
     let mut outputs = HashMap::new();
     outputs.insert(String::from("secret_id"), Some(secret_id.to_string()));
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Created secret: {}", result.name().unwrap_or("unknown"))),
     })
@@ -49,7 +49,7 @@ pub async fn update_secret_description(
     client: &aws_sdk_secretsmanager::Client,
     secret_id: &str,
     description: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let result = client
         .update_secret()
         .secret_id(secret_id)
@@ -57,7 +57,7 @@ pub async fn update_secret_description(
         .send()
         .await?;
         
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated secret description: {}", result.name().unwrap_or("unknown"))),
     })
@@ -69,7 +69,7 @@ pub async fn update_secret_value(
     secret_id: &str,
     secret_string: &str,
     client_request_token: Option<&str>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut request = client
         .put_secret_value()
         .secret_id(secret_id)
@@ -81,7 +81,7 @@ pub async fn update_secret_value(
     
     let result = request.send().await?;
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated secret value: {}", result.name().unwrap_or("unknown"))),
     })
@@ -93,7 +93,7 @@ pub async fn update_secret_tags(
     secret_id: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Calculate tag differences
     let (untag_keys, new_tagset) = super::tags::tag_diff(old_tags, new_tags)?;
     
@@ -117,7 +117,7 @@ pub async fn update_secret_tags(
             .await?;
     }
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for secret: {secret_id}")),
     })
@@ -128,7 +128,7 @@ pub async fn update_secret_kms_key_id(
     client: &aws_sdk_secretsmanager::Client,
     secret_id: &str,
     kms_key_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let result = client
         .update_secret()
         .secret_id(secret_id)
@@ -136,7 +136,7 @@ pub async fn update_secret_kms_key_id(
         .send()
         .await?;
         
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated KMS key for secret: {}", result.name().unwrap_or("unknown"))),
     })
@@ -148,7 +148,7 @@ pub async fn delete_secret(
     secret_id: &str,
     recovery_window_in_days: Option<i64>,
     force_delete_without_recovery: Option<bool>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut request = client.delete_secret().secret_id(secret_id);
     
     if let Some(window) = recovery_window_in_days {
@@ -162,7 +162,7 @@ pub async fn delete_secret(
     
     let result = request.send().await?;
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted secret: {}", result.name().unwrap_or("unknown"))),
     })
@@ -172,14 +172,14 @@ pub async fn delete_secret(
 pub async fn restore_secret(
     client: &aws_sdk_secretsmanager::Client,
     secret_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let result = client
         .restore_secret()
         .secret_id(secret_id)
         .send()
         .await?;
         
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Restored secret: {}", result.name().unwrap_or("unknown"))),
     })
@@ -191,7 +191,7 @@ pub async fn rotate_secret(
     secret_id: &str,
     rotation_lambda_arn: &str,
     rotation_rules: &RotationRules,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut request = client
         .rotate_secret()
         .secret_id(secret_id)
@@ -216,7 +216,7 @@ pub async fn rotate_secret(
     
     let result = request.send().await?;
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Configured rotation for secret: {}", result.name().unwrap_or("unknown"))),
     })
@@ -228,7 +228,7 @@ pub async fn set_secret_policy(
     secret_id: &str,
     policy_document: &ron::Value,
     block_public_policy: Option<bool>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let policy_text = RON.to_string(policy_document)?;
     
     let mut request = client
@@ -242,7 +242,7 @@ pub async fn set_secret_policy(
     
     let result = request.send().await?;
     
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Set policy for secret: {} (ARN: {})", 
             secret_id, 
@@ -254,14 +254,14 @@ pub async fn set_secret_policy(
 pub async fn delete_secret_policy(
     client: &aws_sdk_secretsmanager::Client,
     secret_id: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let result = client
         .delete_resource_policy()
         .secret_id(secret_id)
         .send()
         .await?;
         
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted policy for secret: {} (ARN: {})", 
             secret_id, 

@@ -6,7 +6,7 @@ use crate::{
     resource::{RdsDBCluster, RdsDBInstance, RdsDBParameterGroup, RdsDBSubnetGroup},
 };
 use autoschematic_core::{
-    connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
+    connector::{ConnectorOp, PlanResponseElement, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values, optional_string_from_utf8},
 };
@@ -19,7 +19,7 @@ impl RdsConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let current = optional_string_from_utf8(current)?;
         let desired = optional_string_from_utf8(desired)?;
 

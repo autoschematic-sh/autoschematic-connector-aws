@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use anyhow::Context;
-use autoschematic_core::connector::{ConnectorOp, OpExecOutput, ResourceAddress};
+use autoschematic_core::connector::{ConnectorOp, OpExecResponse, ResourceAddress};
 use aws_sdk_s3::types::CreateBucketConfiguration;
 
 use crate::{addr::S3ResourceAddress, op::S3ConnectorOp};
@@ -9,7 +9,7 @@ use crate::{addr::S3ResourceAddress, op::S3ConnectorOp};
 use super::S3Connector;
 
 impl S3Connector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = S3ResourceAddress::from_path(addr)?;
         let op = S3ConnectorOp::from_str(op)?;
 
@@ -125,7 +125,7 @@ impl S3Connector {
                                         .context("Failed to set bucket tags")?;
                                 }
 
-                                Ok(OpExecOutput {
+                                Ok(OpExecResponse {
                                     outputs: None,
                                     friendly_message: Some(format!("Created S3 bucket {name} in region {region}")),
                                 })
@@ -150,7 +150,7 @@ impl S3Connector {
                                     .await
                                     .context("Failed to update bucket policy")?;
 
-                                Ok(OpExecOutput {
+                                Ok(OpExecResponse {
                                     outputs: None,
                                     friendly_message: Some(format!("Updated policy for S3 bucket {name} in region {region}")),
                                 })
@@ -164,7 +164,7 @@ impl S3Connector {
                                     .await
                                     .context("Failed to delete bucket policy")?;
 
-                                Ok(OpExecOutput {
+                                Ok(OpExecResponse {
                                     outputs: None,
                                     friendly_message: Some(format!("Deleted policy for S3 bucket {name} in region {region}")),
                                 })
@@ -192,7 +192,7 @@ impl S3Connector {
                                     .await
                                     .context("Failed to update public access block")?;
 
-                                Ok(OpExecOutput {
+                                Ok(OpExecResponse {
                                     outputs: None,
                                     friendly_message: Some(format!(
                                         "Updated public access block for S3 bucket {name} in region {region}"
@@ -208,7 +208,7 @@ impl S3Connector {
                                     .await
                                     .context("Failed to delete public access block")?;
 
-                                Ok(OpExecOutput {
+                                Ok(OpExecResponse {
                                     outputs: None,
                                     friendly_message: Some(format!(
                                         "Deleted public access block for S3 bucket {name} in region {region}"
@@ -256,7 +256,7 @@ impl S3Connector {
                                 .context("Failed to update bucket ACL")?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated ACL for S3 bucket {name} in region {region}")),
                         })
@@ -287,7 +287,7 @@ impl S3Connector {
                                 .context("Failed to delete bucket tags")?;
                         }
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Updated tags for S3 bucket {name} in region {region}")),
                         })
@@ -302,7 +302,7 @@ impl S3Connector {
                             .await
                             .context("Failed to delete bucket")?;
 
-                        Ok(OpExecOutput {
+                        Ok(OpExecResponse {
                             outputs: None,
                             friendly_message: Some(format!("Deleted S3 bucket {name} in region {region}")),
                         })

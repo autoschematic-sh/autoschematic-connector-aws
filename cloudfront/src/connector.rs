@@ -18,15 +18,15 @@ use crate::config::CloudFrontConnectorConfig;
 use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
-use autoschematic_core::connector::VirtToPhyOutput;
+use autoschematic_core::connector::VirtToPhyResponse;
 use autoschematic_core::util::{ron_check_eq, ron_check_syntax};
 use autoschematic_core::virt_to_phy;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource,
-        ResourceAddress, SkeletonOutput,
+        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        ResourceAddress, SkeletonResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     skeleton,
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
@@ -159,11 +159,11 @@ impl CloudFrontConnector {
 
 #[async_trait]
 impl Connector for CloudFrontConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_) = CloudFrontResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -193,7 +193,7 @@ impl Connector for CloudFrontConnector {
         self.do_list(subpath).await
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -202,11 +202,11 @@ impl Connector for CloudFrontConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
@@ -267,7 +267,7 @@ impl Connector for CloudFrontConnector {
     //     Ok(Some(addr.to_path_buf()))
     // }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         // CloudFront Distribution
@@ -381,7 +381,7 @@ impl Connector for CloudFrontConnector {
         Ok(res)
     }
 
-    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyOutput> {
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
 
         virt_to_phy!(
@@ -440,7 +440,7 @@ impl Connector for CloudFrontConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
         match addr {
             CloudFrontResourceAddress::Distribution { .. } => ron_check_syntax::<resource::Distribution>(a),

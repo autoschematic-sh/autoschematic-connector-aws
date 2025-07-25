@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
+use autoschematic_core::connector::{GetResourceResponse, Resource, ResourceAddress};
 
 use crate::{
     addr::ElbResourceAddress,
@@ -10,7 +10,7 @@ use crate::{
 use super::ElbConnector;
 
 impl ElbConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = ElbResourceAddress::from_path(addr)?;
 
         match addr {
@@ -70,7 +70,7 @@ impl ElbConnector {
                     tags,
                 };
 
-                Ok(Some(GetResourceOutput {
+                Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::LoadBalancer(lb_resource).to_bytes()?,
                     outputs: None,
                 }))
@@ -148,7 +148,7 @@ impl ElbConnector {
                     tags,
                 };
 
-                Ok(Some(GetResourceOutput {
+                Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::TargetGroup(tg_resource).to_bytes()?,
                     outputs: None,
                 }))
@@ -282,7 +282,7 @@ impl ElbConnector {
                     tags,
                 };
 
-                Ok(Some(GetResourceOutput {
+                Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::Listener(listener_resource).to_bytes()?,
                     outputs: None,
                 }))

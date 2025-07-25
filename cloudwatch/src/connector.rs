@@ -18,10 +18,10 @@ use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, FilterOutput, GetResourceOutput, OpExecOutput, OpPlanOutput, Resource, ResourceAddress,
-        SkeletonOutput,
+        Connector, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource, ResourceAddress,
+        SkeletonResponse,
     },
-    diag::DiagnosticOutput,
+    diag::DiagnosticResponse,
     skeleton,
     util::{ron_check_eq, ron_check_syntax},
 };
@@ -65,11 +65,11 @@ impl CloudWatchConnector {
 
 #[async_trait]
 impl Connector for CloudWatchConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterOutput, anyhow::Error> {
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
         if let Ok(_addr) = CloudWatchResourceAddress::from_path(addr) {
-            Ok(FilterOutput::Resource)
+            Ok(FilterResponse::Resource)
         } else {
-            Ok(FilterOutput::None)
+            Ok(FilterResponse::None)
         }
     }
 
@@ -98,7 +98,7 @@ impl Connector for CloudWatchConnector {
         self.do_list(subpath).await
     }
 
-    async fn get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    async fn get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         self.do_get(addr).await
     }
 
@@ -107,15 +107,15 @@ impl Connector for CloudWatchConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         self.do_plan(addr, current, desired).await
     }
 
-    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
 
-    async fn get_skeletons(&self) -> Result<Vec<SkeletonOutput>, anyhow::Error> {
+    async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
         let region = String::from("[region]");
@@ -246,7 +246,7 @@ impl Connector for CloudWatchConnector {
         }
     }
 
-    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticOutput, anyhow::Error> {
+    async fn diag(&self, addr: &Path, a: &[u8]) -> Result<DiagnosticResponse, anyhow::Error> {
         let addr = CloudWatchResourceAddress::from_path(addr)?;
 
         match addr {

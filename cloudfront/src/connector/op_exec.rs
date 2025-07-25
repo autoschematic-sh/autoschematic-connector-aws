@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path, str::FromStr};
 
 use anyhow::{Context, bail};
 use autoschematic_core::{
-    connector::{ConnectorOp, OpExecOutput, ResourceAddress},
+    connector::{ConnectorOp, OpExecResponse, ResourceAddress},
     error_util::invalid_op,
     op_exec_output,
 };
@@ -13,7 +13,7 @@ use crate::{addr::CloudFrontResourceAddress, op::CloudFrontConnectorOp, tags::ta
 use super::CloudFrontConnector;
 
 impl CloudFrontConnector {
-    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecOutput, anyhow::Error> {
+    pub async fn do_op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         let addr = CloudFrontResourceAddress::from_path(addr)?;
         let op = CloudFrontConnectorOp::from_str(op)?;
         let account_id = self.account_id.lock().await.clone();

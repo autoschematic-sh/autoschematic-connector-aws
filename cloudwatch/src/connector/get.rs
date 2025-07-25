@@ -4,13 +4,13 @@ use crate::addr::CloudWatchResourceAddress;
 use crate::resource::*;
 use crate::tags::Tags;
 use anyhow::Context;
-use autoschematic_core::connector::{GetResourceOutput, Resource, ResourceAddress};
-use autoschematic_core::get_resource_output;
+use autoschematic_core::connector::{GetResourceResponse, Resource, ResourceAddress};
+use autoschematic_core::get_resource_response;
 
 use super::CloudWatchConnector;
 
 impl CloudWatchConnector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = CloudWatchResourceAddress::from_path(addr)?;
 
         match addr {
@@ -65,7 +65,7 @@ impl CloudWatchConnector {
                             tags: Tags::default(), // TODO: Fetch tags
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudWatchResource::Alarm(alarm),
                             [(String::from("alarm_name"), alarm_name)]
                         )
@@ -94,7 +94,7 @@ impl CloudWatchConnector {
                                 tags: Tags::default(), // TODO: Fetch tags
                             };
 
-                            get_resource_output!(
+                            get_resource_response!(
                                 CloudWatchResource::Dashboard(dashboard),
                                 [(String::from("dashboard_name"), dashboard_name)]
                             )
@@ -136,7 +136,7 @@ impl CloudWatchConnector {
                             tags: Tags::default(), // TODO: Fetch tags
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudWatchResource::LogGroup(log_group),
                             [(String::from("log_group_name"), log_group_name)]
                         )
@@ -173,7 +173,7 @@ impl CloudWatchConnector {
                             log_group_name: log_group_name.clone(),
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudWatchResource::LogStream(log_stream),
                             [(String::from("log_stream_name"), log_stream_name)]
                         )
@@ -217,7 +217,7 @@ impl CloudWatchConnector {
                             tags: Tags::default(),
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudWatchResource::Metric(metric),
                             [(String::from("metric_name"), metric_name)]
                         )
@@ -261,7 +261,7 @@ impl CloudWatchConnector {
                             tags: Tags::default(), // TODO: Fetch tags
                         };
 
-                        get_resource_output!(
+                        get_resource_response!(
                             CloudWatchResource::EventRule(rule),
                             [(String::from("rule_name"), rule_name)]
                         )

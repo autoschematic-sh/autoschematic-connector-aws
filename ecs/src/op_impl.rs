@@ -15,12 +15,12 @@ use super::{
     tags::Tags,
     util::{get_cluster, get_service},
 };
-use autoschematic_core::connector::OpExecOutput;
+use autoschematic_core::connector::OpExecResponse;
 
 // Cluster Operations
 
 /// Creates a new ECS cluster
-pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name: &str) -> Result<OpExecResponse, anyhow::Error> {
     let mut create_cluster = client.create_cluster();
 
     create_cluster = create_cluster.cluster_name(cluster_name);
@@ -93,7 +93,7 @@ pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name:
     let mut outputs = HashMap::new();
     outputs.insert(String::from("arn"), Some(cluster_arn.clone()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Created ECS cluster {cluster_name}")),
     })
@@ -105,7 +105,7 @@ pub async fn update_cluster_tags(
     cluster_name: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Get the cluster to retrieve the ARN
     let cluster = get_cluster(client, cluster_name)
         .await?
@@ -136,7 +136,7 @@ pub async fn update_cluster_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for ECS cluster {cluster_name}")),
     })
@@ -147,7 +147,7 @@ pub async fn update_cluster_settings(
     client: &Client,
     cluster_name: &str,
     settings: Vec<(String, String)>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut cluster_settings = Vec::new();
 
     for (name, value) in settings {
@@ -171,7 +171,7 @@ pub async fn update_cluster_settings(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated settings for ECS cluster {cluster_name}")),
     })
@@ -184,7 +184,7 @@ pub async fn update_cluster_capacity_providers(
     add_capacity_providers: Vec<String>,
     remove_capacity_providers: Vec<String>,
     default_strategy: Vec<(String, Option<i32>, Option<i32>)>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Get current capacity providers
     let cluster = get_cluster(client, cluster_name)
         .await?
@@ -231,17 +231,17 @@ pub async fn update_cluster_capacity_providers(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated capacity providers for ECS cluster {cluster_name}")),
     })
 }
 
 /// Deletes an ECS cluster
-pub async fn delete_cluster(client: &Client, cluster_name: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_cluster(client: &Client, cluster_name: &str) -> Result<OpExecResponse, anyhow::Error> {
     client.delete_cluster().cluster(cluster_name).send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted ECS cluster {cluster_name}")),
     })
@@ -255,7 +255,7 @@ pub async fn create_service(
     cluster_name: &str,
     service: &Service,
     service_name: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Get service name from tags
 
     let mut create_service = client
@@ -501,7 +501,7 @@ pub async fn create_service(
     outputs.insert(String::from("arn"), Some(service_arn.clone()));
     outputs.insert(String::from("service_name"), Some(service_name.clone()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Created ECS service {service_name} in cluster {cluster_name}")),
     })
@@ -514,7 +514,7 @@ pub async fn update_service_tags(
     service_name: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Get the service to retrieve the ARN
     let service = get_service(client, cluster_name, service_name)
         .await?
@@ -545,7 +545,7 @@ pub async fn update_service_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated tags for ECS service {service_name} in cluster {cluster_name}"
@@ -559,7 +559,7 @@ pub async fn update_service_desired_count(
     cluster_name: &str,
     service_name: &str,
     desired_count: i32,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .update_service()
         .cluster(cluster_name)
@@ -568,7 +568,7 @@ pub async fn update_service_desired_count(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated desired count to {desired_count} for ECS service {service_name} in cluster {cluster_name}"
@@ -582,7 +582,7 @@ pub async fn update_service_task_definition(
     cluster_name: &str,
     service_name: &str,
     task_definition: &str,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .update_service()
         .cluster(cluster_name)
@@ -591,7 +591,7 @@ pub async fn update_service_task_definition(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated task definition to {task_definition} for ECS service {service_name} in cluster {cluster_name}"
@@ -608,7 +608,7 @@ pub async fn update_service_deployment_configuration(
     minimum_healthy_percent: Option<i32>,
     enable_circuit_breaker: Option<bool>,
     enable_rollback: Option<bool>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut builder = DeploymentConfiguration::builder();
 
     if let Some(max_percent) = maximum_percent {
@@ -638,7 +638,7 @@ pub async fn update_service_deployment_configuration(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated deployment configuration for ECS service {service_name} in cluster {cluster_name}"
@@ -653,7 +653,7 @@ pub async fn update_service_load_balancers(
     service_name: &str,
     _old_load_balancers: Vec<super::resource::LoadBalancer>,
     new_load_balancers: Vec<super::resource::LoadBalancer>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Convert our LoadBalancer structs to AWS SDK LoadBalancer structs
     let mut aws_load_balancers = Vec::new();
 
@@ -688,7 +688,7 @@ pub async fn update_service_load_balancers(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated load balancers for ECS service {service_name} in cluster {cluster_name}"
@@ -702,7 +702,7 @@ pub async fn enable_execute_command(
     cluster_name: &str,
     service_name: &str,
     enable: bool,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .update_service()
         .cluster(cluster_name)
@@ -713,7 +713,7 @@ pub async fn enable_execute_command(
 
     let action = if enable { "Enabled" } else { "Disabled" };
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "{action} execute command for ECS service {service_name} in cluster {cluster_name}"
@@ -722,7 +722,7 @@ pub async fn enable_execute_command(
 }
 
 /// Deletes an ECS service
-pub async fn delete_service(client: &Client, cluster_name: &str, service_name: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn delete_service(client: &Client, cluster_name: &str, service_name: &str) -> Result<OpExecResponse, anyhow::Error> {
     client
         .delete_service()
         .cluster(cluster_name)
@@ -731,7 +731,7 @@ pub async fn delete_service(client: &Client, cluster_name: &str, service_name: &
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted ECS service {service_name} from cluster {cluster_name}")),
     })
@@ -744,7 +744,7 @@ pub async fn register_task_definition(
     client: &Client,
     family: &str,
     task_definition: &TaskDefinition,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut register_task_def = client.register_task_definition().family(family);
 
     // Set task role ARN if specified
@@ -1558,7 +1558,7 @@ pub async fn register_task_definition(
     let mut outputs = HashMap::new();
     outputs.insert(String::from("arn"), Some(task_def_arn.clone()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Registered task definition {task_def_arn}")),
     })
@@ -1570,7 +1570,7 @@ pub async fn update_task_definition_tags(
     task_definition_arn: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Use tag_diff utility to determine tags to add and remove
     let (tag_keys_to_remove, tags_to_add) = super::tags::tag_diff(old_tags, new_tags)?;
 
@@ -1594,21 +1594,21 @@ pub async fn update_task_definition_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for task definition {task_definition_arn}")),
     })
 }
 
 /// Deregisters a task definition
-pub async fn deregister_task_definition(client: &Client, task_definition: &str) -> Result<OpExecOutput, anyhow::Error> {
+pub async fn deregister_task_definition(client: &Client, task_definition: &str) -> Result<OpExecResponse, anyhow::Error> {
     client
         .deregister_task_definition()
         .task_definition(task_definition)
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deregistered task definition {task_definition}")),
     })
@@ -1627,7 +1627,7 @@ pub async fn run_task(
     network_configuration: Option<NetworkConfigurationRequest>,
     overrides: Option<OpTaskOverride>,
     tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut run_task = client
         .run_task()
         .cluster(cluster)
@@ -1775,7 +1775,7 @@ pub async fn run_task(
         format!("Started {task_count} tasks in cluster {cluster}")
     };
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(task_message),
     })
@@ -1787,7 +1787,7 @@ pub async fn stop_task(
     cluster: &str,
     task_id: &str,
     reason: Option<String>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut stop_task = client.stop_task().cluster(cluster).task(task_id);
 
     if let Some(reason_str) = reason {
@@ -1796,7 +1796,7 @@ pub async fn stop_task(
 
     stop_task.send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Stopped task {task_id} in cluster {cluster}")),
     })
@@ -1808,7 +1808,7 @@ pub async fn update_task_tags(
     task_arn: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Use tag_diff utility to determine tags to add and remove
     let (tag_keys_to_remove, tags_to_add) = super::tags::tag_diff(old_tags, new_tags)?;
 
@@ -1832,7 +1832,7 @@ pub async fn update_task_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for task {task_arn}")),
     })
@@ -1847,7 +1847,7 @@ pub async fn register_container_instance(
     instance_identity_document: &str,
     attributes: Vec<(String, Option<String>)>,
     tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut register_container_instance = client
         .register_container_instance()
         .cluster(cluster)
@@ -1895,7 +1895,7 @@ pub async fn register_container_instance(
     let mut outputs = HashMap::new();
     outputs.insert(String::from("arn"), Some(container_instance_arn.clone()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!("Registered container instance in cluster {cluster}")),
     })
@@ -1908,7 +1908,7 @@ pub async fn update_container_instance_attributes(
     container_instance_id: &str,
     attributes: Vec<(String, Option<String>)>,
     remove_attributes: Vec<String>,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut put_attributes = client.put_attributes().cluster(cluster);
 
     // Set attributes to add/update
@@ -1967,7 +1967,7 @@ pub async fn update_container_instance_attributes(
         put_attributes.send().await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated attributes for container instance {container_instance_id} in cluster {cluster}"
@@ -1981,7 +1981,7 @@ pub async fn update_container_instance_tags(
     container_instance_arn: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     // Use tag_diff utility to determine tags to add and remove
     let (tag_keys_to_remove, tags_to_add) = super::tags::tag_diff(old_tags, new_tags)?;
 
@@ -2005,7 +2005,7 @@ pub async fn update_container_instance_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for container instance {container_instance_arn}")),
     })
@@ -2017,7 +2017,7 @@ pub async fn deregister_container_instance(
     cluster: &str,
     container_instance_id: &str,
     force: bool,
-) -> Result<OpExecOutput, anyhow::Error> {
+) -> Result<OpExecResponse, anyhow::Error> {
     client
         .deregister_container_instance()
         .cluster(cluster)
@@ -2026,7 +2026,7 @@ pub async fn deregister_container_instance(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Deregistered container instance {container_instance_id} from cluster {cluster}"

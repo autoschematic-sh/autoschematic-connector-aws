@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use autoschematic_core::{
-    connector::{ConnectorOp, OpPlanOutput, ResourceAddress},
+    connector::{ConnectorOp, PlanResponseElement, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values},
 };
@@ -20,7 +20,7 @@ impl ApiGatewayV2Connector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = ApiGatewayV2ResourceAddress::from_path(addr)?;
         let mut res = Vec::new();
 

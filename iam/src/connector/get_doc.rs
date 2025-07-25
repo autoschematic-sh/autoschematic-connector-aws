@@ -1,5 +1,5 @@
 
-use autoschematic_core::connector::{DocIdent, GetDocOutput};
+use autoschematic_core::connector::{DocIdent, GetDocResponse};
 use documented::{Documented, DocumentedFields};
 
 use crate::resource;
@@ -7,7 +7,7 @@ use crate::resource;
 use super::IamConnector;
 
 impl IamConnector {
-    pub async fn do_get_doc(&self, ident: DocIdent) -> Result<Option<GetDocOutput>, anyhow::Error> {
+    pub async fn do_get_doc(&self, ident: DocIdent) -> Result<Option<GetDocResponse>, anyhow::Error> {
         eprintln!("get_doc: {ident:?}");
 
         match ident {

@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Result, bail};
 use autoschematic_core::{
     connector::ConnectorOp,
-    connector::{OpPlanOutput, ResourceAddress},
+    connector::{PlanResponseElement, ResourceAddress},
     connector_op,
     util::RON,
 };
@@ -19,7 +19,7 @@ use crate::{
 use super::AcmConnector;
 
 impl AcmConnector {
-    pub async fn do_plan(&self, addr: &Path, current: Option<String>, desired: Option<String>) -> Result<Vec<OpPlanOutput>> {
+    pub async fn do_plan(&self, addr: &Path, current: Option<String>, desired: Option<String>) -> Result<Vec<PlanResponseElement>> {
         let addr = AcmResourceAddress::from_path(addr)?;
         let mut ops = Vec::new();
 

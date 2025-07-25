@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::bail;
 use autoschematic_core::{
-    connector::{GetResourceOutput, Resource, ResourceAddress},
+    connector::{GetResourceResponse, Resource, ResourceAddress},
     util::RON,
 };
 
@@ -11,7 +11,7 @@ use crate::{addr::S3ResourceAddress, resource, tags::Tags};
 use super::S3Connector;
 
 impl S3Connector {
-    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceOutput>, anyhow::Error> {
+    pub async fn do_get(&self, addr: &Path) -> Result<Option<GetResourceResponse>, anyhow::Error> {
         let addr = S3ResourceAddress::from_path(addr)?;
 
         match addr {
@@ -100,7 +100,7 @@ impl S3Connector {
                     tags,
                 };
 
-                Ok(Some(GetResourceOutput {
+                Ok(Some(GetResourceResponse {
                     resource_definition: resource::S3Resource::Bucket(bucket).to_bytes()?,
                     outputs: None,
                 }))

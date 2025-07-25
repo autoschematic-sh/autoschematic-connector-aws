@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use autoschematic_core::{
-    connector::{OpPlanOutput, ResourceAddress},
+    connector::{PlanResponseElement, ResourceAddress},
     connector_op,
     util::{RON, diff_ron_values, optional_string_from_utf8},
 };
@@ -18,7 +18,7 @@ impl EcrConnector {
         addr: &Path,
         current: Option<Vec<u8>>,
         desired: Option<Vec<u8>>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
         let addr = EcrResourceAddress::from_path(addr)?;
 
         let current = optional_string_from_utf8(current)?;

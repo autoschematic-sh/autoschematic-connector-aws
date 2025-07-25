@@ -6,14 +6,14 @@ use super::{
     resource::{AccessPoint, FileSystem, FileSystemProtection, LifecyclePolicy, MountTarget},
     tags::{tag_diff, Tags},
 };
-use autoschematic_core::connector::OpExecOutput;
+use autoschematic_core::connector::OpExecResponse;
 
 // FileSystem operations
 pub async fn create_file_system(
     client: &aws_sdk_efs::Client,
     file_system: &FileSystem,
     file_system_id: &str,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     // Build create request
     let mut request = client
         .create_file_system()
@@ -87,7 +87,7 @@ pub async fn create_file_system(
                 .await?;
         }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!(
             "Created EFS file system with ID: {}",
@@ -101,7 +101,7 @@ pub async fn update_file_system_throughput(
     file_system_id: &str,
     throughput_mode: &str,
     provisioned_throughput_in_mibps: Option<f64>,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     let mut request = client
         .update_file_system()
         .file_system_id(file_system_id)
@@ -118,7 +118,7 @@ pub async fn update_file_system_throughput(
 
     let response = request.send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated throughput mode to '{throughput_mode}' for file system {file_system_id}"
@@ -130,7 +130,7 @@ pub async fn update_file_system_lifecycle_policies(
     client: &aws_sdk_efs::Client,
     file_system_id: &str,
     lifecycle_policies: Vec<LifecyclePolicy>,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     let lifecycle_policies: Vec<SdkLifecyclePolicy> = lifecycle_policies
         .iter()
         .map(|policy| {
@@ -155,7 +155,7 @@ pub async fn update_file_system_lifecycle_policies(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated lifecycle policies for file system {file_system_id}"
@@ -167,7 +167,7 @@ pub async fn update_file_system_protection(
     client: &aws_sdk_efs::Client,
     file_system_id: &str,
     file_system_protection: FileSystemProtection,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     let mut request = client
         .update_file_system_protection()
         .file_system_id(file_system_id);
@@ -178,7 +178,7 @@ pub async fn update_file_system_protection(
 
     request.send().await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated protection settings for file system {file_system_id}"
@@ -191,7 +191,7 @@ pub async fn update_file_system_tags(
     file_system_id: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     // Calculate tag differences
     let (remove_tags, add_tags) = tag_diff(old_tags, new_tags)?;
 
@@ -215,7 +215,7 @@ pub async fn update_file_system_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for file system {file_system_id}")),
     })
@@ -225,7 +225,7 @@ pub async fn delete_file_system(
     client: &aws_sdk_efs::Client,
     file_system_id: &str,
     bypass_protection: bool,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     // First ensure all mount targets are deleted
     let mount_targets = client
         .describe_mount_targets()
@@ -259,7 +259,7 @@ pub async fn delete_file_system(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted file system {file_system_id}")),
     })
@@ -270,7 +270,7 @@ pub async fn create_mount_target(
     client: &aws_sdk_efs::Client,
     mount_target: &MountTarget,
     file_system_id: &str,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     let mut request = client
         .create_mount_target()
         .file_system_id(file_system_id)
@@ -288,7 +288,7 @@ pub async fn create_mount_target(
     let mt_id = response.mount_target_id();
     outputs.insert(String::from("mount_target_id"), Some(mt_id.to_string()));
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!(
             "Created mount target with ID: {}",
@@ -301,7 +301,7 @@ pub async fn update_mount_target_security_groups(
     client: &aws_sdk_efs::Client,
     mount_target_id: &str,
     security_groups: Vec<String>,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     client
         .modify_mount_target_security_groups()
         .mount_target_id(mount_target_id)
@@ -309,7 +309,7 @@ pub async fn update_mount_target_security_groups(
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!(
             "Updated security groups for mount target {mount_target_id}"
@@ -320,14 +320,14 @@ pub async fn update_mount_target_security_groups(
 pub async fn delete_mount_target(
     client: &aws_sdk_efs::Client,
     mount_target_id: &str,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     client
         .delete_mount_target()
         .mount_target_id(mount_target_id)
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted mount target {mount_target_id}")),
     })
@@ -338,7 +338,7 @@ pub async fn create_access_point(
     client: &aws_sdk_efs::Client,
     access_point: &AccessPoint,
     file_system_id: &str,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     let mut request = client.create_access_point().file_system_id(file_system_id);
 
     // Add POSIX user if specified
@@ -389,7 +389,7 @@ pub async fn create_access_point(
         outputs.insert(String::from("access_point_id"), Some(ap_id.to_string()));
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: Some(outputs),
         friendly_message: Some(format!(
             "Created access point with ID: {}",
@@ -403,7 +403,7 @@ pub async fn update_access_point_tags(
     access_point_id: &str,
     old_tags: &Tags,
     new_tags: &Tags,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     // Calculate tag differences
     let (remove_tags, add_tags) = tag_diff(old_tags, new_tags)?;
 
@@ -427,7 +427,7 @@ pub async fn update_access_point_tags(
             .await?;
     }
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Updated tags for access point {access_point_id}")),
     })
@@ -436,14 +436,14 @@ pub async fn update_access_point_tags(
 pub async fn delete_access_point(
     client: &aws_sdk_efs::Client,
     access_point_id: &str,
-) -> anyhow::Result<OpExecOutput> {
+) -> anyhow::Result<OpExecResponse> {
     client
         .delete_access_point()
         .access_point_id(access_point_id)
         .send()
         .await?;
 
-    Ok(OpExecOutput {
+    Ok(OpExecResponse {
         outputs: None,
         friendly_message: Some(format!("Deleted access point {access_point_id}")),
     })

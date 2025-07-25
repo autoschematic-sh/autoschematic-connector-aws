@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use autoschematic_core::{connector::{OpPlanOutput, ResourceAddress}, connector_op, util::RON};
+use autoschematic_core::{connector::{PlanResponseElement, ResourceAddress}, connector_op, util::RON};
 
 use autoschematic_core::connector::ConnectorOp;
 
@@ -15,7 +15,7 @@ impl Route53Connector {
         addr: &Path,
         current: Option<String>,
         desired: Option<String>,
-    ) -> Result<Vec<OpPlanOutput>, anyhow::Error> {
+    ) -> Result<Vec<PlanResponseElement>, anyhow::Error> {
 
         let addr = Route53ResourceAddress::from_path(addr)?;
 
