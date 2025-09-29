@@ -164,8 +164,6 @@ impl Connector for RdsConnector {
                 enable_iam_database_authentication: Some(true),
                 deletion_protection: Some(false),
                 copy_tags_to_snapshot: Some(true),
-                skip_final_snapshot: Some(false),
-                final_snapshot_identifier: None,
                 availability_zones: Some(vec![String::from("[availability_zone_1]"), String::from("[availability_zone_2]")]),
                 db_subnet_group_name: Some(String::from("[db_subnet_group_name]")),
                 vpc_security_group_ids: Some(vec![String::from("[security_group_id]")]),
