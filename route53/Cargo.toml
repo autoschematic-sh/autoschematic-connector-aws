@@ -2,7 +2,7 @@
 name = "autoschematic-connector-aws-route53"
 description = "An Autoschematic connector for AWS Route53"
 license = "MIT"
-version = "0.7.0"
+version = "0.8.2"
 edition = "2024"
 
 # [[bin]]
@@ -14,11 +14,11 @@ name = "autoschematic-connector-aws-route53"
 [dependencies]
 anyhow = "1.0.95"
 async-trait = "0.1.86"
-autoschematic-connector-aws-core = { path = "../core", version = "0.7.0" }
-autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.7.0" }
+autoschematic-connector-aws-core = { path = "../core", version = "0.8.2" }
+autoschematic-core = { path = "../../../autoschematic/autoschematic-core", version = "0.8.2" }
 # autoschematic-core = "0.3.0"
 aws-config = "1.5.16"
-ron = { version = "0.10.1", features = ["indexmap"] }
+ron = { version = "0.11.0", features = ["indexmap"] }
 serde = { version = "1.0.217", features = ["derive"] }
 thiserror = "2.0.11"
 tracing = "0.1.41"

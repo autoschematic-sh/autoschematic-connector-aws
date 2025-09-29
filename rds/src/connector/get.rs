@@ -227,8 +227,6 @@ fn map_db_cluster(db_cluster: &aws_sdk_rds::types::DbCluster) -> Result<crate::r
         enable_iam_database_authentication: db_cluster.iam_database_authentication_enabled(),
         deletion_protection: db_cluster.deletion_protection(),
         copy_tags_to_snapshot: db_cluster.copy_tags_to_snapshot(),
-        skip_final_snapshot: None,       // This is a create/delete parameter, not stored in the cluster
-        final_snapshot_identifier: None, // This is a create/delete parameter, not stored in the cluster
         availability_zones: db_cluster
             .availability_zones
             .as_ref()
@@ -269,7 +267,7 @@ fn map_db_subnet_group(
 ) -> Result<crate::resource::RdsDBSubnetGroup, anyhow::Error> {
     Ok(crate::resource::RdsDBSubnetGroup {
         description: db_subnet_group.db_subnet_group_description().unwrap_or_default().to_string(),
-        subnet_ids:  db_subnet_group
+        subnet_ids: db_subnet_group
             .subnets()
             .iter()
             .map(|subnet| subnet.subnet_identifier().unwrap_or_default().to_string())
@@ -282,7 +280,7 @@ fn map_db_parameter_group(
 ) -> Result<crate::resource::RdsDBParameterGroup, anyhow::Error> {
     Ok(crate::resource::RdsDBParameterGroup {
         description: db_parameter_group.description.clone(),
-        family:      db_parameter_group.db_parameter_group_family().unwrap_or_default().to_string(),
-        parameters:  HashMap::new(), // TODO: Implement parameter retrieval
+        family: db_parameter_group.db_parameter_group_family().unwrap_or_default().to_string(),
+        parameters: HashMap::new(), // TODO: Implement parameter retrieval
     })
 }

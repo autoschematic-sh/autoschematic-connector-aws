@@ -1,4 +1,3 @@
-#![feature(more_qualified_paths)]
 use autoschematic_core::tarpc_bridge::tarpc_connector_main;
 use connector::CloudFrontConnector;
 

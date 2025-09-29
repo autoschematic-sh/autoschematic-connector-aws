@@ -66,8 +66,6 @@ pub struct RdsDBCluster {
     pub enable_iam_database_authentication: Option<bool>,
     pub deletion_protection: Option<bool>,
     pub copy_tags_to_snapshot: Option<bool>,
-    pub skip_final_snapshot: Option<bool>,
-    pub final_snapshot_identifier: Option<String>,
     pub availability_zones: Option<Vec<String>>,
     pub db_subnet_group_name: Option<String>,
     pub vpc_security_group_ids: Option<Vec<String>>,
