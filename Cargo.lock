@@ -76,14 +76,14 @@ checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
 
 [[package]]
 name = "autoschematic-connector-aws-core"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "async-trait",
  "autoschematic-core",
  "aws-config",
  "aws-sdk-sts",
- "ron 0.11.0",
+ "ron",
  "serde",
  "serde_json",
  "thiserror",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-iam"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "arbitrary",
@@ -108,7 +108,7 @@ dependencies = [
  "documented",
  "indexmap",
  "lazy_static",
- "ron 0.10.1",
+ "ron",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -124,7 +124,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-route53"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -135,7 +135,7 @@ dependencies = [
  "aws-sdk-sts",
  "aws-smithy-types",
  "lazy_static",
- "ron 0.11.0",
+ "ron",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -151,7 +151,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-connector-aws-vpc"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -164,7 +164,7 @@ dependencies = [
  "aws-smithy-types",
  "indexmap",
  "lazy_static",
- "ron 0.11.0",
+ "ron",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -180,7 +180,7 @@ dependencies = [
 
 [[package]]
 name = "autoschematic-core"
-version = "0.8.2"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -206,7 +206,7 @@ dependencies = [
  "rand 0.9.1",
  "rand_core 0.6.4",
  "regex",
- "ron 0.11.0",
+ "ron",
  "secrecy",
  "serde",
  "serde_json",
@@ -2696,20 +2696,6 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "ron"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "beceb6f7bf81c73e73aeef6dd1356d9a1b2b4909e1f0fc3e59b034f9572d7b7f"
-dependencies = [
- "base64 0.22.1",
- "bitflags",
- "indexmap",
- "serde",
- "serde_derive",
- "unicode-ident",
 ]
 
 [[package]]
