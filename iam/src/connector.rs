@@ -139,7 +139,7 @@ impl Connector for IamConnector {
 
         // IAM User skeleton
         res.push(skeleton!(
-            IamResourceAddress::Role {
+            IamResourceAddress::User {
                 path: String::from("/"),
                 name: String::from("[user_name]"),
             },
@@ -176,8 +176,6 @@ impl Connector for IamConnector {
             },
             IamResource::Role(IamRole {
                 attached_policies: HashSet::from([
-                    String::from("AmazonS3ReadOnlyAccess"),
-                    String::from("CloudWatchAgentServerPolicy")
                 ]),
                 assume_role_policy_document: Some(assume_role_policy_ron_value),
                 tags: Tags::default(),
