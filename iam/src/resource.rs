@@ -1,6 +1,8 @@
 use std::collections::HashSet;
 
 use autoschematic_core::connector::{Resource, ResourceAddress};
+use autoschematic_core::macros::FieldTypes;
+use autoschematic_macros::FieldTypes;
 use documented::{Documented, DocumentedFields};
 use serde::{Deserialize, Serialize};
 
@@ -16,7 +18,7 @@ pub struct IamUser {
     pub tags: Tags,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 #[serde(deny_unknown_fields)]
 /// An IAM role is an IAM identity that you can create in your account that has specific permissions. An IAM role is similar to an IAM user, in that it is an AWS identity with permission policies that determine what the identity can and cannot do in AWS. However, instead of being uniquely associated with one person, a role is intended to be assumable by anyone who needs it.
 pub struct IamRole {
@@ -80,10 +82,10 @@ impl Resource for IamResource {
 
         let s = str::from_utf8(s)?;
         match addr {
-            IamResourceAddress::User { path, name } => Ok(IamResource::User(RON.from_str(s)?)),
-            IamResourceAddress::Role { path, name } => Ok(IamResource::Group(RON.from_str(s)?)),
-            IamResourceAddress::Group { path, name } => Ok(IamResource::Role(RON.from_str(s)?)),
-            IamResourceAddress::Policy { path, name } => Ok(IamResource::Policy(RON.from_str(s)?)),
+            IamResourceAddress::User { .. } => Ok(IamResource::User(RON.from_str(s)?)),
+            IamResourceAddress::Role { .. } => Ok(IamResource::Group(RON.from_str(s)?)),
+            IamResourceAddress::Group { .. } => Ok(IamResource::Role(RON.from_str(s)?)),
+            IamResourceAddress::Policy { .. } => Ok(IamResource::Policy(RON.from_str(s)?)),
         }
     }
 }

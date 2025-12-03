@@ -1,18 +1,24 @@
 use std::{
     collections::HashSet,
-    path::{Path, PathBuf}, sync::{Arc},
+    path::{Path, PathBuf},
+    sync::Arc,
 };
 
-use crate::{addr::IamResourceAddress, resource::IamGroup};
+use crate::{
+    addr::IamResourceAddress,
+    resource::IamGroup,
+    task::{IamTask, IamTaskAddress},
+};
 use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsConnectorConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, DocIdent, FilterResponse, GetDocResponse, GetResourceResponse, OpExecResponse, PlanResponseElement,
-        Resource, ResourceAddress, SkeletonResponse,
+        Connector, ConnectorOutbox, DocIdent, FilterResponse, GetDocResponse, GetResourceResponse, OpExecResponse,
+        PlanResponseElement, Resource, ResourceAddress, SkeletonResponse, TaskExecResponse,
     },
     diag::DiagnosticResponse,
+    doc_dispatch,
     skeleton,
     util::{RON, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
@@ -26,28 +32,19 @@ use tokio::sync::RwLock;
 use crate::{resource, tags};
 
 mod get;
-mod get_doc;
 mod list;
 mod op_exec;
 mod plan;
 
 #[derive(Default)]
 pub struct IamConnector {
-    prefix:     PathBuf,
-    client:     RwLock<Option<Arc<aws_sdk_iam::Client>>>,
+    prefix: PathBuf,
+    client: RwLock<Option<Arc<aws_sdk_iam::Client>>>,
     account_id: RwLock<Option<String>>,
 }
 
 #[async_trait]
 impl Connector for IamConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
-        if let Ok(_addr) = IamResourceAddress::from_path(addr) {
-            Ok(FilterResponse::Resource)
-        } else {
-            Ok(FilterResponse::None)
-        }
-    }
-
     async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
@@ -83,13 +80,14 @@ impl Connector for IamConnector {
                 };
 
                 if let Some(config_account_id) = config_file.account_id
-                    && config_account_id != account_id {
-                        bail!(
-                            "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
-                            account_id,
-                            config_account_id
-                        );
-                    }
+                    && config_account_id != account_id
+                {
+                    bail!(
+                        "Credentials do not match configured account id: creds = {}, aws/config.ron = {}",
+                        account_id,
+                        config_account_id
+                    );
+                }
 
                 *self.client.write().await = Some(Arc::new(client));
                 *self.account_id.write().await = Some(account_id);
@@ -100,6 +98,14 @@ impl Connector for IamConnector {
                 tracing::error!("Failed to call sts:GetCallerIdentity: {}", e);
                 Err(e.into())
             }
+        }
+    }
+
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
+        if let Ok(_addr) = IamResourceAddress::from_path(addr) {
+            Ok(FilterResponse::Resource)
+        } else {
+            Ok(FilterResponse::None)
         }
     }
 
@@ -175,8 +181,7 @@ impl Connector for IamConnector {
                 name: String::from("[role_name]"),
             },
             IamResource::Role(IamRole {
-                attached_policies: HashSet::from([
-                ]),
+                attached_policies: HashSet::from([]),
                 assume_role_policy_document: Some(assume_role_policy_ron_value),
                 tags: Tags::default(),
             })
@@ -234,7 +239,8 @@ impl Connector for IamConnector {
     }
 
     async fn get_docstring(&self, _addr: &Path, ident: DocIdent) -> anyhow::Result<Option<GetDocResponse>> {
-        self.do_get_doc(ident).await
+        doc_dispatch!(ident, [IamRole])
+        // doc_dispatch!(ident, [IamUser, IamRole, IamGroup, IamPolicy])
     }
 
     async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
@@ -257,5 +263,97 @@ impl Connector for IamConnector {
             IamResourceAddress::Group { .. } => ron_check_syntax::<IamGroup>(a),
             IamResourceAddress::Policy { .. } => ron_check_syntax::<IamPolicy>(a),
         }
+    }
+
+    async fn task_exec(
+        &self,
+        addr: &Path,
+        body: Vec<u8>,
+
+        _arg: Option<Vec<u8>>,
+        _state: Option<Vec<u8>>,
+    ) -> anyhow::Result<TaskExecResponse> {
+        let mut res = TaskExecResponse::default();
+
+        let addr = IamTaskAddress::from_path(addr)?;
+
+        let Some(ref client) = *self.client.read().await else {
+            bail!("No client")
+        };
+
+        let task = IamTask::from_bytes(&addr, &body)?;
+        match task {
+            IamTask::RotateCredential(rotate_credential) => {
+                for cred in rotate_credential.credentials {
+                    let keys = client
+                        .list_access_keys()
+                        .user_name(&cred.principal)
+                        .send()
+                        .await?
+                        .access_key_metadata;
+
+                    if keys.len() >= 2 {
+                        // Delete one existing key to free a slot.
+                        // (For simplicity, delete the first. In production, pick the least-recently-used or inactive.)
+                        if let Some(first) = keys.first() {
+                            if let Some(old_id) = first.access_key_id.as_deref() {
+                                client
+                                    .delete_access_key()
+                                    .user_name(&cred.principal)
+                                    .access_key_id(old_id)
+                                    .send()
+                                    .await?;
+                            }
+                        }
+                    }
+
+                    // 2) Create a new key
+                    let created = client.create_access_key().user_name(&cred.principal).send().await?;
+                    let Some(new_key) = created.access_key() else {
+                        bail!("Failed to create access key: new key is None")
+                    };
+                    let new_id = &new_key.access_key_id;
+                    let new_secret = &new_key.secret_access_key;
+
+                    // (Optional but recommended) briefly disable old keys before deleting if you want a canary check.
+                    // 3) Retire any remaining old keys
+                    let remaining = client
+                        .list_access_keys()
+                        .user_name(&cred.principal)
+                        .send()
+                        .await?
+                        .access_key_metadata;
+
+                    for md in remaining {
+                        let Some(akid) = md.access_key_id() else { continue };
+                        if akid != new_id {
+                            // You can set to Inactive first if you prefer a two-step cutover:
+                            // iam.update_access_key()
+                            //     .user_name(USERNAME)
+                            //     .access_key_id(akid)
+                            //     .status(StatusType::Inactive)
+                            //     .send()
+                            //     .await?;
+                            client
+                                .delete_access_key()
+                                .user_name(&cred.principal)
+                                .access_key_id(akid)
+                                .send()
+                                .await?;
+                        }
+                    }
+
+                    // (Optional) ensure the new key is active
+                    // client.update_access_key()
+                    //     .user_name()
+                    //     .access_key_id(&new_id)
+                    //     .status(StatusType::Active)
+                    //     .send()
+                    //     .await?;
+                }
+            }
+        }
+
+        Ok(res)
     }
 }
