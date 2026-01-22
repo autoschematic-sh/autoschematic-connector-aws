@@ -1,5 +1,4 @@
 use crate::addr::CloudFrontResourceAddress;
-use crate::op::CloudFrontConnectorOp;
 use crate::resource::{self, CloudFrontResource};
 
 mod get;
@@ -7,6 +6,7 @@ mod list;
 mod op_exec;
 mod plan;
 
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -15,21 +15,21 @@ use std::{
 };
 
 use crate::config::CloudFrontConnectorConfig;
-use anyhow::bail;
 use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
-use autoschematic_core::connector::VirtToPhyResponse;
-use autoschematic_core::util::{ron_check_eq, ron_check_syntax};
-use autoschematic_core::virt_to_phy;
+use autoschematic_core::connector::{TaskExecResponse, VirtToPhyResponse};
+use autoschematic_core::util::{RON, ron_check_eq, ron_check_syntax};
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
+        Connector, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
         ResourceAddress, SkeletonResponse,
     },
     diag::DiagnosticResponse,
     skeleton,
 };
 use aws_config::{BehaviorVersion, Region, meta::region::RegionProviderChain, timeout::TimeoutConfig};
+use aws_sdk_cloudfront::types::{InvalidationBatch, Paths};
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 #[derive(Default)]
@@ -159,14 +159,6 @@ impl CloudFrontConnector {
 
 #[async_trait]
 impl Connector for CloudFrontConnector {
-    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
-        if let Ok(_) = CloudFrontResourceAddress::from_path(addr) {
-            Ok(FilterResponse::Resource)
-        } else {
-            Ok(FilterResponse::None)
-        }
-    }
-
     async fn new(_name: &str, prefix: &Path, _outbox: ConnectorOutbox) -> Result<Arc<dyn Connector>, anyhow::Error>
     where
         Self: Sized,
@@ -187,6 +179,148 @@ impl Connector for CloudFrontConnector {
         *self.account_id.lock().await = account_id;
         // self.get_or_init_client();
         Ok(())
+    }
+
+    async fn filter(&self, addr: &Path) -> Result<FilterResponse, anyhow::Error> {
+        if let Ok(addr) = CloudFrontResourceAddress::from_path(addr) {
+            match addr {
+                CloudFrontResourceAddress::Distribution { .. } => Ok(FilterResponse::Resource | FilterResponse::Task),
+                _ => Ok(FilterResponse::Resource),
+            }
+        } else {
+            Ok(FilterResponse::None)
+        }
+    }
+
+    async fn task_exec(
+        &self,
+        addr: &Path,
+        body: Vec<u8>,
+
+        arg: Option<Vec<u8>>,
+        state: Option<Vec<u8>>,
+    ) -> anyhow::Result<TaskExecResponse> {
+        let Ok(CloudFrontResourceAddress::Distribution { distribution_id }) = CloudFrontResourceAddress::from_path(addr) else {
+            return Ok(TaskExecResponse::default());
+        };
+
+        #[derive(Serialize, Deserialize)]
+        enum DistributionCommand {
+            Invalidate { paths: Vec<String> },
+        }
+
+        #[derive(Serialize, Deserialize)]
+        enum TaskState {
+            Invalidating { invalidation_id: String, status: String },
+        }
+
+        // let arg = (
+        //     arg.map(|arg| {
+        //         RON.from_bytes(&arg)
+        //     }),
+        //     state.map(|state| RON.from_bytes(&state)),
+        // );
+        tracing::warn!("{:?}. {:?}, {:?}", addr, arg, state);
+        match (arg, state) {
+            (Some(arg), None) => {
+                let arg: DistributionCommand = RON.from_bytes(&arg)?;
+
+                match arg {
+                    DistributionCommand::Invalidate { paths } => {
+                        let client = self.get_or_init_client().await?;
+                        let batch = InvalidationBatch::builder()
+                            .caller_reference(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos().to_string())
+                            .paths(
+                                Paths::builder()
+                                    .quantity(paths.len().try_into().unwrap())
+                                    .set_items(Some(paths))
+                                    .build()?,
+                            )
+                            .build()?;
+
+                        let res = client
+                            .create_invalidation()
+                            .distribution_id(distribution_id)
+                            .invalidation_batch(batch)
+                            .send()
+                            .await?;
+
+                        let Some(invalidation) = res.invalidation else {
+                            return Ok(TaskExecResponse::default());
+                        };
+
+                        let next_state = TaskState::Invalidating {
+                            invalidation_id: invalidation.id,
+                            status: invalidation.status,
+                        };
+
+                        let now_secs = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+                        return Ok(TaskExecResponse {
+                            next_state: Some(RON.to_string(&next_state)?.into_bytes()),
+                            friendly_message: Some(String::from("Created invalidation for distribution ID {}")),
+                            delay_until: Some(now_secs + 10),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+            (None, Some(state)) => {
+                let state: TaskState = RON.from_bytes(&state)?;
+                match state {
+                    TaskState::Invalidating { invalidation_id, status } => {
+                        let client = self.get_or_init_client().await?;
+
+                        let res = client
+                            .get_invalidation()
+                            .distribution_id(distribution_id)
+                            .id(invalidation_id)
+                            .send()
+                            .await?;
+
+                        let Some(invalidation) = res.invalidation else {
+                            return Ok(TaskExecResponse::default());
+                        };
+
+                        let now_secs = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+
+                        let next_state = match invalidation.status.as_str() {
+                            "Completed" => None,
+                            _ => Some(
+                                RON.to_string(&TaskState::Invalidating {
+                                    invalidation_id: invalidation.id,
+                                    status: invalidation.status,
+                                })?
+                                .into_bytes(),
+                            ),
+                        };
+
+                        return Ok(TaskExecResponse {
+                            next_state,
+                            delay_until: Some(now_secs + 10),
+                            friendly_message: Some(String::from("Waiting for invalidation to complete for distribution ID {}")),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+            _ => {
+                return Ok(TaskExecResponse::default());
+            }
+        }
+
+        // let Some(invalidation_id) = res.invalidation.map(|i| i.id.clone()) else {
+        //     TaskExecResponse {
+        //         next_state: todo!(),
+        //         modified_files: todo!(),
+        //         outputs: todo!(),
+        //         secrets: todo!(),
+        //         friendly_message: todo!(),
+        //         delay_until: todo!(),
+        //     };
+        //     return Ok(TaskExecResponse::default());
+        // };
+
+        Ok(TaskExecResponse::default())
     }
 
     async fn list(&self, subpath: &Path) -> Result<Vec<PathBuf>, anyhow::Error> {
@@ -266,6 +400,54 @@ impl Connector for CloudFrontConnector {
     //     }
     //     Ok(Some(addr.to_path_buf()))
     // }
+
+    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
+        let addr_buf = addr.to_path_buf();
+        let addr = CloudFrontResourceAddress::from_path(addr)?;
+
+        match &addr {
+            CloudFrontResourceAddress::Distribution { distribution_id } => {
+                let Some(distribution_id) = addr.get_output(&self.prefix, "distribution_id")? else {
+                    return Ok(VirtToPhyResponse::NotPresent);
+                };
+                Ok(VirtToPhyResponse::Present(
+                    CloudFrontResourceAddress::Distribution { distribution_id }.to_path_buf(),
+                ))
+            }
+            _ => Ok(VirtToPhyResponse::Null(addr_buf)),
+        }
+        // virt_to_phy!(
+        //     addr, &self.prefix,
+        //     trivial => [
+        //         CloudFrontResourceAddress::Distribution { distribution_id },
+        //         // OriginAccessControl { oac_id },
+        //         // CachePolicy { policy_id },
+        //         // OriginRequestPolicy { policy_id },
+        //         // ResponseHeadersPolicy { policy_id },
+        //         // KeyGroup { key_group_id },
+        //         // PublicKey { public_key_id },
+        //         // FieldLevelEncryptionConfig { config_id },
+        //         // FieldLevelEncryptionProfile { profile_id },
+        //         // StreamingDistribution { distribution_id }
+        //     ],
+        //     null => [
+        //         // RealtimeLogConfig { name },
+        //         // Function { name }
+        //     ],
+        //     todo => [
+        //     ]
+        // )
+    }
+
+    async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
+        let addr = CloudFrontResourceAddress::from_path(addr)?;
+
+        if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
+            return Ok(Some(virt_addr.to_path_buf()));
+        }
+
+        Ok(None)
+    }
 
     async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
@@ -379,42 +561,6 @@ impl Connector for CloudFrontConnector {
         ));
 
         Ok(res)
-    }
-
-    async fn addr_virt_to_phy(&self, addr: &Path) -> anyhow::Result<VirtToPhyResponse> {
-        let addr = CloudFrontResourceAddress::from_path(addr)?;
-
-        virt_to_phy!(
-            CloudFrontResourceAddress, addr, &self.prefix,
-            trivial => [
-                Distribution { distribution_id },
-                OriginAccessControl { oac_id },
-                CachePolicy { policy_id },
-                OriginRequestPolicy { policy_id },
-                ResponseHeadersPolicy { policy_id },
-                KeyGroup { key_group_id },
-                PublicKey { public_key_id },
-                FieldLevelEncryptionConfig { config_id },
-                FieldLevelEncryptionProfile { profile_id },
-                StreamingDistribution { distribution_id }
-            ],
-            null => [
-                RealtimeLogConfig { name },
-                Function { name }
-            ],
-            todo => [
-            ]
-        )
-    }
-
-    async fn addr_phy_to_virt(&self, addr: &Path) -> anyhow::Result<Option<PathBuf>> {
-        let addr = CloudFrontResourceAddress::from_path(addr)?;
-
-        if let Some(virt_addr) = addr.phy_to_virt(&self.prefix)? {
-            return Ok(Some(virt_addr.to_path_buf()));
-        }
-
-        Ok(None)
     }
 
     async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {

@@ -1,17 +1,11 @@
 use std::path::{Path, PathBuf};
 
-use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_path};
+use anyhow::Context;
 
-use std::collections::HashSet;
-
-use autoschematic_core::connector::Resource;
-use documented::{Documented, DocumentedFields};
+use autoschematic_core::connector::{Resource, ResourceAddress};
 use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::{PrettyConfig, RON};
-
-use super::addr::IamResourceAddress;
-use super::tags::Tags;
 
 #[derive(Debug, Clone)]
 pub enum IamTaskAddress {
@@ -29,13 +23,18 @@ impl ResourceAddress for IamTaskAddress {
     where
         Self: Sized,
     {
-        let path_components: Vec<&str> = path.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
+        let path_components: Vec<&str> = path
+            .components()
+            .map(|s| s.as_os_str().to_str().context("Path component is not valid UTF-8"))
+            .collect::<Result<Vec<&str>, anyhow::Error>>()?;
 
         match &path_components[..] {
             ["aws", "iam", "tasks", "rotate-credential", name] if name.ends_with(".ron") => {
-                Ok(IamTaskAddress::RotateCredential { name: name.to_string() })
+                Ok(IamTaskAddress::RotateCredential {
+                    name: name.strip_suffix(".ron").context("File name must end with .ron")?.to_string(),
+                })
             }
-            _ => Err(invalid_addr_path(path)),
+            _ => Err(anyhow::anyhow!("Invalid IAM task address: {}", path.display())),
         }
     }
 }
@@ -45,7 +44,7 @@ impl ResourceAddress for IamTaskAddress {
 pub struct Credential {
     pub r#type: Option<String>,
     pub principal: String,
-    pub output_secret: Option<String>,
+    pub secret_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

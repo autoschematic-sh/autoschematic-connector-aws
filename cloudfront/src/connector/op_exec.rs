@@ -6,7 +6,9 @@ use autoschematic_core::{
     error_util::invalid_op,
     op_exec_output,
 };
-use aws_sdk_cloudfront::types::{builders::AliasesBuilder, Aliases, ParametersInCacheKeyAndForwardedToOrigin, PriceClass, Tag, TagKeys, Tags};
+use aws_sdk_cloudfront::types::{
+    Aliases, ParametersInCacheKeyAndForwardedToOrigin, PriceClass, Tag, TagKeys, Tags, builders::AliasesBuilder,
+};
 
 use crate::{addr::CloudFrontResourceAddress, op::CloudFrontConnectorOp, tags::tag_diff, util::get_distribution_config};
 
@@ -51,8 +53,6 @@ impl CloudFrontConnector {
                         let mut distribution_config = aws_sdk_cloudfront::types::DistributionConfig::builder()
                             .caller_reference(&format!("autoschematic-{}", uuid::Uuid::new_v4()))
                             .enabled(distribution.enabled);
-
-                        eprintln!("Create Distribution");
 
                         if let Some(comment) = &distribution.comment {
                             distribution_config = distribution_config.comment(comment);
@@ -124,7 +124,6 @@ impl CloudFrontConnector {
                             .origins(origins)
                             .default_cache_behavior(default_cache_behavior);
 
-                        eprintln!("Creating Distribution...");
                         let response = client
                             .create_distribution()
                             .distribution_config(
@@ -134,7 +133,6 @@ impl CloudFrontConnector {
                             )
                             .send()
                             .await?;
-                        eprintln!("Created Distribution");
 
                         let distribution_result = response.distribution().context("No distribution in response")?;
                         let distribution_id = distribution_result.id();
@@ -308,6 +306,8 @@ impl CloudFrontConnector {
 
                         // Build new origins
                         let mut origins_builder = aws_sdk_cloudfront::types::Origins::builder();
+                        origins_builder = origins_builder.quantity(origins.len() as i32);
+
                         for origin in origins {
                             let mut origin_builder = aws_sdk_cloudfront::types::Origin::builder()
                                 .id(&origin.id)
@@ -316,6 +316,9 @@ impl CloudFrontConnector {
                             if let Some(origin_path) = &origin.origin_path {
                                 origin_builder = origin_builder.origin_path(origin_path);
                             }
+
+                            origin_builder = origin_builder
+                                .custom_headers(aws_sdk_cloudfront::types::CustomHeaders::builder().quantity(0).build()?);
 
                             if let Some(custom_config) = &origin.custom_origin_config {
                                 let custom_origin_config = aws_sdk_cloudfront::types::CustomOriginConfig::builder()

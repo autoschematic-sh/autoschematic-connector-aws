@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     collections::HashSet,
     path::{Path, PathBuf},
     sync::Arc,
@@ -18,8 +19,7 @@ use autoschematic_core::{
         PlanResponseElement, Resource, ResourceAddress, SkeletonResponse, TaskExecResponse,
     },
     diag::DiagnosticResponse,
-    doc_dispatch,
-    skeleton,
+    doc_dispatch, skeleton,
     util::{RON, optional_string_from_utf8, ron_check_eq, ron_check_syntax},
 };
 use resource::{IamPolicy, IamResource, IamRole, IamUser};
@@ -239,8 +239,7 @@ impl Connector for IamConnector {
     }
 
     async fn get_docstring(&self, _addr: &Path, ident: DocIdent) -> anyhow::Result<Option<GetDocResponse>> {
-        doc_dispatch!(ident, [IamRole])
-        // doc_dispatch!(ident, [IamUser, IamRole, IamGroup, IamPolicy])
+        doc_dispatch!(ident, [IamUser, IamRole, IamGroup, IamPolicy])
     }
 
     async fn eq(&self, addr: &Path, a: &[u8], b: &[u8]) -> anyhow::Result<bool> {
@@ -294,7 +293,7 @@ impl Connector for IamConnector {
 
                     if keys.len() >= 2 {
                         // Delete one existing key to free a slot.
-                        // (For simplicity, delete the first. In production, pick the least-recently-used or inactive.)
+                        // TODO should this be least-recently-used or something?
                         if let Some(first) = keys.first() {
                             if let Some(old_id) = first.access_key_id.as_deref() {
                                 client
@@ -310,12 +309,11 @@ impl Connector for IamConnector {
                     // 2) Create a new key
                     let created = client.create_access_key().user_name(&cred.principal).send().await?;
                     let Some(new_key) = created.access_key() else {
-                        bail!("Failed to create access key: new key is None")
+                        bail!("Failed to create access key: new key data is missing from response")
                     };
                     let new_id = &new_key.access_key_id;
                     let new_secret = &new_key.secret_access_key;
 
-                    // (Optional but recommended) briefly disable old keys before deleting if you want a canary check.
                     // 3) Retire any remaining old keys
                     let remaining = client
                         .list_access_keys()
@@ -327,7 +325,6 @@ impl Connector for IamConnector {
                     for md in remaining {
                         let Some(akid) = md.access_key_id() else { continue };
                         if akid != new_id {
-                            // You can set to Inactive first if you prefer a two-step cutover:
                             // iam.update_access_key()
                             //     .user_name(USERNAME)
                             //     .access_key_id(akid)
@@ -350,6 +347,30 @@ impl Connector for IamConnector {
                     //     .status(StatusType::Active)
                     //     .send()
                     //     .await?;
+
+                    let mut secrets = HashMap::new();
+                    // secrets.insert("access_key_id".to_string(), Some(new_id.clone()));
+                    if let Some(secret_dir) = cred.secret_dir {
+                        secrets.insert(
+                            PathBuf::from(format!("{}/access_key_id", secret_dir)),
+                            Some(new_secret.clone()),
+                        );
+                        secrets.insert(
+                            PathBuf::from(format!("{}/secret_access_key", secret_dir)),
+                            Some(new_secret.clone()),
+                        );
+                    } else {
+                        secrets.insert(
+                            PathBuf::from(format!("aws/iam/user/{}/access_key_id", cred.principal)),
+                            Some(new_secret.clone()),
+                        );
+                        secrets.insert(
+                            PathBuf::from(format!("aws/iam/user/{}/secret_access_key", cred.principal)),
+                            Some(new_secret.clone()),
+                        );
+                    }
+
+                    res.secrets = Some(secrets);
                 }
             }
         }

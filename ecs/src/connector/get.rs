@@ -43,7 +43,7 @@ impl EcsConnector {
                             .settings()
                             .iter()
                             .map(|s| resource::ClusterSetting {
-                                name:  s.name().map(|n| n.as_str().to_string()).unwrap_or_default(),
+                                name: s.name().map(|n| n.as_str().to_string()).unwrap_or_default(),
                                 value: s.value().unwrap_or_default().to_string(),
                             })
                             .collect(),
@@ -100,7 +100,7 @@ impl EcsConnector {
                             resource::DeploymentConfiguration {
                                 deployment_circuit_breaker: dc.deployment_circuit_breaker().map(|cb| {
                                     resource::DeploymentCircuitBreaker {
-                                        enable:   cb.enable,
+                                        enable: cb.enable,
                                         rollback: cb.rollback,
                                     }
                                 }),
@@ -119,7 +119,7 @@ impl EcsConnector {
                             .placement_constraints()
                             .iter()
                             .map(|pc| resource::PlacementConstraint {
-                                r#type:     pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
+                                r#type: pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
                                 expression: pc.expression().map(|e| e.to_string()),
                             })
                             .collect(),
@@ -128,17 +128,17 @@ impl EcsConnector {
                             .iter()
                             .map(|ps| resource::PlacementStrategy {
                                 r#type: ps.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
-                                field:  ps.field().map(|f| f.to_string()),
+                                field: ps.field().map(|f| f.to_string()),
                             })
                             .collect(),
                         load_balancers: service
                             .load_balancers()
                             .iter()
                             .map(|lb| resource::LoadBalancer {
-                                target_group_arn:   lb.target_group_arn().map(|tg| tg.to_string()),
+                                target_group_arn: lb.target_group_arn().map(|tg| tg.to_string()),
                                 load_balancer_name: lb.load_balancer_name().map(|ln| ln.to_string()),
-                                container_name:     lb.container_name().map(|cn| cn.to_string()),
-                                container_port:     lb.container_port,
+                                container_name: lb.container_name().map(|cn| cn.to_string()),
+                                container_port: lb.container_port,
                             })
                             .collect(),
                         service_registries: service
@@ -207,7 +207,7 @@ impl EcsConnector {
                                         .environment()
                                         .iter()
                                         .map(|e| resource::KeyValuePair {
-                                            name:  e.name().map(|n| n.to_string()),
+                                            name: e.name().map(|n| n.to_string()),
                                             value: e.value().map(|v| v.to_string()),
                                         })
                                         .collect(),
@@ -215,7 +215,7 @@ impl EcsConnector {
                                         .environment_files()
                                         .iter()
                                         .map(|ef| resource::EnvironmentFile {
-                                            value:  ef.value().to_string(),
+                                            value: ef.value().to_string(),
                                             r#type: ef.r#type().to_string(),
                                         })
                                         .collect(),
@@ -223,9 +223,9 @@ impl EcsConnector {
                                         .mount_points()
                                         .iter()
                                         .map(|mp| resource::MountPoint {
-                                            source_volume:  mp.source_volume().map(|sv| sv.to_string()),
+                                            source_volume: mp.source_volume().map(|sv| sv.to_string()),
                                             container_path: mp.container_path().map(|cp| cp.to_string()),
-                                            read_only:      mp.read_only,
+                                            read_only: mp.read_only,
                                         })
                                         .collect(),
                                     volumes_from: cd
@@ -239,20 +239,16 @@ impl EcsConnector {
                                     // Other fields omitted for brevity
                                     linux_parameters: cd.linux_parameters().map(|lp| resource::LinuxParameters {
                                         capabilities: lp.capabilities().map(|c| resource::KernelCapabilities {
-                                            add:  c.add().to_vec(),
+                                            add: c.add().to_vec(),
                                             drop: c.drop().to_vec(),
                                         }),
                                         devices: lp
                                             .devices()
                                             .iter()
                                             .map(|d| resource::Device {
-                                                host_path:      d.host_path().to_string(),
+                                                host_path: d.host_path().to_string(),
                                                 container_path: d.container_path().map(|cp| cp.to_string()),
-                                                permissions:    d
-                                                    .permissions()
-                                                    .iter()
-                                                    .map(|p| p.as_str().to_string())
-                                                    .collect(),
+                                                permissions: d.permissions().iter().map(|p| p.as_str().to_string()).collect(),
                                             })
                                             .collect(),
                                         init_process_enabled: lp.init_process_enabled,
@@ -282,7 +278,7 @@ impl EcsConnector {
                                         .iter()
                                         .map(|d| resource::ContainerDependency {
                                             container_name: d.container_name().to_string(),
-                                            condition:      d.condition().to_string(),
+                                            condition: d.condition().to_string(),
                                         })
                                         .collect(),
                                     start_timeout: cd.start_timeout,
@@ -299,7 +295,7 @@ impl EcsConnector {
                                         .extra_hosts()
                                         .iter()
                                         .map(|eh| resource::HostEntry {
-                                            hostname:   eh.hostname().to_string(),
+                                            hostname: eh.hostname().to_string(),
                                             ip_address: eh.ip_address().to_string(),
                                         })
                                         .collect(),
@@ -329,10 +325,10 @@ impl EcsConnector {
                                             .collect(),
                                     }),
                                     health_check: cd.health_check().map(|hc| resource::HealthCheck {
-                                        command:      hc.command().to_vec(),
-                                        interval:     hc.interval,
-                                        timeout:      hc.timeout,
-                                        retries:      hc.retries,
+                                        command: hc.command().to_vec(),
+                                        interval: hc.interval,
+                                        timeout: hc.timeout,
+                                        retries: hc.retries,
                                         start_period: hc.start_period,
                                     }),
                                     system_controls: cd
@@ -340,20 +336,20 @@ impl EcsConnector {
                                         .iter()
                                         .map(|sc| resource::SystemControl {
                                             namespace: sc.namespace().map(|n| n.to_string()),
-                                            value:     sc.value().map(|v| v.to_string()),
+                                            value: sc.value().map(|v| v.to_string()),
                                         })
                                         .collect(),
                                     resource_requirements: cd
                                         .resource_requirements()
                                         .iter()
                                         .map(|rr| resource::ResourceRequirement {
-                                            value:  rr.value().to_string(),
+                                            value: rr.value().to_string(),
                                             r#type: rr.r#type().to_string(),
                                         })
                                         .collect(),
                                     firelens_configuration: cd.firelens_configuration().map(|fc| {
                                         resource::FirelensConfiguration {
-                                            r#type:  fc.r#type().to_string(),
+                                            r#type: fc.r#type().to_string(),
                                             options: fc.options().unwrap_or(&HashMap::default()).clone(),
                                         }
                                     }),
@@ -414,7 +410,7 @@ impl EcsConnector {
                             .placement_constraints()
                             .iter()
                             .map(|pc| resource::PlacementConstraint {
-                                r#type:     pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
+                                r#type: pc.r#type().map(|t| t.as_str().to_string()).unwrap_or_default(),
                                 expression: pc.expression().map(|e| e.to_string()),
                             })
                             .collect(),

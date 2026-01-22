@@ -29,7 +29,7 @@ impl IamConnector {
         };
 
         match addr {
-            IamResourceAddress::User { path, name } => {
+            IamResourceAddress::User { name, .. } => {
                 let user_result = client.get_user().user_name(&name).send().await;
 
                 match user_result {
@@ -47,16 +47,14 @@ impl IamConnector {
 
                         get_resource_response!(IamResource::User(iam_user))
                     }
-                    Err(e) => {
-                        match e.as_service_error() {
-                            Some(aws_sdk_iam::operation::get_user::GetUserError::NoSuchEntityException(_)) => Ok(None),
-                            _ => Err(e.into()),
-                        }
-                    }
+                    Err(e) => match e.as_service_error() {
+                        Some(aws_sdk_iam::operation::get_user::GetUserError::NoSuchEntityException(_)) => Ok(None),
+                        _ => Err(e.into()),
+                    },
                 }
             }
 
-            IamResourceAddress::Role { path, name } => {
+            IamResourceAddress::Role { name, .. } => {
                 let role_result = client.get_role().role_name(&name).send().await;
 
                 match role_result {
@@ -88,21 +86,19 @@ impl IamConnector {
 
                         get_resource_response!(IamResource::Role(iam_role))
                     }
-                    Err(e) => {
-                        match e.as_service_error() {
-                            Some(aws_sdk_iam::operation::get_role::GetRoleError::NoSuchEntityException(_)) => Ok(None),
-                            _ => Err(e.into()),
-                        }
-                    }
+                    Err(e) => match e.as_service_error() {
+                        Some(aws_sdk_iam::operation::get_role::GetRoleError::NoSuchEntityException(_)) => Ok(None),
+                        _ => Err(e.into()),
+                    },
                 }
             }
 
-            IamResourceAddress::Group { path, name } => {
+            IamResourceAddress::Group { name, .. } => {
                 let group_result = client.get_group().group_name(&name).send().await;
 
                 match group_result {
                     Ok(group_output) => {
-                        let Some(ref group) = group_output.group else {
+                        let Some(ref _group) = group_output.group else {
                             return Ok(None);
                         };
 
@@ -117,12 +113,10 @@ impl IamConnector {
 
                         get_resource_response!(IamResource::Group(iam_group))
                     }
-                    Err(e) => {
-                        match e.as_service_error() {
-                            Some(aws_sdk_iam::operation::get_group::GetGroupError::NoSuchEntityException(_)) => Ok(None),
-                            _ => Err(e.into()),
-                        }
-                    }
+                    Err(e) => match e.as_service_error() {
+                        Some(aws_sdk_iam::operation::get_group::GetGroupError::NoSuchEntityException(_)) => Ok(None),
+                        _ => Err(e.into()),
+                    },
                 }
             }
             IamResourceAddress::Policy { path, name } => {
@@ -170,12 +164,10 @@ impl IamConnector {
 
                         get_resource_response!(IamResource::Policy(iam_policy))
                     }
-                    Err(e) => {
-                        match e.as_service_error() {
-                            Some(aws_sdk_iam::operation::get_policy::GetPolicyError::NoSuchEntityException(_)) => Ok(None),
-                            _ => Err(e.into()),
-                        }
-                    }
+                    Err(e) => match e.as_service_error() {
+                        Some(aws_sdk_iam::operation::get_policy::GetPolicyError::NoSuchEntityException(_)) => Ok(None),
+                        _ => Err(e.into()),
+                    },
                 }
             }
         }

@@ -11,39 +11,51 @@ use autoschematic_core::util::{PrettyConfig, RON};
 use super::addr::IamResourceAddress;
 use super::tags::Tags;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 #[serde(deny_unknown_fields)]
+/// An IAM user is an identity that you create in AWS. The user represents the person or application that uses it to interact with AWS.
 pub struct IamUser {
+    /// The set of IAM policies attached to the user, by ARN.
     pub attached_policies: HashSet<String>,
+    /// A set of key-value pairs to apply to the user.
     pub tags: Tags,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 #[serde(deny_unknown_fields)]
-/// An IAM role is an IAM identity that you can create in your account that has specific permissions. An IAM role is similar to an IAM user, in that it is an AWS identity with permission policies that determine what the identity can and cannot do in AWS. However, instead of being uniquely associated with one person, a role is intended to be assumable by anyone who needs it.
+/// An IAM role is an IAM identity that you can create in your account that has specific permissions. A role is intended to be assumable by anyone who needs it.
 pub struct IamRole {
     /// The set of IAM policies attached to the role, by ARN.
     pub attached_policies: HashSet<String>,
     /// The AssumeRolePolicyDocument defines who is allowed to assume the role. For more information, see [https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_permissions-to-switch.html]
     pub assume_role_policy_document: Option<ron::Value>,
-    /// A Hashset of Key: Value tags. Each key and value can only be a string.
+    /// A set of key-value pairs to apply to the role.
     pub tags: Tags,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 #[serde(deny_unknown_fields)]
+/// An IAM policy is an entity that, when attached to an identity or resource, defines their permissions.
 pub struct IamPolicy {
+    /// The JSON policy document that defines the permissions for the policy.
     pub policy_document: ron::Value,
+    /// A set of key-value pairs to apply to the policy.
     pub tags: Tags,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 #[serde(deny_unknown_fields)]
+/// An IAM group is a collection of IAM users. Groups let you specify permissions for multiple users, which can make it easier to manage the permissions for those users.
 pub struct IamGroup {
+    /// The set of IAM policies attached to the group, by ARN.
     pub attached_policies: HashSet<String>,
+    /// The set of users in the group.
     pub users: HashSet<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+#[allow(clippy::large_enum_variant)]
 pub enum IamResource {
     User(IamUser),
     Role(IamRole),
@@ -83,8 +95,8 @@ impl Resource for IamResource {
         let s = str::from_utf8(s)?;
         match addr {
             IamResourceAddress::User { .. } => Ok(IamResource::User(RON.from_str(s)?)),
-            IamResourceAddress::Role { .. } => Ok(IamResource::Group(RON.from_str(s)?)),
-            IamResourceAddress::Group { .. } => Ok(IamResource::Role(RON.from_str(s)?)),
+            IamResourceAddress::Role { .. } => Ok(IamResource::Role(RON.from_str(s)?)),
+            IamResourceAddress::Group { .. } => Ok(IamResource::Group(RON.from_str(s)?)),
             IamResourceAddress::Policy { .. } => Ok(IamResource::Policy(RON.from_str(s)?)),
         }
     }

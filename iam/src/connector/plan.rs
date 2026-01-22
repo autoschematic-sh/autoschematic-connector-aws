@@ -1,9 +1,10 @@
-use std::path::Path;
+use std::{collections::HashSet, path::Path};
 
 use crate::{
     addr::IamResourceAddress,
     resource::IamGroup,
     util::{policies_added, policies_removed},
+    util::{users_added, users_removed},
 };
 use autoschematic_core::{
     connector::{ConnectorOp, PlanResponseElement, ResourceAddress},
@@ -48,12 +49,10 @@ impl IamConnector {
                         }
                     }
 
-                    (Some(_old_user), None) => {
-                        res.push(connector_op!(
-                            IamConnectorOp::DeleteUser,
-                            format!("DELETE IAM user {}{}", path, name)
-                        ))
-                    }
+                    (Some(_old_user), None) => res.push(connector_op!(
+                        IamConnectorOp::DeleteUser,
+                        format!("DELETE IAM user {}{}", path, name)
+                    )),
 
                     (Some(old_user), Some(new_user)) => {
                         let old_user: IamUser = RON.from_str(&old_user)?;
@@ -189,54 +188,75 @@ impl IamConnector {
                         let old_group: IamGroup = RON.from_str(&old_group)?;
                         let new_group: IamGroup = RON.from_str(&new_group)?;
 
-                        for removed_policy in policies_removed(&old_group.attached_policies, &new_group.attached_policies) {
-                            res.push(connector_op!(
-                                IamConnectorOp::DetachGroupPolicy(removed_policy.clone()),
-                                format!("Attach policy `{}` to IAM Group `{}{}`", removed_policy, path, name)
-                            ));
+                        if old_group != new_group {
+                            for removed_policy in policies_removed(&old_group.attached_policies, &new_group.attached_policies) {
+                                res.push(connector_op!(
+                                    IamConnectorOp::DetachGroupPolicy(removed_policy.clone()),
+                                    format!("Detach policy `{}` from IAM Group `{}{}`", removed_policy, path, name)
+                                ));
+                            }
+
+                            for added_policy in policies_added(&old_group.attached_policies, &new_group.attached_policies) {
+                                res.push(connector_op!(
+                                    IamConnectorOp::AttachGroupPolicy(added_policy.clone(),),
+                                    format!("Attach policy `{}` to IAM Group `{}{}`", added_policy, path, name)
+                                ));
+                            }
+
+                            // Handle users
+                            for removed_user in users_removed(&old_group.users, &new_group.users) {
+                                res.push(connector_op!(
+                                    IamConnectorOp::RemoveUserFromGroup(removed_user.clone()),
+                                    format!("Remove user `{}` from IAM Group `{}{}`", removed_user, path, name)
+                                ));
+                            }
+
+                            for added_user in users_added(&old_group.users, &new_group.users) {
+                                res.push(connector_op!(
+                                    IamConnectorOp::AddUserToGroup(added_user.clone(),),
+                                    format!("Add user `{}` to IAM Group `{}{}`", added_user, path, name)
+                                ));
+                            }
+                            // If IamGroup had tags, this is where they would be handled.
                         }
                     }
                 }
             }
-            IamResourceAddress::Policy { path, name } => {
-                match (current, desired) {
-                    (None, None) => {}
-                    (None, Some(new_policy)) => {
-                        let new_policy: IamPolicy = RON.from_str(&new_policy)?;
+            IamResourceAddress::Policy { name, .. } => match (current, desired) {
+                (None, None) => {}
+                (None, Some(new_policy)) => {
+                    let new_policy: IamPolicy = RON.from_str(&new_policy)?;
+                    res.push(connector_op!(
+                        IamConnectorOp::CreatePolicy(new_policy),
+                        format!("Create new IAM policy {}", name)
+                    ));
+                }
+                (Some(_old_policy), None) => res.push(connector_op!(
+                    IamConnectorOp::DeletePolicy,
+                    format!("DELETE IAM policy {}", name)
+                )),
+                (Some(old_policy), Some(new_policy)) => {
+                    let old_policy: IamPolicy = RON.from_str(&old_policy)?;
+                    let new_policy: IamPolicy = RON.from_str(&new_policy)?;
+
+                    if old_policy.policy_document != new_policy.policy_document {
+                        let diff =
+                            diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
                         res.push(connector_op!(
-                            IamConnectorOp::CreatePolicy(new_policy),
-                            format!("Create new IAM policy {}", name)
+                            IamConnectorOp::UpdatePolicyDocument(old_policy.policy_document, new_policy.policy_document,),
+                            format!("Modify policy document for IAM policy `{}`\n{}", name, diff)
                         ));
                     }
-                    (Some(_old_policy), None) => {
+
+                    if old_policy.tags != new_policy.tags {
+                        let diff = diff_ron_values(&old_policy.tags, &new_policy.tags).unwrap_or_default();
                         res.push(connector_op!(
-                            IamConnectorOp::DeletePolicy,
-                            format!("DELETE IAM policy {}", name)
-                        ))
-                    }
-                    (Some(old_policy), Some(new_policy)) => {
-                        let old_policy: IamPolicy = RON.from_str(&old_policy)?;
-                        let new_policy: IamPolicy = RON.from_str(&new_policy)?;
-
-                        if old_policy.policy_document != new_policy.policy_document {
-                            let diff =
-                                diff_ron_values(&old_policy.policy_document, &new_policy.policy_document).unwrap_or_default();
-                            res.push(connector_op!(
-                                IamConnectorOp::UpdatePolicyDocument(old_policy.policy_document, new_policy.policy_document,),
-                                format!("Modify policy document for IAM policy `{}`\n{}", name, diff)
-                            ));
-                        }
-
-                        if old_policy.tags != new_policy.tags {
-                            let diff = diff_ron_values(&old_policy.tags, &new_policy.tags).unwrap_or_default();
-                            res.push(connector_op!(
-                                IamConnectorOp::UpdatePolicyTags(old_policy.tags, new_policy.tags,),
-                                format!("Modify tags for IAM policy `{}`\n{}", name, diff)
-                            ));
-                        }
+                            IamConnectorOp::UpdatePolicyTags(old_policy.tags, new_policy.tags,),
+                            format!("Modify tags for IAM policy `{}`\n{}", name, diff)
+                        ));
                     }
                 }
-            }
+            },
         }
 
         Ok(res)

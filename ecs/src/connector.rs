@@ -87,6 +87,7 @@ impl Connector for EcsConnector {
         *self.client_cache.lock().await = HashMap::new();
         *self.config.lock().await = ecs_config;
         *self.account_id.lock().await = account_id;
+        tracing::info!("Finished init");
         Ok(())
     }
 
