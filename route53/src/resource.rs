@@ -2,6 +2,9 @@ use autoschematic_core::{
     connector::{Resource, ResourceAddress},
     util::PrettyConfig,
 };
+use autoschematic_macros::FieldTypes;
+use autoschematic_core::macros::FieldTypes;
+use documented::{Documented, DocumentedFields};
 use serde::{Deserialize, Serialize};
 
 use autoschematic_core::util::RON;
@@ -16,18 +19,26 @@ pub struct HostedZone {
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct HealthCheck {}
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Configuration for an alias record that routes traffic to an AWS resource.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 pub struct AliasTarget {
+    /// The hosted zone ID of the target resource (e.g., CloudFront, ELB, S3).
     pub hosted_zone_id: String,
+    /// The DNS name of the target resource.
     pub dns_name: String,
+    /// Whether to check the health of the target resource before routing traffic.
     pub evaluate_target_health: bool,
 }
 
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// A Route53 DNS record set.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Documented, DocumentedFields, FieldTypes)]
 pub struct RecordSet {
+    /// Time to live in seconds. Not used for alias records.
     pub ttl: Option<i64>,
+    /// Alias target configuration. Mutually exclusive with resource_records.
     pub alias_target: Option<AliasTarget>,
+    /// List of record values (e.g., IP addresses for A records). Mutually exclusive with alias_target.
     pub resource_records: Option<Vec<String>>,
 }
 

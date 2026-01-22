@@ -6,12 +6,8 @@ use addr::Route53ResourceAddress;
 use async_trait::async_trait;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource, ResourceAddress,
-        SkeletonResponse,
-    },
-    diag::DiagnosticResponse,
-    skeleton,
-    util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax},
+        Connector, ConnectorOutbox, DocIdent, FilterResponse, GetDocResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource, ResourceAddress, SkeletonResponse
+    }, diag::DiagnosticResponse, doc_dispatch, skeleton, util::{optional_string_from_utf8, ron_check_eq, ron_check_syntax}
 };
 use resource::{HealthCheck, HostedZone, RecordSet, Route53Resource};
 
@@ -24,7 +20,7 @@ pub mod list;
 pub mod op_exec;
 pub mod plan;
 
-use crate::{addr, resource};
+use crate::{addr, resource::{self, AliasTarget}};
 
 #[derive(Default)]
 pub struct Route53Connector {
@@ -94,6 +90,11 @@ impl Connector for Route53Connector {
     async fn op_exec(&self, addr: &Path, op: &str) -> Result<OpExecResponse, anyhow::Error> {
         self.do_op_exec(addr, op).await
     }
+
+    async fn get_docstring(&self, _addr: &Path, ident: DocIdent) -> anyhow::Result<Option<GetDocResponse>> {
+        doc_dispatch!(ident, [AliasTarget, RecordSet])
+    }
+
     async fn get_skeletons(&self) -> Result<Vec<SkeletonResponse>, anyhow::Error> {
         let mut res = Vec::new();
 
