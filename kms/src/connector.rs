@@ -15,8 +15,8 @@ use async_trait::async_trait;
 use autoschematic_connector_aws_core::config::AwsServiceConfig;
 use autoschematic_core::{
     connector::{
-        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement, Resource,
-        ResourceAddress, SkeletonResponse, VirtToPhyResponse,
+        Connector, ConnectorOp, ConnectorOutbox, FilterResponse, GetResourceResponse, OpExecResponse, PlanResponseElement,
+        Resource, ResourceAddress, SkeletonResponse, VirtToPhyResponse,
     },
     connector_op,
     diag::DiagnosticResponse,
@@ -73,16 +73,17 @@ impl KmsConnector {
 
         for key_result in keys {
             if let Ok(key) = key_result
-                && let Some(key_id) = key.key_id {
-                    // Add the key
-                    results.push(KmsResourceAddress::Key(region.to_string(), key_id.clone()).to_path_buf());
+                && let Some(key_id) = key.key_id
+            {
+                // Add the key
+                results.push(KmsResourceAddress::Key(region.to_string(), key_id.clone()).to_path_buf());
 
-                    // Add key policy
-                    results.push(KmsResourceAddress::KeyPolicy(region.to_string(), key_id.clone()).to_path_buf());
+                // Add key policy
+                results.push(KmsResourceAddress::KeyPolicy(region.to_string(), key_id.clone()).to_path_buf());
 
-                    // Add key rotation status
-                    results.push(KmsResourceAddress::KeyRotation(region.to_string(), key_id).to_path_buf());
-                }
+                // Add key rotation status
+                results.push(KmsResourceAddress::KeyRotation(region.to_string(), key_id).to_path_buf());
+            }
         }
 
         // List Aliases
@@ -92,10 +93,11 @@ impl KmsConnector {
         for alias_result in aliases {
             if let Ok(alias) = alias_result
                 && let Some(alias_name) = alias.alias_name
-                    && let Some(_target_key_id) = alias.target_key_id {
-                        // We only care about aliases with a target key
-                        results.push(KmsResourceAddress::Alias(region.to_string(), alias_name).to_path_buf());
-                    }
+                && let Some(_target_key_id) = alias.target_key_id
+            {
+                // We only care about aliases with a target key
+                results.push(KmsResourceAddress::Alias(region.to_string(), alias_name).to_path_buf());
+            }
         }
 
         Ok(())
@@ -138,10 +140,7 @@ impl Connector for KmsConnector {
         tracing::warn!("KMS List");
         let mut results = Vec::<PathBuf>::new();
 
-        let path_components: Vec<&str> = subpath
-            .components()
-            .map(|s| s.as_os_str().to_str().unwrap())
-            .collect();
+        let path_components: Vec<&str> = subpath.components().map(|s| s.as_os_str().to_str().unwrap()).collect();
 
         let enabled_regions = self.config.lock().await.enabled_regions.clone();
 
@@ -242,6 +241,7 @@ impl Connector for KmsConnector {
 
                     return Ok(Some(GetResourceResponse {
                         resource_definition: KmsResource::KeyPolicy(key_policy).to_bytes()?,
+                        virt_addr: None,
                         outputs: None,
                     }));
                 } else {
@@ -266,23 +266,25 @@ impl Connector for KmsConnector {
                 for alias in aliases {
                     if let Some(current_alias_name) = &alias.alias_name
                         && current_alias_name == &alias_name
-                            && let Some(target_key_id) = alias.target_key_id {
-                                // Get tags (tags are on the key, not the alias in KMS)
-                                let list_resource_tags_output = client.list_resource_tags().key_id(&target_key_id).send().await;
+                        && let Some(target_key_id) = alias.target_key_id
+                    {
+                        // Get tags (tags are on the key, not the alias in KMS)
+                        let list_resource_tags_output = client.list_resource_tags().key_id(&target_key_id).send().await;
 
-                                let tags = if let Ok(tags_output) = list_resource_tags_output {
-                                    tags_output.tags.into()
-                                } else {
-                                    tags::Tags::default()
-                                };
+                        let tags = if let Ok(tags_output) = list_resource_tags_output {
+                            tags_output.tags.into()
+                        } else {
+                            tags::Tags::default()
+                        };
 
-                                let kms_alias = resource::KmsAlias { target_key_id, tags };
+                        let kms_alias = resource::KmsAlias { target_key_id, tags };
 
-                                return Ok(Some(GetResourceResponse {
-                                    resource_definition: KmsResource::Alias(kms_alias).to_bytes()?,
-                                    outputs: None,
-                                }));
-                            }
+                        return Ok(Some(GetResourceResponse {
+                            resource_definition: KmsResource::Alias(kms_alias).to_bytes()?,
+                            virt_addr: None,
+                            outputs: None,
+                        }));
+                    }
                 }
 
                 return Ok(None);
@@ -307,6 +309,7 @@ impl Connector for KmsConnector {
 
                 return Ok(Some(GetResourceResponse {
                     resource_definition: KmsResource::KeyRotation(key_rotation).to_bytes()?,
+                    virt_addr: None,
                     outputs: None,
                 }));
             }
@@ -574,7 +577,7 @@ impl Connector for KmsConnector {
                 } else {
                     Ok(VirtToPhyResponse::NotPresent)
                 }
-            },
+            }
             _ => Ok(VirtToPhyResponse::Null(addr.to_path_buf())),
         }
     }

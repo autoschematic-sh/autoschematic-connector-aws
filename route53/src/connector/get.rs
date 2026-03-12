@@ -33,6 +33,7 @@ impl Route53Connector {
 
                 Ok(Some(GetResourceResponse {
                     resource_definition: Route53Resource::HostedZone(hz_config).to_bytes()?,
+                    virt_addr: None,
                     outputs: Some(outputs),
                 }))
             }
@@ -61,15 +62,11 @@ impl Route53Connector {
                                 // let i = rec.region
                                 let record_set = RecordSet {
                                     ttl: rec.ttl,
-                                    alias_target: rec
-                                        .alias_target
-                                        .as_ref()
-                                        .map(|alias_target| AliasTarget {
-                                            dns_name: alias_target.dns_name.clone(),
-                                            hosted_zone_id: alias_target.hosted_zone_id.clone(),
-                                            evaluate_target_health: alias_target.evaluate_target_health
-                                        }
-                                        ),
+                                    alias_target: rec.alias_target.as_ref().map(|alias_target| AliasTarget {
+                                        dns_name: alias_target.dns_name.clone(),
+                                        hosted_zone_id: alias_target.hosted_zone_id.clone(),
+                                        evaluate_target_health: alias_target.evaluate_target_health,
+                                    }),
                                     resource_records: rec
                                         .resource_records
                                         .as_ref()
@@ -78,6 +75,7 @@ impl Route53Connector {
 
                                 Ok(Some(GetResourceResponse {
                                     resource_definition: Route53Resource::RecordSet(record_set).to_bytes()?,
+                                    virt_addr: None,
                                     outputs: None,
                                 }))
                             }

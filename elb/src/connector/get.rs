@@ -72,6 +72,7 @@ impl ElbConnector {
 
                 Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::LoadBalancer(lb_resource).to_bytes()?,
+                    virt_addr: None,
                     outputs: None,
                 }))
             }
@@ -150,6 +151,7 @@ impl ElbConnector {
 
                 Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::TargetGroup(tg_resource).to_bytes()?,
+                    virt_addr: None,
                     outputs: None,
                 }))
             }
@@ -284,6 +286,7 @@ impl ElbConnector {
 
                 Ok(Some(GetResourceResponse {
                     resource_definition: ElbResource::Listener(listener_resource).to_bytes()?,
+                    virt_addr: None,
                     outputs: None,
                 }))
             }

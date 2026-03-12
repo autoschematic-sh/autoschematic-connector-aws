@@ -32,45 +32,49 @@ impl EcrConnector {
                 match describe_repos_resp {
                     Ok(resp) => {
                         if let Some(repositories) = resp.repositories
-                            && let Some(repo) = repositories.first() {
-                                // Get tags
-                                let tags = if let Some(registry_id) = &repo.registry_id {
-                                    let tags_resp = client
-                                        .list_tags_for_resource()
-                                        .resource_arn(format!("arn:aws:ecr:{region}:{registry_id}:repository/{name}"))
-                                        .send()
-                                        .await;
+                            && let Some(repo) = repositories.first()
+                        {
+                            // Get tags
+                            let tags = if let Some(registry_id) = &repo.registry_id {
+                                let tags_resp = client
+                                    .list_tags_for_resource()
+                                    .resource_arn(format!("arn:aws:ecr:{region}:{registry_id}:repository/{name}"))
+                                    .send()
+                                    .await;
 
-                                    match tags_resp {
-                                        Ok(tags_data) => tags_data.tags.into(),
-                                        Err(_) => Tags::default(),
+                                match tags_resp {
+                                    Ok(tags_data) => tags_data.tags.into(),
+                                    Err(_) => Tags::default(),
+                                }
+                            } else {
+                                Tags::default()
+                            };
+
+                            // Build repository resource
+                            let repository = Repository {
+                                encryption_configuration: repo.encryption_configuration.as_ref().map(|encrypt_config| {
+                                    EncryptionConfiguration {
+                                        encryption_type: encrypt_config.encryption_type.as_str().to_string(),
+                                        kms_key: encrypt_config.kms_key.clone(),
                                     }
-                                } else {
-                                    Tags::default()
-                                };
+                                }),
+                                image_tag_mutability: repo.image_tag_mutability.as_ref().map(|m| m.to_string()),
+                                image_scanning_configuration: repo.image_scanning_configuration.as_ref().map(|scan_config| {
+                                    ImageScanningConfiguration {
+                                        scan_on_push: scan_config.scan_on_push,
+                                    }
+                                }),
+                                tags,
+                            };
 
-                                // Build repository resource
-                                let repository = Repository {
-                                    encryption_configuration: repo.encryption_configuration.as_ref().map(|encrypt_config| {
-                                        EncryptionConfiguration {
-                                            encryption_type: encrypt_config.encryption_type.as_str().to_string(),
-                                            kms_key: encrypt_config.kms_key.clone(),
-                                        }
-                                    }),
-                                    image_tag_mutability: repo.image_tag_mutability.as_ref().map(|m| m.to_string()),
-                                    image_scanning_configuration: repo.image_scanning_configuration.as_ref().map(
-                                        |scan_config| ImageScanningConfiguration {
-                                            scan_on_push: scan_config.scan_on_push,
-                                        },
-                                    ),
-                                    tags,
-                                };
-
-                                return get_resource_response!(
-                                    EcrResource::Repository(repository),
-                                    [(String::from("repository_url"), repo.repository_uri.clone().unwrap_or_default()),]
-                                );
-                            }
+                            return get_resource_response!(
+                                EcrResource::Repository(repository),
+                                [(
+                                    String::from("repository_url"),
+                                    repo.repository_uri.clone().unwrap_or_default()
+                                ),]
+                            );
+                        }
                         Ok(None)
                     }
                     Err(_) => Ok(None), // Repository not found or other error
@@ -93,6 +97,7 @@ impl EcrConnector {
 
                             return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::RepositoryPolicy(repo_policy).to_bytes()?,
+                                virt_addr: None,
                                 outputs: None,
                             }));
                         }
@@ -123,6 +128,7 @@ impl EcrConnector {
 
                             return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::LifecyclePolicy(lifecycle_policy).to_bytes()?,
+                                virt_addr: None,
                                 outputs: None,
                             }));
                         }
@@ -151,6 +157,7 @@ impl EcrConnector {
 
                             return Ok(Some(GetResourceResponse {
                                 resource_definition: EcrResource::RegistryPolicy(registry_policy).to_bytes()?,
+                                virt_addr: None,
                                 outputs: None,
                             }));
                         }
@@ -176,20 +183,21 @@ impl EcrConnector {
                     Ok(rule_data) => {
                         if let Some(rules) = rule_data.pull_through_cache_rules
                             && let Some(rule) = rules.first()
-                                && let (Some(repo_prefix), Some(registry_url)) =
-                                    (&rule.ecr_repository_prefix, &rule.upstream_registry_url)
-                                    && repo_prefix == &prefix {
-                                        let pull_through_rule = PullThroughCacheRule {
-                                            upstream_registry_url: registry_url.clone(),
-                                            credential_arn: rule.credential_arn.clone(),
-                                        };
+                            && let (Some(repo_prefix), Some(registry_url)) =
+                                (&rule.ecr_repository_prefix, &rule.upstream_registry_url)
+                            && repo_prefix == &prefix
+                        {
+                            let pull_through_rule = PullThroughCacheRule {
+                                upstream_registry_url: registry_url.clone(),
+                                credential_arn: rule.credential_arn.clone(),
+                            };
 
-                                        return Ok(Some(GetResourceResponse {
-                                            resource_definition: EcrResource::PullThroughCacheRule(pull_through_rule)
-                                                .to_bytes()?,
-                                            outputs: None,
-                                        }));
-                                    }
+                            return Ok(Some(GetResourceResponse {
+                                resource_definition: EcrResource::PullThroughCacheRule(pull_through_rule).to_bytes()?,
+                                virt_addr: None,
+                                outputs: None,
+                            }));
+                        }
                         Ok(None)
                     }
                     Err(e) => {
