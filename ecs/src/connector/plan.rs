@@ -52,7 +52,7 @@ impl EcsConnector {
                                 format!("Modify tags for ECS cluster `{}`\n{}", cluster_name, diff)
                             ));
                         }
-                        
+
                         // Check for settings changes
                         if old_cluster.settings != new_cluster.settings {
                             let mut new_settings = Vec::new();
@@ -168,7 +168,6 @@ impl EcsConnector {
                         let old_deployment_config = old_service.deployment_configuration.as_ref();
                         let new_deployment_config = new_service.deployment_configuration.as_ref();
 
-
                         if old_deployment_config != new_deployment_config {
                             let circuit_breaker_enable = new_deployment_config
                                 .and_then(|config| config.deployment_circuit_breaker.as_ref().map(|cb| cb.enable));
@@ -192,19 +191,21 @@ impl EcsConnector {
 
                         // Check for execute command enablement changes
                         if old_service.enable_execute_command != new_service.enable_execute_command
-                            && let Some(enable_execute_command) = new_service.enable_execute_command {
-                                ops.push(connector_op!(
-                                    EcsConnectorOp::EnableExecuteCommand(enable_execute_command),
-                                    format!(
-                                        "Set execute command to {} for ECS service `{}` in cluster `{}`",
-                                        enable_execute_command, service_name, cluster_name
-                                    )
-                                ));
-                            }
-                        
+                            && let Some(enable_execute_command) = new_service.enable_execute_command
+                        {
+                            ops.push(connector_op!(
+                                EcsConnectorOp::EnableExecuteCommand(enable_execute_command),
+                                format!(
+                                    "Set execute command to {} for ECS service `{}` in cluster `{}`",
+                                    enable_execute_command, service_name, cluster_name
+                                )
+                            ));
+                        }
+
                         // Check for load balancer changes
                         if old_service.load_balancers != new_service.load_balancers {
-                            let diff = diff_ron_values(&old_service.load_balancers, &new_service.load_balancers).unwrap_or_default();
+                            let diff =
+                                diff_ron_values(&old_service.load_balancers, &new_service.load_balancers).unwrap_or_default();
                             ops.push(connector_op!(
                                 EcsConnectorOp::UpdateServiceLoadBalancers {
                                     old_load_balancers: old_service.load_balancers,
@@ -228,6 +229,7 @@ impl EcsConnector {
                         let new_task_def: resource::TaskDefinition = RON.from_str(&new_task_def)?;
                         Ok(vec![connector_op!(
                             EcsConnectorOp::RegisterTaskDefinition(new_task_def),
+                            vec!["arn".to_string(), "task_definition_id".to_string()],
                             format!("Register new ECS task definition {}", task_def_id)
                         )])
                     }
@@ -237,20 +239,21 @@ impl EcsConnector {
                     )]),
                     (Some(old_task_def), Some(new_task_def)) => {
                         // Task definitions are immutable in ECS, so we can't update them
-                        // Instead, we need to deregister the old one and register a new one
-                        // For simplicity, we'll just check for tag changes here
+                        // Instead, we register a new one.
+
                         let old_task_def: resource::TaskDefinition = RON.from_str(&old_task_def)?;
                         let new_task_def: resource::TaskDefinition = RON.from_str(&new_task_def)?;
                         let mut ops = Vec::new();
 
-                        // Check for tag changes (though this would need a separate operation to update tags)
-                        if let Ok(diff) = diff_ron_values(&old_task_def, &new_task_def)
-                            && !diff.is_empty() {
-                                ops.push(connector_op!(
-                                    EcsConnectorOp::RegisterTaskDefinition(new_task_def),
-                                    format!("Update ECS task definition {}\n{}", task_def_id, diff)
-                                ));
-                            }
+                        if old_task_def != new_task_def {
+                            let diff = diff_ron_values(&old_task_def, &new_task_def).unwrap_or_default();
+
+                            ops.push(connector_op!(
+                                EcsConnectorOp::RegisterTaskDefinition(new_task_def),
+                                vec!["arn".to_string(), "task_definition_id".to_string()],
+                                format!("Update ECS task definition {}\n{}", task_def_id, diff)
+                            ));
+                        }
 
                         Ok(ops)
                     }

@@ -20,7 +20,11 @@ use autoschematic_core::connector::OpExecResponse;
 // Cluster Operations
 
 /// Creates a new ECS cluster
-pub async fn create_cluster(client: &Client, cluster: &EcsCluster, cluster_name: &str) -> Result<OpExecResponse, anyhow::Error> {
+pub async fn create_cluster(
+    client: &Client,
+    cluster: &EcsCluster,
+    cluster_name: &str,
+) -> Result<OpExecResponse, anyhow::Error> {
     let mut create_cluster = client.create_cluster();
 
     create_cluster = create_cluster.cluster_name(cluster_name);
@@ -1542,7 +1546,9 @@ pub async fn register_task_definition(
         }
 
         if let Some(operating_system_family) = &runtime_platform.operating_system_family {
-            runtime_builder = runtime_builder.operating_system_family(aws_sdk_ecs::types::OsFamily::from_str(&operating_system_family).context("Parsing operating_system_family")?);
+            runtime_builder = runtime_builder.operating_system_family(
+                aws_sdk_ecs::types::OsFamily::from_str(&operating_system_family).context("Parsing operating_system_family")?,
+            );
         }
 
         register_task_def = register_task_def.runtime_platform(runtime_builder.build());
@@ -1556,7 +1562,12 @@ pub async fn register_task_definition(
     let task_def_arn = task_def.task_definition_arn.context("No task definition ARN returned")?;
 
     let mut outputs = HashMap::new();
+
     outputs.insert(String::from("arn"), Some(task_def_arn.clone()));
+    outputs.insert(
+        String::from("task_definition_id"),
+        Some(format!("{}:{}", task_def.family.unwrap_or_default(), task_def.revision)),
+    );
 
     Ok(OpExecResponse {
         outputs: Some(outputs),

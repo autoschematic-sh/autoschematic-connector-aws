@@ -209,7 +209,7 @@ impl Connector for EcsConnector {
 
         // Task Definition skeleton - Web application with Nginx
         res.push(skeleton!(
-            EcsResourceAddress::TaskDefinition(String::from("[region]"), String::from("[task_definition_family]:[revision]")),
+            EcsResourceAddress::TaskDefinition(String::from("[region]"), String::from("[task_definition_family]")),
             EcsResource::TaskDefinition(TaskDefinition {
                 task_role_arn: Some(String::from("arn:aws:iam::[account_id]:role/[task_role_name]")),
                 execution_role_arn: Some(String::from("arn:aws:iam::[account_id]:role/ecsTaskExecutionRole")),

@@ -1,4 +1,5 @@
-use anyhow::Context;
+use anyhow::{Context, bail};
+use aws_sdk_ecr::operation::get_registry_policy::GetRegistryPolicyError;
 use std::{collections::HashMap, path::Path};
 
 use autoschematic_core::{
@@ -104,8 +105,11 @@ impl EcrConnector {
                         Ok(None)
                     }
                     Err(e) => {
-                        tracing::error!("{:?}", e);
-                        Ok(None) // Policy not found or other error
+                        match e.into_service_error() {
+                            aws_sdk_ecr::operation::get_repository_policy::GetRepositoryPolicyError::RepositoryNotFoundException(_) => Ok(None),
+                            aws_sdk_ecr::operation::get_repository_policy::GetRepositoryPolicyError::RepositoryPolicyNotFoundException(_) => Ok(None),
+                            e => Err(e.into())
+                        }
                     }
                 }
             }
@@ -135,8 +139,11 @@ impl EcrConnector {
                         Ok(None)
                     }
                     Err(e) => {
-                        tracing::error!("{:?}", e);
-                        Ok(None) // Policy not found or other error
+                        match e.into_service_error() {
+                            aws_sdk_ecr::operation::get_lifecycle_policy::GetLifecyclePolicyError::LifecyclePolicyNotFoundException(_) => Ok(None),
+                            aws_sdk_ecr::operation::get_lifecycle_policy::GetLifecyclePolicyError::RepositoryNotFoundException(_) => Ok(None),
+                            e => Err(e.into())
+                        }
                     }
                 }
             }
@@ -163,10 +170,10 @@ impl EcrConnector {
                         }
                         Ok(None)
                     }
-                    Err(e) => {
-                        tracing::error!("{:?}", e);
-                        Ok(None) // Policy not found or other error
-                    }
+                    Err(e) => match e.into_service_error() {
+                        GetRegistryPolicyError::RegistryPolicyNotFoundException(_) => Ok(None),
+                        e => Err(e.into()),
+                    },
                 }
             }
             EcrResourceAddress::PullThroughCacheRule { region, prefix } => {

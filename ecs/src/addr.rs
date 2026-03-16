@@ -6,7 +6,7 @@ use autoschematic_core::{connector::ResourceAddress, error_util::invalid_addr_pa
 pub enum EcsResourceAddress {
     Cluster(String, String),         // (region, cluster_name)
     Service(String, String, String), // (region, cluster_name, service_name)
-    TaskDefinition(String, String),  // (region, task_family:revision)
+    TaskDefinition(String, String),  // (region, task_family)
 }
 
 impl ResourceAddress for EcsResourceAddress {
